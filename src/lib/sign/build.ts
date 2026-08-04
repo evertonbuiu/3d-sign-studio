@@ -10,7 +10,7 @@ import {
   Vector3,
 } from "three";
 
-import { insetShape, ringShape, shapePoints } from "./offset";
+import { insetShape, offsetShape, ringShape, shapePoints } from "./offset";
 import type { PartKind, SignParams, SignStyle } from "./model";
 
 export interface SignPart {
@@ -155,7 +155,9 @@ export function buildSign(
   const rawBounds = shapesBounds(letterShapes);
   const size = rawBounds.getSize(new Vector2());
   const center = rawBounds.getCenter(new Vector2());
-  const shapes = translateShapes(letterShapes, -center.x, -center.y);
+  const shapes = translateShapes(letterShapes, -center.x, -center.y).flatMap((s) =>
+    offsetShape(s, 0),
+  );
   const bounds = shapesBounds(shapes);
 
   const plateOn = active.has("placa");
@@ -332,8 +334,9 @@ export function buildSign(
   for (const def of layerDefs) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
-      const inner = insetShape(shape, params.layerShrink * def.index);
-      if (inner) geos.push(extrude(inner, params.layerThickness));
+      for (const inner of insetShape(shape, params.layerShrink * def.index)) {
+        geos.push(extrude(inner, params.layerThickness));
+      }
     }
     const geo = combine(geos);
     if (geo) {
@@ -354,8 +357,9 @@ export function buildSign(
   if (active.has("tampa")) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
-      const outer = insetShape(shape, -params.clearance);
-      if (outer) geos.push(extrude(outer, 2.5));
+      for (const outer of insetShape(shape, -params.clearance)) {
+        geos.push(extrude(outer, 2.5));
+      }
     }
     const geo = combine(geos);
     if (geo) {
