@@ -338,25 +338,8 @@ export function buildSign(
     }
   }
 
-  // ---------- tampa ----------
-  if (active.has("tampa")) {
-    const geos: BufferGeometry[] = [];
-    for (const shape of shapes) {
-      for (const outer of insetShape(shape, -params.clearance)) {
-        geos.push(extrude(outer, 2.5));
-      }
-    }
-    const geo = combine(geos);
-    if (geo) {
-      geo.translate(0, 0, baseZ + params.depth);
-      parts.push(
-        makePart("tampa", "tampa", "Tampa", "#eef4ff", geo, {
-          opacity: 0.35,
-          count: shapes.length,
-        }),
-      );
-    }
-  }
+
+
 
   // ---------- furos ----------
   if (params.mountHoles && active.has("furos") && holePoints.length) {
