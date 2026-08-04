@@ -1,6 +1,6 @@
 import { useMemo, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
-import { Bounds, ContactShadows, Grid, OrbitControls } from "@react-three/drei";
+import { ContactShadows, Grid, OrbitControls } from "@react-three/drei";
 import { Box3, Vector3, type Group } from "three";
 
 import { useEditor } from "./store";
@@ -53,7 +53,6 @@ function Model() {
         if (bb && Number.isFinite(bb.min.x) && Number.isFinite(bb.max.x)) box.union(bb);
       }
     }
-    console.log('DBG box', JSON.stringify(box), build?.parts.map((p) => p.id));
     if (box.isEmpty()) return { scale: 0.01, center: new Vector3() };
     const size = box.getSize(new Vector3());
     const max = Math.max(size.x, size.y, size.z) || 1;
@@ -84,14 +83,12 @@ export default function Viewport() {
 
   return (
     <div className="relative h-full w-full bg-viewport">
-      <Canvas shadows camera={{ position: [0, 0.6, 5.2], fov: 40 }} dpr={[1, 2]}>
+      <Canvas shadows camera={{ position: [0, 1.1, 4.6], fov: 42 }} dpr={[1, 2]}>
         <color attach="background" args={["#e6ebf2"]} />
         <hemisphereLight args={["#ffffff", "#c7d0dc", 1.1]} />
         <directionalLight position={[4, 6, 6]} intensity={1.5} castShadow />
         <directionalLight position={[-5, 2, -4]} intensity={0.5} />
-        <Bounds fit clip observe margin={1.25}>
-          <Model />
-        </Bounds>
+        <Model />
         <ContactShadows position={[0, -1.6, 0]} opacity={0.35} blur={2.4} scale={9} far={4} />
         <Grid
           position={[0, -1.6, 0]}
