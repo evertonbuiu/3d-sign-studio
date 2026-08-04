@@ -416,7 +416,7 @@ export function buildSign(
           name,
           color,
           z,
-          points: hole.getPoints(14).map((p) => [p.x, p.y] as [number, number]),
+          points: hole.getPoints(24).map((p) => [p.x, p.y] as [number, number]),
         });
       });
     });
