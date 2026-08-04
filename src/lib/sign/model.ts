@@ -81,6 +81,8 @@ export const DEFAULT_PARAMS: SignParams = {
   diffuserThickness: 2,
   diffuserInset: 6,
   clearance: 0.3,
+  frontRebate: true,
+  frontRebateWidth: 1.2,
   led: true,
   ledChannelWidth: 12,
   ledChannelHeight: 6,
