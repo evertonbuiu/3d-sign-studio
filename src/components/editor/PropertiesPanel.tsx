@@ -157,6 +157,24 @@ export default function PropertiesPanel() {
               <NumberSlider label="Difusor" keyName="diffuserThickness" min={0.6} max={10} step={0.2} />
               <NumberSlider label="Recuo do difusor" keyName="diffuserInset" min={0} max={30} step={0.5} />
               <NumberSlider label="Folga de encaixe" keyName="clearance" min={0} max={1.5} step={0.05} />
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium text-muted-foreground">
+                  Rebaixo p/ acrílico
+                </Label>
+                <Switch
+                  checked={params.frontRebate}
+                  onCheckedChange={(v) => setParam("frontRebate", v)}
+                />
+              </div>
+              {params.frontRebate && (
+                <NumberSlider
+                  label="Largura do rebaixo"
+                  keyName="frontRebateWidth"
+                  min={0.4}
+                  max={8}
+                  step={0.1}
+                />
+              )}
             </AccordionContent>
           </AccordionItem>
 
