@@ -37,6 +37,8 @@ export interface SignOutline {
 export interface SignBuild {
   parts: SignPart[];
   outlines: SignOutline[];
+  /** Contornos 2D da frente (mm) para corte de acrílico. */
+  faceCut: Shape[];
   width: number;
   height: number;
   depth: number;
