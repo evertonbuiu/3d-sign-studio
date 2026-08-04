@@ -283,8 +283,9 @@ export function buildSign(
   if (active.has("difusor")) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
-      const inner = insetShape(shape, params.wall + params.clearance);
-      if (inner) geos.push(extrude(inner, params.diffuserThickness));
+      for (const inner of insetShape(shape, params.wall + params.clearance)) {
+        geos.push(extrude(inner, params.diffuserThickness));
+      }
     }
     const geo = combine(geos);
     if (geo) {
