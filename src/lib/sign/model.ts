@@ -7,10 +7,7 @@ export type PartKind =
   | "difusor"
   | "tampa"
   | "canal-led"
-  | "encaixes"
   | "furos"
-  | "travas"
-  | "guias"
   | "camada-2"
   | "camada-3"
   | "placa"
@@ -141,10 +138,7 @@ const boxParts: PartKind[] = [
   "laterais",
   "frente",
   "canal-led",
-  "encaixes",
   "furos",
-  "travas",
-  "guias",
 ];
 
 export const STYLES: SignStyle[] = [
@@ -261,7 +255,7 @@ export const STYLES: SignStyle[] = [
     name: "Caixa sem iluminação",
     group: "Letras",
     description: "Caixa oca econômica, sem LED.",
-    parts: ["fundo", "laterais", "frente", "encaixes", "furos", "travas", "guias"],
+    parts: ["fundo", "laterais", "frente", "furos"],
     preset: { led: false, depth: 35 },
     thumb: { face: "#c9d3e0", body: "#4a5567", glow: "none" },
   },
@@ -288,7 +282,7 @@ export const STYLES: SignStyle[] = [
     name: "Letras Ocas",
     group: "Letras",
     description: "Casca oca com paredes finas, leve e rápida.",
-    parts: ["laterais", "frente", "guias"],
+    parts: ["laterais", "frente"],
     preset: { led: false, depth: 30, wall: 2 },
     thumb: { face: "#b9c7da", body: "#4a5567", glow: "none" },
   },
@@ -324,7 +318,7 @@ export const STYLES: SignStyle[] = [
     name: "Neon Flex",
     group: "Iluminação",
     description: "Canal contínuo para mangueira de neon flex.",
-    parts: ["placa", "canal-led", "furos", "guias"],
+    parts: ["placa", "canal-led", "furos"],
     preset: {
       bodyMode: "placa",
       led: true,
@@ -365,7 +359,7 @@ export const STYLES: SignStyle[] = [
     name: "Placa ACM",
     group: "Placas & Totem",
     description: "Base fina em ACM com letras aplicadas.",
-    parts: ["placa", "frente", "furos", "guias"],
+    parts: ["placa", "frente", "furos"],
     preset: { bodyMode: "placa", plateThickness: 4, depth: 18, faceThickness: 10, led: false },
     thumb: { face: "#cbd6e4", body: "#59657a", plate: true },
   },
