@@ -1,5 +1,6 @@
 import {
   BufferGeometry,
+  Float32BufferAttribute,
   ExtrudeGeometry,
   Box2,
   Box3,
@@ -141,31 +142,6 @@ function makePart(
     volumeCm3: geometryVolumeCm3(geometry),
     count: options.count ?? 1,
   };
-}
-
-function mergeGeometries(list: BufferGeometry[]): BufferGeometry | null {
-  const valid = list.filter((g) => g.getAttribute("position"));
-  if (!valid.length) return null;
-  const positions: number[] = [];
-  for (const geo of valid) {
-    const nonIndexed = geo.index ? geo.toNonIndexed() : geo;
-    const pos = nonIndexed.getAttribute("position");
-    for (let i = 0; i < pos.count; i++) {
-      positions.push(pos.getX(i), pos.getY(i), pos.getZ(i));
-    }
-  }
-  const merged = new BufferGeometry();
-  merged.setAttribute(
-    "position",
-    new (require$Float32BufferAttribute())(new Float32Array(positions), 3),
-  );
-  return merged;
-}
-
-// evita import cíclico de tipos no bundle de tipos do three
-function require$Float32BufferAttribute() {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
-  return (globalThis as any).__F32BA;
 }
 
 export function buildSign(
@@ -512,7 +488,7 @@ function mergePositions(geos: BufferGeometry[]): BufferGeometry {
     }
   }
   const merged = new BufferGeometry();
-  merged.setAttribute("position", new Float32BufferAttributeCtor(array, 3));
+  merged.setAttribute("position", new Float32BufferAttribute(array, 3));
   return merged;
 }
 
