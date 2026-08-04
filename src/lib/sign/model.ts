@@ -73,6 +73,8 @@ export const DEFAULT_PARAMS: SignParams = {
   faceThickness: 3,
   backThickness: 3,
   clearance: 0.3,
+  faceRecess: true,
+  recessLip: 1.2,
   led: true,
   ledChannelWidth: 12,
   ledChannelHeight: 6,
