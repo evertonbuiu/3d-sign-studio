@@ -56,7 +56,8 @@ export function useEditorState(): EditorState {
   const [font, setFont] = useState<Font | null>(null);
   const [explode, setExplode] = useState(0);
   const [hidden, setHidden] = useState<Set<string>>(new Set());
-  const [projectId, setProjectId] = useState<string | null>(null);
+  const [wireframe, setWireframe] = useState(false);
+  const [showOutlines, setShowOutlines] = useState(false);
   const [projectName, setProjectName] = useState("Novo projeto");
 
   useEffect(() => {
