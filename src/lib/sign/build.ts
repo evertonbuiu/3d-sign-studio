@@ -534,3 +534,7 @@ export function buildBoundingBox(parts: SignPart[]): Box3 {
   }
   return box;
 }
+
+function contourPoints(shape: Shape): Array<[number, number]> {
+  return shapePoints(shape).map((p) => [p.x, p.y] as [number, number]);
+}
