@@ -1,6 +1,6 @@
 import { useMemo, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
-import { ContactShadows, Grid, OrbitControls } from "@react-three/drei";
+import { Bounds, ContactShadows, Grid, OrbitControls } from "@react-three/drei";
 import { Box3, Vector3, type Group } from "three";
 
 import { useEditor } from "./store";
@@ -49,13 +49,18 @@ function Model() {
     if (build) {
       for (const part of build.parts) {
         part.geometry.computeBoundingBox();
-        if (part.geometry.boundingBox) box.union(part.geometry.boundingBox);
+        const bb = part.geometry.boundingBox;
+        if (bb && Number.isFinite(bb.min.x) && Number.isFinite(bb.max.x)) box.union(bb);
       }
     }
-    if (box.isEmpty()) return { scale: 1, center: new Vector3() };
+    if (box.isEmpty()) return { scale: 0.01, center: new Vector3() };
     const size = box.getSize(new Vector3());
     const max = Math.max(size.x, size.y, size.z) || 1;
-    return { scale: 2.6 / max, center: box.getCenter(new Vector3()) };
+    const s = 2.6 / max;
+    return {
+      scale: Number.isFinite(s) ? s : 0.01,
+      center: box.getCenter(new Vector3()),
+    };
   }, [build]);
 
   if (!build) return null;
@@ -83,7 +88,9 @@ export default function Viewport() {
         <hemisphereLight args={["#ffffff", "#c7d0dc", 1.1]} />
         <directionalLight position={[4, 6, 6]} intensity={1.5} castShadow />
         <directionalLight position={[-5, 2, -4]} intensity={0.5} />
-        <Model />
+        <Bounds fit clip observe margin={1.25}>
+          <Model />
+        </Bounds>
         <ContactShadows position={[0, -1.6, 0]} opacity={0.35} blur={2.4} scale={9} far={4} />
         <Grid
           position={[0, -1.6, 0]}
