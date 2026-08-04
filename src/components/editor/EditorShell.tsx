@@ -24,8 +24,8 @@ export default function EditorShell() {
     <EditorProvider value={state}>
       <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
         <Toolbar />
-        <div className="grid min-h-0 flex-1 grid-cols-[240px_1fr_300px] overflow-hidden">
-          <StyleLibrary />
+        <div className="grid min-h-0 flex-1 grid-cols-[240px_1fr_300px] grid-rows-[minmax(0,1fr)] overflow-hidden">
+          <div className="min-h-0 overflow-hidden"><StyleLibrary /></div>
           <div className="relative min-h-0 overflow-hidden">
             <ClientOnly fallback={<ViewportFallback />}>
               <Suspense fallback={<ViewportFallback />}>
@@ -33,7 +33,7 @@ export default function EditorShell() {
               </Suspense>
             </ClientOnly>
           </div>
-          <PropertiesPanel />
+          <div className="min-h-0 overflow-hidden"><PropertiesPanel /></div>
         </div>
         <CostBar />
       </div>
