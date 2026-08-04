@@ -100,7 +100,20 @@ function MoneyField({
 }
 
 export default function PropertiesPanel() {
-  const { params, setParam, style, build, hidden, togglePart, explode, setExplode } = useEditor();
+  const {
+    params,
+    setParam,
+    style,
+    build,
+    hidden,
+    togglePart,
+    explode,
+    setExplode,
+    wireframe,
+    setWireframe,
+    showOutlines,
+    setShowOutlines,
+  } = useEditor();
 
   return (
     <div className="flex h-full flex-col border-l border-border bg-panel">
