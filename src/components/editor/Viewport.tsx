@@ -1,4 +1,7 @@
 import { useMemo, useRef } from "react";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { Canvas } from "@react-three/fiber";
 import { ContactShadows, Grid, OrbitControls } from "@react-three/drei";
 import { Box3, BufferGeometry, Float32BufferAttribute, Vector3, type Group } from "three";
@@ -107,7 +110,16 @@ function Model() {
 }
 
 export default function Viewport() {
-  const { build, ready } = useEditor();
+  const {
+    build,
+    ready,
+    explode,
+    setExplode,
+    wireframe,
+    setWireframe,
+    showOutlines,
+    setShowOutlines,
+  } = useEditor();
 
   return (
     <div className="absolute inset-0 bg-viewport">
