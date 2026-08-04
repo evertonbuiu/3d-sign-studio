@@ -1,9 +1,5 @@
 import { useEffect, useState } from "react";
 import { Eye, EyeOff, Upload, X } from "lucide-react";
-import { toast } from "sonner";
-
-import { svgToShapes } from "@/lib/sign/svg";
-
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -195,22 +191,9 @@ export default function PropertiesPanel() {
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
-                        const content = await file.text();
+                        setSvg(file.name, await file.text());
                         e.target.value = "";
-                        try {
-                          if (!svgToShapes(content, 100).length) {
-                            toast.error(
-                              "Nenhum contorno encontrado no SVG. Converta traços em contornos (outline) e remova textos.",
-                            );
-                            return;
-                          }
-                        } catch {
-                          toast.error("Não foi possível ler este arquivo SVG.");
-                          return;
-                        }
-                        setSvg(file.name, content);
                       }}
-
                     />
                   </label>
                 )}
