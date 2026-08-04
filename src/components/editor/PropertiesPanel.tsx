@@ -167,6 +167,24 @@ export default function PropertiesPanel() {
               <NumberSlider label="Frente" keyName="faceThickness" min={0.6} max={60} step={0.2} />
               <NumberSlider label="Fundo" keyName="backThickness" min={0.6} max={20} step={0.2} />
               <NumberSlider label="Folga de encaixe" keyName="clearance" min={0} max={1.5} step={0.05} />
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium text-muted-foreground">
+                  Rebaixo para a frente
+                </Label>
+                <Switch
+                  checked={params.faceRecess}
+                  onCheckedChange={(v) => setParam("faceRecess", v)}
+                />
+              </div>
+              {params.faceRecess ? (
+                <NumberSlider
+                  label="Aba do rebaixo"
+                  keyName="recessLip"
+                  min={0.4}
+                  max={Math.max(params.wall - 0.4, 0.6)}
+                  step={0.1}
+                />
+              ) : null}
             </AccordionContent>
           </AccordionItem>
 
