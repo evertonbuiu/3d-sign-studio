@@ -18,7 +18,7 @@ function Metric({
     <div className="flex min-w-[130px] items-center gap-2.5 px-4">
       <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
       <div className="leading-tight">
-        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+        <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
         <div className={strong ? "text-sm font-semibold text-primary" : "text-sm font-medium"}>
           {value}
         </div>
