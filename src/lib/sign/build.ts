@@ -113,9 +113,10 @@ function shapesBounds(shapes: Shape[]): Box2 {
 
 function translateShapes(shapes: Shape[], dx: number, dy: number): Shape[] {
   return shapes.map((shape) => {
-    const moved = new Shape(shapePoints(shape).map((p) => new Vector2(p.x + dx, p.y + dy)));
-    for (const hole of shape.holes) {
-      moved.holes.push(new Path(hole.getPoints(14).map((p) => new Vector2(p.x + dx, p.y + dy))));
+    const src = cloneShape(shape);
+    const moved = new Shape(shapePoints(src).map((p) => new Vector2(p.x + dx, p.y + dy)));
+    for (const hole of src.holes) {
+      moved.holes.push(new Path(hole.getPoints(24).map((p) => new Vector2(p.x + dx, p.y + dy))));
     }
     return moved;
   });
