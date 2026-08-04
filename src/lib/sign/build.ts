@@ -11,7 +11,7 @@ import {
 } from "three";
 import { ADDITION, Brush, Evaluator } from "three-bvh-csg";
 
-import { insetShape, offsetShape, ringShape, shapePoints } from "./offset";
+import { cloneShape, insetShape, offsetShape, ringShape, shapePoints } from "./offset";
 import type { PartKind, SignParams, SignStyle } from "./model";
 
 export interface SignPart {
