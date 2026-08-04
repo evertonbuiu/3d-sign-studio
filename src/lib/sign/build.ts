@@ -334,17 +334,22 @@ export function buildSign(
 
 
   // ---------- frente ----------
+  const faceCut: Shape[] = [];
   if (active.has("frente")) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
       if (faceInset > 0) {
         for (const inner of insetShape(shape, faceInset)) {
+          faceCut.push(inner);
           geos.push(extrude(inner, params.faceThickness));
         }
         continue;
       }
-      geos.push(extrude(cloneShape(shape), params.faceThickness));
+      const clone = cloneShape(shape);
+      faceCut.push(clone);
+      geos.push(extrude(clone, params.faceThickness));
     }
+
 
     const geo = combine(geos);
     if (geo) {
