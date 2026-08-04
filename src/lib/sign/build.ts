@@ -488,6 +488,8 @@ export function buildSign(
     parts,
     outlines,
     faceCut,
+    width: totalWidth,
+
 
     height: totalHeight,
     depth: totalDepth,
