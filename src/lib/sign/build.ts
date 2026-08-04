@@ -260,11 +260,11 @@ export function buildSign(
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
       const start = params.wall + params.ledOffset;
-      const ring = ringShape(shape, params.ledChannelWidth, start);
-      if (ring) {
-        geos.push(extrude(ring, params.ledChannelHeight));
+      const rings = ringShape(shape, params.ledChannelWidth, start);
+      if (rings.length) {
+        for (const ring of rings) geos.push(extrude(ring, params.ledChannelHeight));
         const inner = insetShape(shape, start + params.ledChannelWidth / 2);
-        if (inner) ledLengthMm += perimeterMm([inner]);
+        if (inner.length) ledLengthMm += perimeterMm(inner);
       }
     }
     const geo = combine(geos);
