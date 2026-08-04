@@ -86,6 +86,7 @@ function Model() {
         }
       }
     }
+    console.log("DBG box", build?.parts.length, box.isEmpty(), JSON.stringify(box));
     if (box.isEmpty()) return { scale: 0.01, center: new Vector3() };
     const size = box.getSize(new Vector3());
     const dims = [size.x, size.y, size.z].filter((v) => Number.isFinite(v) && v > 0);
