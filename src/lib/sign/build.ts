@@ -10,7 +10,7 @@ import {
   Vector3,
 } from "three";
 
-import { insetShape, offsetShape, ringShape, shapePoints } from "./offset";
+import { insetShape, offsetShape, ringShape, ringShapeDual, shapePoints } from "./offset";
 import type { PartKind, SignParams, SignStyle } from "./model";
 
 export interface SignPart {
@@ -243,7 +243,8 @@ export function buildSign(
   if (active.has("laterais")) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
-      for (const ring of ringShape(shape, params.wall)) geos.push(extrude(ring, bodyHeight));
+      for (const ring of ringShapeDual(shape, params.wall, params.wallInner))
+        geos.push(extrude(ring, bodyHeight));
     }
     const geo = combine(geos);
     if (geo) {

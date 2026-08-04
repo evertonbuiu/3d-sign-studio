@@ -23,7 +23,8 @@ export interface SignParams {
   tracking: number; // mm entre letras
   /** construção */
   depth: number; // profundidade total da caixa (mm)
-  wall: number; // espessura da parede lateral (mm)
+  wall: number; // espessura da parede externa (mm)
+  wallInner: number; // espessura da parede interna (contra-formas/furos) (mm)
   faceThickness: number; // espessura da frente (mm)
   backThickness: number; // espessura do fundo (mm)
   diffuserThickness: number; // espessura do difusor (mm)
@@ -72,6 +73,7 @@ export const DEFAULT_PARAMS: SignParams = {
   tracking: 4,
   depth: 60,
   wall: 2.4,
+  wallInner: 2.4,
   faceThickness: 3,
   backThickness: 3,
   diffuserThickness: 2,
