@@ -1,4 +1,4 @@
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Upload, X } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -113,6 +113,9 @@ export default function PropertiesPanel() {
     setWireframe,
     showOutlines,
     setShowOutlines,
+    svgName,
+    setSvg,
+    clearSvg,
   } = useEditor();
 
   return (
@@ -135,7 +138,39 @@ export default function PropertiesPanel() {
                   onChange={(e) => setParam("text", e.target.value)}
                   className="h-9 bg-card font-display text-sm"
                   maxLength={40}
+                  disabled={Boolean(svgName)}
                 />
+              </Field>
+              <Field label="Importar SVG">
+                {svgName ? (
+                  <div className="flex items-center gap-2 rounded border border-border bg-card px-3 py-2">
+                    <span className="flex-1 truncate text-sm">{svgName}</span>
+                    <button
+                      type="button"
+                      onClick={clearSvg}
+                      className="text-muted-foreground hover:text-foreground"
+                      title="Remover SVG e voltar ao texto"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex h-9 cursor-pointer items-center gap-2 rounded border border-dashed border-border bg-card px-3 text-sm text-muted-foreground hover:border-primary hover:text-foreground">
+                    <Upload className="h-4 w-4" />
+                    Escolher arquivo .svg
+                    <input
+                      type="file"
+                      accept=".svg,image/svg+xml"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setSvg(file.name, await file.text());
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                )}
               </Field>
               <Field label="Fonte">
                 <Select

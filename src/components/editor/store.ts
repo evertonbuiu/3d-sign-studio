@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { Font } from "opentype.js";
 
 import { loadFont, textToShapes } from "@/lib/sign/fonts";
+import { svgToShapes } from "@/lib/sign/svg";
 import { buildSign, type SignBuild } from "@/lib/sign/build";
 import { computeCost, type CostBreakdown } from "@/lib/sign/cost";
 import {
@@ -22,6 +23,9 @@ export interface EditorState {
   hidden: Set<string>;
   wireframe: boolean;
   showOutlines: boolean;
+  svgName: string | null;
+  setSvg: (name: string, content: string) => void;
+  clearSvg: () => void;
   projectId: string | null;
   projectName: string;
   setParam: <K extends keyof SignParams>(key: K, value: SignParams[K]) => void;
@@ -58,6 +62,7 @@ export function useEditorState(): EditorState {
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [wireframe, setWireframe] = useState(false);
   const [showOutlines, setShowOutlines] = useState(false);
+  const [svg, setSvgState] = useState<{ name: string; content: string } | null>(null);
   const [projectId, setProjectId] = useState<string | null>(null);
   const [projectName, setProjectName] = useState("Novo projeto");
 
@@ -76,16 +81,19 @@ export function useEditorState(): EditorState {
   const style = useMemo(() => getStyle(styleId), [styleId]);
 
   const build = useMemo(() => {
-    if (!font) return null;
     try {
-      const shapes = textToShapes(font, params.text.toUpperCase(), params.letterHeight, params.tracking);
+      const shapes = svg
+        ? svgToShapes(svg.content, params.letterHeight)
+        : font
+          ? textToShapes(font, params.text.toUpperCase(), params.letterHeight, params.tracking)
+          : [];
       if (!shapes.length) return null;
       return buildSign(shapes, params, style);
     } catch (error) {
       console.error("Falha ao gerar geometria", error);
       return null;
     }
-  }, [font, params, style]);
+  }, [font, svg, params, style]);
 
   const cost = useMemo(() => (build ? computeCost(build, params) : null), [build, params]);
 
@@ -94,11 +102,14 @@ export function useEditorState(): EditorState {
     style,
     build,
     cost,
-    ready: Boolean(font),
+    ready: Boolean(font) || Boolean(svg),
     explode,
     hidden,
     wireframe,
     showOutlines,
+    svgName: svg?.name ?? null,
+    setSvg: (name, content) => setSvgState({ name, content }),
+    clearSvg: () => setSvgState(null),
     setWireframe,
     setShowOutlines,
     projectId,
