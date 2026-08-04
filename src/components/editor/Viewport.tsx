@@ -53,6 +53,7 @@ function Model() {
         if (bb && Number.isFinite(bb.min.x) && Number.isFinite(bb.max.x)) box.union(bb);
       }
     }
+    console.log('DBG box', JSON.stringify(box), build?.parts.map((p) => p.id));
     if (box.isEmpty()) return { scale: 0.01, center: new Vector3() };
     const size = box.getSize(new Vector3());
     const max = Math.max(size.x, size.y, size.z) || 1;
