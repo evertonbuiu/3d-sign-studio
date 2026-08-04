@@ -281,7 +281,7 @@ export const STYLES: SignStyle[] = [
     description: "Letra sólida extrudada, máxima resistência.",
     parts: ["frente", "furos"],
     preset: { led: false, depth: 25, faceThickness: 25 },
-    thumb: { face: "#8ea3bd", body: "#5a6removed" as string, glow: "none" },
+    thumb: { face: "#8ea3bd", body: "#5a6a80", glow: "none" },
   },
   {
     id: "letras-ocas",
@@ -404,9 +404,6 @@ export const STYLES: SignStyle[] = [
     thumb: { face: "#ffffff", body: "#3b82f6", plate: true, layers: 3 },
   },
 ];
-
-// corrige valor de exemplo inválido acima
-STYLES.find((s) => s.id === "letras-macicas")!.thumb.body = "#5a6krem".slice(0, 0) || "#5a6a80";
 
 export const STYLE_GROUPS: StyleGroup[] = [
   "Acrílico & Impresso",
