@@ -373,30 +373,6 @@ export function buildSign(
     }
   }
 
-  // ---------- encaixes / travas / guias ----------
-  const detailZ = baseZ + params.backThickness;
-  if (active.has("encaixes")) {
-    const geo = detailBlocks(shapes, params, 6, params.wall * 2.2, 5);
-    if (geo) {
-      geo.translate(0, 0, detailZ);
-      parts.push(makePart("encaixes", "encaixes", "Encaixes", "#8aa0bd", geo, { count: 6 }));
-    }
-  }
-  if (active.has("travas")) {
-    const geo = detailBlocks(shapes, params, 4, params.wall * 1.6, 8, bodyHeight * 0.55);
-    if (geo) {
-      geo.translate(0, 0, detailZ);
-      parts.push(makePart("travas", "travas", "Travas", "#7d93b0", geo, { count: 4 }));
-    }
-  }
-  if (active.has("guias")) {
-    const geo = detailBlocks(shapes, params, 8, params.wall, 12, 2.5);
-    if (geo) {
-      geo.translate(0, 0, detailZ);
-      parts.push(makePart("guias", "guias", "Guias de montagem", "#95a8c2", geo, { count: 8 }));
-    }
-  }
-
   // ---------- furos ----------
   if (params.mountHoles && active.has("furos") && holePoints.length) {
     const geos: BufferGeometry[] = [];
@@ -438,36 +414,6 @@ export function buildSign(
     totalVolumeCm3: parts.reduce((sum, p) => sum + p.volumeCm3, 0),
     printedVolumeCm3,
   };
-}
-
-function detailBlocks(
-  shapes: Shape[],
-  params: SignParams,
-  count: number,
-  thickness: number,
-  length: number,
-  height = 6,
-): BufferGeometry | null {
-  const box = shapesBounds(shapes);
-  const inner = new Box2(
-    new Vector2(box.min.x + params.wall + 1, box.min.y + params.wall + 1),
-    new Vector2(box.max.x - params.wall - 1, box.max.y - params.wall - 1),
-  );
-  const geos: BufferGeometry[] = [];
-  for (let i = 0; i < count; i++) {
-    const t = (i + 0.5) / count;
-    const x = inner.min.x + (inner.max.x - inner.min.x) * t;
-    const yBottom = inner.min.y;
-    const yTop = inner.max.y;
-    for (const y of [yBottom, yTop]) {
-      const shape = rectShape(
-        new Vector2(x - length / 2, y - thickness / 2),
-        new Vector2(x + length / 2, y + thickness / 2),
-      );
-      geos.push(extrude(shape, height));
-    }
-  }
-  return combine(geos);
 }
 
 function combine(geos: BufferGeometry[]): BufferGeometry | null {
