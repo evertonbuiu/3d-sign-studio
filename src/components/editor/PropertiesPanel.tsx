@@ -257,13 +257,13 @@ export default function PropertiesPanel() {
                 </Select>
               </Field>
               <NumberSlider label="Margem da placa" keyName="plateMargin" min={5} max={200} step={1} />
-              <NumberSlider label="Espessura da placa" keyName="plateThickness" min={2} max={40} step={0.5} />
+              <NumberSlider label="Espessura da placa" keyName="plateThickness" min={0.5} max={40} step={0.5} />
               <NumberSlider label="Altura do poste" keyName="poleHeight" min={100} max={2000} step={10} />
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium text-muted-foreground">Letras vazadas</Label>
                 <Switch checked={params.cutout} onCheckedChange={(v) => setParam("cutout", v)} />
               </div>
-              <NumberSlider label="Espessura da camada" keyName="layerThickness" min={1} max={30} step={0.5} />
+              <NumberSlider label="Espessura da camada" keyName="layerThickness" min={0.5} max={30} step={0.5} />
               <NumberSlider label="Redução por camada" keyName="layerShrink" min={1} max={40} step={0.5} />
             </AccordionContent>
           </AccordionItem>
