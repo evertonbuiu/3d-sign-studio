@@ -25,6 +25,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { geometriesToStl, downloadBlob, slugify } from "@/lib/sign/stl";
+import { shapesToDxf } from "@/lib/sign/dxf";
+
 import {
   deleteSignProject,
   getSignProject,
