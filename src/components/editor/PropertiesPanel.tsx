@@ -191,9 +191,22 @@ export default function PropertiesPanel() {
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
-                        setSvg(file.name, await file.text());
+                        const content = await file.text();
                         e.target.value = "";
+                        try {
+                          if (!svgToShapes(content, 100).length) {
+                            toast.error(
+                              "Nenhum contorno encontrado no SVG. Converta traços em contornos (outline) e remova textos.",
+                            );
+                            return;
+                          }
+                        } catch {
+                          toast.error("Não foi possível ler este arquivo SVG.");
+                          return;
+                        }
+                        setSvg(file.name, content);
                       }}
+
                     />
                   </label>
                 )}
