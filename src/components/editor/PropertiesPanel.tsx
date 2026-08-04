@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Eye, EyeOff, Upload, X } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
