@@ -4,7 +4,6 @@ export type PartKind =
   | "fundo"
   | "laterais"
   | "frente"
-  | "difusor"
   | "tampa"
   | "canal-led"
   | "furos"
@@ -26,8 +25,6 @@ export interface SignParams {
   wall: number; // espessura da parede lateral (mm)
   faceThickness: number; // espessura da frente (mm)
   backThickness: number; // espessura do fundo (mm)
-  diffuserThickness: number; // espessura do difusor (mm)
-  diffuserInset: number; // recuo do difusor em relação à frente (mm)
   clearance: number; // folga de encaixe (mm)
   /** iluminação */
   led: boolean;
@@ -74,8 +71,6 @@ export const DEFAULT_PARAMS: SignParams = {
   wall: 2.4,
   faceThickness: 3,
   backThickness: 3,
-  diffuserThickness: 2,
-  diffuserInset: 6,
   clearance: 0.3,
   led: true,
   ledChannelWidth: 12,
@@ -147,8 +142,8 @@ export const STYLES: SignStyle[] = [
     name: "Fundo Impresso + Tampa Acrílica",
     group: "Acrílico & Impresso",
     description: "Caixa impressa em 3D com tampa de acrílico sobreposta.",
-    parts: [...boxParts, "tampa", "difusor"],
-    preset: { depth: 55, faceThickness: 3, diffuserThickness: 3, led: true },
+    parts: [...boxParts, "tampa"],
+    preset: { depth: 55, faceThickness: 3, led: true },
     thumb: { face: "#dbe7f5", body: "#3f4a5a", glow: "front" },
   },
   {
@@ -156,8 +151,8 @@ export const STYLES: SignStyle[] = [
     name: "Fundo Impresso + Frente Acrílica",
     group: "Acrílico & Impresso",
     description: "Corpo impresso e frente em acrílico encaixada no rebaixo.",
-    parts: [...boxParts, "difusor"],
-    preset: { depth: 50, faceThickness: 3, diffuserInset: 3 },
+    parts: boxParts,
+    preset: { depth: 50, faceThickness: 3 },
     thumb: { face: "#cfe0f2", body: "#3f4a5a", glow: "front" },
   },
   {
@@ -165,7 +160,7 @@ export const STYLES: SignStyle[] = [
     name: "Fundo Acrílico + Frente Acrílica",
     group: "Acrílico & Impresso",
     description: "Fundo e frente em acrílico com laterais impressas.",
-    parts: [...boxParts, "difusor", "tampa"],
+    parts: [...boxParts, "tampa"],
     preset: { depth: 45, backThickness: 3, faceThickness: 3 },
     thumb: { face: "#e6f0fb", body: "#5b6a7d", glow: "both" },
   },
@@ -183,8 +178,8 @@ export const STYLES: SignStyle[] = [
     name: "Frente PETG",
     group: "Acrílico & Impresso",
     description: "Frente em PETG translúcido impressa em camadas finas.",
-    parts: [...boxParts, "difusor"],
-    preset: { depth: 48, faceThickness: 1.2, diffuserThickness: 1.6 },
+    parts: boxParts,
+    preset: { depth: 48, faceThickness: 1.2 },
     thumb: { face: "#dff1ea", body: "#3f4a5a", glow: "front" },
   },
   {
@@ -192,8 +187,8 @@ export const STYLES: SignStyle[] = [
     name: "Frente Acrílico Leitoso",
     group: "Acrílico & Impresso",
     description: "Difusão suave e uniforme com acrílico leitoso.",
-    parts: [...boxParts, "difusor"],
-    preset: { depth: 52, diffuserThickness: 3, ledColor: "#fff6e0" },
+    parts: boxParts,
+    preset: { depth: 52, ledColor: "#fff6e0" },
     thumb: { face: "#f6f8fb", body: "#3f4a5a", glow: "front" },
   },
   {
@@ -201,7 +196,7 @@ export const STYLES: SignStyle[] = [
     name: "Face Lit",
     group: "Iluminação",
     description: "Luz frontal difusa em toda a face da letra.",
-    parts: [...boxParts, "difusor"],
+    parts: boxParts,
     preset: { led: true, depth: 55, ledChannelWidth: 14 },
     thumb: { face: "#fff3cf", body: "#3f4a5a", glow: "front" },
   },
@@ -219,7 +214,7 @@ export const STYLES: SignStyle[] = [
     name: "Back Light",
     group: "Iluminação",
     description: "Iluminação traseira com fundo aberto.",
-    parts: [...boxParts, "difusor"],
+    parts: boxParts,
     preset: { led: true, depth: 50, backThickness: 2 },
     thumb: { face: "#6f7c8f", body: "#2f3742", glow: "back" },
   },
@@ -228,7 +223,7 @@ export const STYLES: SignStyle[] = [
     name: "Front Light",
     group: "Iluminação",
     description: "Somente a frente acende, laterais opacas.",
-    parts: [...boxParts, "difusor"],
+    parts: boxParts,
     preset: { led: true, depth: 48 },
     thumb: { face: "#ffeeb8", body: "#3a4350", glow: "front" },
   },
@@ -237,7 +232,7 @@ export const STYLES: SignStyle[] = [
     name: "Front + Back Light",
     group: "Iluminação",
     description: "Luz na frente e halo traseiro simultâneos.",
-    parts: [...boxParts, "difusor", "tampa"],
+    parts: [...boxParts, "tampa"],
     preset: { led: true, depth: 60, ledChannelWidth: 16 },
     thumb: { face: "#ffe9ad", body: "#333c48", glow: "both" },
   },
@@ -246,7 +241,7 @@ export const STYLES: SignStyle[] = [
     name: "Edge Lit",
     group: "Iluminação",
     description: "Luz nas bordas com acrílico gravado.",
-    parts: [...boxParts, "difusor"],
+    parts: boxParts,
     preset: { led: true, depth: 30, ledChannelWidth: 8, ledOffset: 1.5 },
     thumb: { face: "#d5ecff", body: "#2f3742", glow: "edge" },
   },
@@ -263,8 +258,8 @@ export const STYLES: SignStyle[] = [
     id: "caixa-iluminada",
     name: "Caixa iluminada",
     group: "Letras",
-    description: "Caixa completa com canal de LED e difusor.",
-    parts: [...boxParts, "difusor", "tampa"],
+    description: "Caixa completa com canal de LED.",
+    parts: [...boxParts, "tampa"],
     preset: { led: true, depth: 60 },
     thumb: { face: "#ffe9ad", body: "#3f4a5a", glow: "front" },
   },
@@ -333,8 +328,8 @@ export const STYLES: SignStyle[] = [
     id: "neon-led",
     name: "Neon LED",
     group: "Iluminação",
-    description: "Perfil neon LED com difusor frontal estreito.",
-    parts: ["placa", "canal-led", "difusor", "furos"],
+    description: "Perfil neon LED com canal estreito.",
+    parts: ["placa", "canal-led", "furos"],
     preset: {
       bodyMode: "placa",
       led: true,

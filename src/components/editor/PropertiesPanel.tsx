@@ -166,8 +166,6 @@ export default function PropertiesPanel() {
               <NumberSlider label="Parede" keyName="wall" min={0.8} max={12} step={0.1} />
               <NumberSlider label="Frente" keyName="faceThickness" min={0.6} max={60} step={0.2} />
               <NumberSlider label="Fundo" keyName="backThickness" min={0.6} max={20} step={0.2} />
-              <NumberSlider label="Difusor" keyName="diffuserThickness" min={0.6} max={10} step={0.2} />
-              <NumberSlider label="Recuo do difusor" keyName="diffuserInset" min={0} max={30} step={0.5} />
               <NumberSlider label="Folga de encaixe" keyName="clearance" min={0} max={1.5} step={0.05} />
             </AccordionContent>
           </AccordionItem>

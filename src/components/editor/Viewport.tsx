@@ -13,7 +13,6 @@ const EXPLODE_ORDER: Record<string, number> = {
   laterais: 1,
   "canal-led": 2,
   furos: 0,
-  difusor: 3,
   frente: 4,
   "camada-2": 5,
   "camada-3": 6,
