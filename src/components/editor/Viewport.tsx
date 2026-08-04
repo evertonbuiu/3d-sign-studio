@@ -143,6 +143,30 @@ export default function Viewport() {
         <OrbitControls makeDefault enablePan target={[0, 0, 0]} minDistance={2} maxDistance={14} />
       </Canvas>
 
+      <div className="absolute left-4 top-4 w-64 space-y-3 rounded-lg border border-border bg-panel/90 p-3 shadow-lg backdrop-blur">
+        <div className="flex items-center justify-between">
+          <Label className="text-sm font-medium">Modo wireframe</Label>
+          <Switch checked={wireframe} onCheckedChange={setWireframe} />
+        </div>
+        <div className="flex items-center justify-between">
+          <Label className="text-sm font-medium">Contornos</Label>
+          <Switch checked={showOutlines} onCheckedChange={setShowOutlines} />
+        </div>
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-medium">Vista explodida</Label>
+            <span className="text-sm tabular-nums">{explode.toFixed(0)} mm</span>
+          </div>
+          <Slider
+            value={[explode]}
+            min={0}
+            max={120}
+            step={1}
+            onValueChange={([v]) => setExplode(v ?? 0)}
+          />
+        </div>
+      </div>
+
       {!ready && (
         <div className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-muted-foreground">
           Carregando fontes...
