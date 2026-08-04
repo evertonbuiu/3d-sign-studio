@@ -313,10 +313,17 @@ export function buildSign(
   if (active.has("frente")) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
+      if (faceInset > 0) {
+        for (const inner of insetShape(shape, faceInset)) {
+          geos.push(extrude(inner, params.faceThickness));
+        }
+        continue;
+      }
       const face = new Shape(shapePoints(shape));
       for (const hole of shape.holes) face.holes.push(new Path(hole.getPoints(14)));
       geos.push(extrude(face, params.faceThickness));
     }
+
     const geo = combine(geos);
     if (geo) {
       const z = plateOn && !active.has("laterais") ? baseZ : baseZ + params.depth - params.faceThickness;
