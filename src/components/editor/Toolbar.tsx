@@ -82,15 +82,20 @@ export default function Toolbar() {
   function exportStl(mode: "unico" | "pecas") {
     const build = editor.build;
     if (!build) return;
+    const parts = build.parts.filter((p) => !editor.hidden.has(p.id));
+    if (!parts.length) {
+      toast.error("Nenhuma peça visível para exportar");
+      return;
+    }
     const base = slugify(editor.params.text || editor.projectName);
     if (mode === "unico") {
-      const buffer = geometriesToStl(build.parts.map((p) => p.geometry));
+      const buffer = geometriesToStl(parts.map((p) => p.geometry));
       downloadBlob(buffer, `${base}.stl`, "model/stl");
       toast.success("STL exportado");
       return;
     }
     const zip = new JSZip();
-    for (const part of build.parts) {
+    for (const part of parts) {
       zip.file(`${base}-${slugify(part.name)}.stl`, geometriesToStl([part.geometry]));
     }
     void zip.generateAsync({ type: "blob" }).then((blob) => {
