@@ -10,7 +10,7 @@ import {
   Vector3,
 } from "three";
 
-import { insetShape, ringShape, shapePoints } from "./offset";
+import { insetShape, offsetShape, ringShape, shapePoints } from "./offset";
 import type { PartKind, SignParams, SignStyle } from "./model";
 
 export interface SignPart {
@@ -155,7 +155,9 @@ export function buildSign(
   const rawBounds = shapesBounds(letterShapes);
   const size = rawBounds.getSize(new Vector2());
   const center = rawBounds.getCenter(new Vector2());
-  const shapes = translateShapes(letterShapes, -center.x, -center.y);
+  const shapes = translateShapes(letterShapes, -center.x, -center.y).flatMap((s) =>
+    offsetShape(s, 0),
+  );
   const bounds = shapesBounds(shapes);
 
   const plateOn = active.has("placa");
@@ -241,8 +243,7 @@ export function buildSign(
   if (active.has("laterais")) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
-      const ring = ringShape(shape, params.wall);
-      if (ring) geos.push(extrude(ring, bodyHeight));
+      for (const ring of ringShape(shape, params.wall)) geos.push(extrude(ring, bodyHeight));
     }
     const geo = combine(geos);
     if (geo) {
@@ -261,11 +262,11 @@ export function buildSign(
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
       const start = params.wall + params.ledOffset;
-      const ring = ringShape(shape, params.ledChannelWidth, start);
-      if (ring) {
-        geos.push(extrude(ring, params.ledChannelHeight));
+      const rings = ringShape(shape, params.ledChannelWidth, start);
+      if (rings.length) {
+        for (const ring of rings) geos.push(extrude(ring, params.ledChannelHeight));
         const inner = insetShape(shape, start + params.ledChannelWidth / 2);
-        if (inner) ledLengthMm += perimeterMm([inner]);
+        if (inner.length) ledLengthMm += perimeterMm(inner);
       }
     }
     const geo = combine(geos);
@@ -284,8 +285,9 @@ export function buildSign(
   if (active.has("difusor")) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
-      const inner = insetShape(shape, params.wall + params.clearance);
-      if (inner) geos.push(extrude(inner, params.diffuserThickness));
+      for (const inner of insetShape(shape, params.wall + params.clearance)) {
+        geos.push(extrude(inner, params.diffuserThickness));
+      }
     }
     const geo = combine(geos);
     if (geo) {
@@ -332,8 +334,9 @@ export function buildSign(
   for (const def of layerDefs) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
-      const inner = insetShape(shape, params.layerShrink * def.index);
-      if (inner) geos.push(extrude(inner, params.layerThickness));
+      for (const inner of insetShape(shape, params.layerShrink * def.index)) {
+        geos.push(extrude(inner, params.layerThickness));
+      }
     }
     const geo = combine(geos);
     if (geo) {
@@ -354,8 +357,9 @@ export function buildSign(
   if (active.has("tampa")) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
-      const outer = insetShape(shape, -params.clearance);
-      if (outer) geos.push(extrude(outer, 2.5));
+      for (const outer of insetShape(shape, -params.clearance)) {
+        geos.push(extrude(outer, 2.5));
+      }
     }
     const geo = combine(geos);
     if (geo) {
