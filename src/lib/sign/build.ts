@@ -37,6 +37,8 @@ export interface SignOutline {
 export interface SignBuild {
   parts: SignPart[];
   outlines: SignOutline[];
+  /** Contornos 2D da frente (mm) para corte de acrílico. */
+  faceCut: Shape[];
   width: number;
   height: number;
   depth: number;
@@ -332,17 +334,22 @@ export function buildSign(
 
 
   // ---------- frente ----------
+  const faceCut: Shape[] = [];
   if (active.has("frente")) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
       if (faceInset > 0) {
         for (const inner of insetShape(shape, faceInset)) {
+          faceCut.push(inner);
           geos.push(extrude(inner, params.faceThickness));
         }
         continue;
       }
-      geos.push(extrude(cloneShape(shape), params.faceThickness));
+      const clone = cloneShape(shape);
+      faceCut.push(clone);
+      geos.push(extrude(clone, params.faceThickness));
     }
+
 
     const geo = combine(geos);
     if (geo) {
@@ -480,7 +487,10 @@ export function buildSign(
   return {
     parts,
     outlines,
+    faceCut,
     width: totalWidth,
+
+
     height: totalHeight,
     depth: totalDepth,
     ledLengthMm: params.led ? ledLengthMm || perimeterMm(shapes) * 0.85 : 0,

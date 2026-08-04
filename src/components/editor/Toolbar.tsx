@@ -25,6 +25,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { geometriesToStl, downloadBlob, slugify } from "@/lib/sign/stl";
+import { shapesToDxf } from "@/lib/sign/dxf";
+
 import {
   deleteSignProject,
   getSignProject,
@@ -104,6 +106,19 @@ export default function Toolbar() {
     });
   }
 
+  function exportDxf() {
+    const build = editor.build;
+    if (!build?.faceCut.length) {
+      toast.error("Este estilo não tem peça de frente para corte");
+      return;
+    }
+    const base = slugify(editor.params.text || editor.projectName);
+    const dxf = shapesToDxf(build.faceCut);
+    downloadBlob(new Blob([dxf], { type: "image/vnd.dxf" }), `${base}-frente.dxf`, "image/vnd.dxf");
+    toast.success("DXF da frente exportado");
+  }
+
+
   async function openProject(id: string) {
     const row = await load({ data: { id } });
     if (!row) return;
@@ -142,7 +157,7 @@ export default function Toolbar() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs">
-              <Download className="h-3.5 w-3.5" /> Exportar STL
+              <Download className="h-3.5 w-3.5" /> Exportar
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -152,7 +167,11 @@ export default function Toolbar() {
             <DropdownMenuItem className="text-xs" onSelect={() => exportStl("pecas")}>
               Peças separadas (.zip)
             </DropdownMenuItem>
+            <DropdownMenuItem className="text-xs" onSelect={() => exportDxf()}>
+              Frente para corte (.dxf)
+            </DropdownMenuItem>
           </DropdownMenuContent>
+
         </DropdownMenu>
 
         {user ? (
