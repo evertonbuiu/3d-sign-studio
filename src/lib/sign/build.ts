@@ -11,7 +11,7 @@ import {
 } from "three";
 import { ADDITION, Brush, Evaluator } from "three-bvh-csg";
 
-import { insetShape, offsetShape, ringShape, shapePoints } from "./offset";
+import { cloneShape, insetShape, offsetShape, ringShape, shapePoints } from "./offset";
 import type { PartKind, SignParams, SignStyle } from "./model";
 
 export interface SignPart {
@@ -45,7 +45,7 @@ export interface SignBuild {
   printedVolumeCm3: number;
 }
 
-const EXTRUDE = { bevelEnabled: false, curveSegments: 14 };
+const EXTRUDE = { bevelEnabled: false, curveSegments: 24, steps: 1 };
 
 function extrude(shape: Shape | Shape[], depth: number): ExtrudeGeometry {
   return new ExtrudeGeometry(shape, { ...EXTRUDE, depth: Math.max(depth, 0.2) });
@@ -113,9 +113,10 @@ function shapesBounds(shapes: Shape[]): Box2 {
 
 function translateShapes(shapes: Shape[], dx: number, dy: number): Shape[] {
   return shapes.map((shape) => {
-    const moved = new Shape(shapePoints(shape).map((p) => new Vector2(p.x + dx, p.y + dy)));
-    for (const hole of shape.holes) {
-      moved.holes.push(new Path(hole.getPoints(14).map((p) => new Vector2(p.x + dx, p.y + dy))));
+    const src = cloneShape(shape);
+    const moved = new Shape(shapePoints(src).map((p) => new Vector2(p.x + dx, p.y + dy)));
+    for (const hole of src.holes) {
+      moved.holes.push(new Path(hole.getPoints(24).map((p) => new Vector2(p.x + dx, p.y + dy))));
     }
     return moved;
   });
@@ -236,9 +237,7 @@ export function buildSign(
   if (active.has("fundo")) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
-      const back = new Shape(shapePoints(shape));
-      for (const hole of shape.holes) back.holes.push(new Path(hole.getPoints(14)));
-      geos.push(extrude(back, params.backThickness));
+      geos.push(extrude(cloneShape(shape), params.backThickness));
     }
     const geo = combine(geos);
     if (geo) {
@@ -323,9 +322,7 @@ export function buildSign(
         }
         continue;
       }
-      const face = new Shape(shapePoints(shape));
-      for (const hole of shape.holes) face.holes.push(new Path(hole.getPoints(14)));
-      geos.push(extrude(face, params.faceThickness));
+      geos.push(extrude(cloneShape(shape), params.faceThickness));
     }
 
     const geo = combine(geos);
@@ -419,7 +416,7 @@ export function buildSign(
           name,
           color,
           z,
-          points: hole.getPoints(14).map((p) => [p.x, p.y] as [number, number]),
+          points: hole.getPoints(24).map((p) => [p.x, p.y] as [number, number]),
         });
       });
     });
