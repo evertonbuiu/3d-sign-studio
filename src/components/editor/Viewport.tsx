@@ -78,18 +78,27 @@ function Model() {
       for (const part of build.parts) {
         part.geometry.computeBoundingBox();
         const bb = part.geometry.boundingBox;
-        if (bb && Number.isFinite(bb.min.x) && Number.isFinite(bb.max.x)) box.union(bb);
+        if (
+          bb &&
+          [bb.min.x, bb.min.y, bb.min.z, bb.max.x, bb.max.y, bb.max.z].every(Number.isFinite)
+        ) {
+          box.union(bb);
+        }
       }
     }
     if (box.isEmpty()) return { scale: 0.01, center: new Vector3() };
     const size = box.getSize(new Vector3());
-    const max = Math.max(size.x, size.y, size.z) || 1;
+    const dims = [size.x, size.y, size.z].filter((v) => Number.isFinite(v) && v > 0);
+    const max = dims.length ? Math.max(...dims) : 0;
+    if (!max) return { scale: 0.01, center: new Vector3() };
     const s = 2.6 / max;
+    const center = box.getCenter(new Vector3());
     return {
       scale: Number.isFinite(s) ? s : 0.01,
-      center: box.getCenter(new Vector3()),
+      center: [center.x, center.y, center.z].every(Number.isFinite) ? center : new Vector3(),
     };
   }, [build]);
+
 
   if (!build) return null;
 
