@@ -290,30 +290,6 @@ export function buildSign(
     }
   }
 
-  // ---------- difusor ----------
-  if (active.has("difusor")) {
-    const geos: BufferGeometry[] = [];
-    for (const shape of shapes) {
-      for (const inner of insetShape(shape, params.wall + params.clearance)) {
-        geos.push(extrude(inner, params.diffuserThickness));
-      }
-    }
-    const geo = combine(geos);
-    if (geo) {
-      geo.translate(
-        0,
-        0,
-        baseZ + Math.max(params.depth - params.faceThickness - params.diffuserInset, 1),
-      );
-      parts.push(
-        makePart("difusor", "difusor", "Difusor", "#f2f7ff", geo, {
-          opacity: 0.55,
-          emissive: params.led,
-          count: shapes.length,
-        }),
-      );
-    }
-  }
 
   // ---------- frente ----------
   if (active.has("frente")) {
