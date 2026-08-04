@@ -42,7 +42,7 @@ export function textToShapes(
 ): Shape[] {
   const source = text.length ? text : " ";
   const unitsPerEm = font.unitsPerEm || 1000;
-  const capUnits = font.tables?.os2?.sCapHeight || unitsPerEm * 0.7;
+  const capUnits = (font.tables?.['os2']?.['sCapHeight'] as number | undefined) || unitsPerEm * 0.7;
   const fontSize = (capHeight * unitsPerEm) / capUnits;
 
   const path = new ShapePath();
@@ -71,12 +71,12 @@ export function textToShapes(
           break;
       }
     }
-    cursorX += glyph.advanceWidth * scale + tracking;
+    cursorX += (glyph.advanceWidth ?? unitsPerEm / 2) * scale + tracking;
     const next = glyphs[index + 1];
     if (next) {
       cursorX += font.getKerningValue(glyph, next) * scale;
     }
   });
 
-  return path.toShapes(false);
+  return path.toShapes();
 }
