@@ -20,12 +20,16 @@ export interface EditorState {
   ready: boolean;
   explode: number;
   hidden: Set<string>;
+  wireframe: boolean;
+  showOutlines: boolean;
   projectId: string | null;
   projectName: string;
   setParam: <K extends keyof SignParams>(key: K, value: SignParams[K]) => void;
   setParams: (patch: Partial<SignParams>) => void;
   selectStyle: (id: string) => void;
   setExplode: (value: number) => void;
+  setWireframe: (value: boolean) => void;
+  setShowOutlines: (value: boolean) => void;
   togglePart: (id: string) => void;
   loadProject: (p: {
     id: string;
