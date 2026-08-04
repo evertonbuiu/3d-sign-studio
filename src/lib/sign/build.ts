@@ -429,6 +429,16 @@ export function buildSign(
     baseZ,
     shapes.flatMap((s) => insetShape(s, params.wall)),
   );
+  if (recessOn) {
+    pushOutlines(
+      "rebaixo",
+      "Rebaixo da frente",
+      "#16a34a",
+      baseZ,
+      shapes.flatMap((s) => insetShape(s, faceInset)),
+    );
+  }
+
   if (params.led) {
     const start = params.wall + params.ledOffset;
     pushOutlines(
