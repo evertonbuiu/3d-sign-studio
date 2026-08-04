@@ -42,13 +42,38 @@ function NumberSlider({
 }) {
   const { params, setParam } = useEditor();
   const value = Number(params[keyName]);
+  const [editValue, setEditValue] = useState(String(value));
+
+  useEffect(() => {
+    setEditValue(String(value));
+  }, [value]);
+
+  const commit = (raw: string) => {
+    const parsed = Number(raw.replace(",", "."));
+    if (Number.isNaN(parsed)) return;
+    const clamped = Math.max(min, Math.min(max, parsed));
+    const rounded = Math.round(clamped / step) * step;
+    setParam(keyName, rounded as never);
+  };
+
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
         <Label className="text-sm font-medium text-muted-foreground">{label}</Label>
-        <span className="text-sm tabular-nums text-foreground">
-          {value.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} {unit}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <Input
+            type="text"
+            inputMode="decimal"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={() => commit(editValue)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commit(editValue);
+            }}
+            className="h-7 w-20 bg-card px-2 text-right text-sm tabular-nums"
+          />
+          <span className="text-sm tabular-nums text-foreground w-8">{unit}</span>
+        </div>
       </div>
       <Slider
         value={[value]}
