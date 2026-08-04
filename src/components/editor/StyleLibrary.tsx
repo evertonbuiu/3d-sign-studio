@@ -59,7 +59,7 @@ export default function StyleLibrary() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar estilo"
-            className="h-8 bg-card pl-7 text-xs"
+            className="h-9 bg-card pl-7 text-sm"
           />
         </div>
       </div>
@@ -70,7 +70,7 @@ export default function StyleLibrary() {
           if (!items.length) return null;
           return (
             <section key={group}>
-              <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <h3 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                 {group}
               </h3>
               <div className="grid grid-cols-2 gap-2">
@@ -88,7 +88,7 @@ export default function StyleLibrary() {
                     )}
                   >
                     <Thumb style={item} />
-                    <span className="mt-1.5 block text-[11px] font-medium leading-tight text-card-foreground">
+                    <span className="mt-1.5 block text-sm font-medium leading-tight text-card-foreground">
                       {item.name}
                     </span>
                   </button>
