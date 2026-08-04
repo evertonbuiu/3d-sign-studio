@@ -414,8 +414,75 @@ export function buildSign(
     .filter((p) => p.kind !== "canal-led" && p.kind !== "difusor" && p.kind !== "tampa")
     .reduce((sum, p) => sum + p.volumeCm3, 0);
 
+  // ---------- contornos / offsets de conferência ----------
+  const outlines: SignOutline[] = [];
+  const pushOutlines = (
+    id: string,
+    name: string,
+    color: string,
+    z: number,
+    list: Shape[],
+  ) => {
+    list.forEach((shape, i) => {
+      outlines.push({ id: `${id}-${i}`, name, color, z, points: contourPoints(shape) });
+      shape.holes.forEach((hole, h) => {
+        outlines.push({
+          id: `${id}-${i}-h${h}`,
+          name,
+          color,
+          z,
+          points: hole.getPoints(14).map((p) => [p.x, p.y] as [number, number]),
+        });
+      });
+    });
+  };
+
+  pushOutlines("contorno", "Contorno da letra", "#0f172a", baseZ, shapes);
+  pushOutlines(
+    "parede",
+    "Parede interna",
+    "#2563eb",
+    baseZ,
+    shapes.flatMap((s) => insetShape(s, params.wall)),
+  );
+  if (params.led) {
+    const start = params.wall + params.ledOffset;
+    pushOutlines(
+      "led-ini",
+      "Canal LED (início)",
+      "#f59e0b",
+      baseZ,
+      shapes.flatMap((s) => insetShape(s, start)),
+    );
+    pushOutlines(
+      "led-fim",
+      "Canal LED (fim)",
+      "#f59e0b",
+      baseZ,
+      shapes.flatMap((s) => insetShape(s, start + params.ledChannelWidth)),
+    );
+  }
+  pushOutlines(
+    "difusor-out",
+    "Difusor (folga)",
+    "#10b981",
+    baseZ,
+    shapes.flatMap((s) => insetShape(s, params.wall + params.clearance)),
+  );
+  if (plateOn) {
+    pushOutlines("placa-out", "Contorno da placa", "#64748b", plateZ, [
+      rectShape(plateMin, plateMax, 10),
+    ]);
+  }
+  for (const p of holePoints) {
+    const shape = new Shape();
+    shape.absarc(p.x, p.y, params.holeDiameter / 2, 0, Math.PI * 2, false);
+    pushOutlines(`furo-${p.x.toFixed(0)}-${p.y.toFixed(0)}`, "Furo", "#dc2626", baseZ, [shape]);
+  }
+
   return {
     parts,
+    outlines,
     width: totalWidth,
     height: totalHeight,
     depth: totalDepth,
