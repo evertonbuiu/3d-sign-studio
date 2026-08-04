@@ -157,7 +157,7 @@ export default function Toolbar() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs">
-              <Download className="h-3.5 w-3.5" /> Exportar STL
+              <Download className="h-3.5 w-3.5" /> Exportar
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
