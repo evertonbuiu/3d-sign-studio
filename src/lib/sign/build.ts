@@ -305,7 +305,7 @@ export function buildSign(
       geo.translate(0, 0, Math.max(z, baseZ));
       parts.push(
         makePart("frente", "frente", "Frente", params.faceColor, geo, {
-          emissive: params.led && !active.has("difusor"),
+          emissive: params.led,
           count: shapes.length,
         }),
       );
@@ -387,7 +387,7 @@ export function buildSign(
     : params.depth;
 
   const printedVolumeCm3 = parts
-    .filter((p) => p.kind !== "canal-led" && p.kind !== "difusor" && p.kind !== "tampa")
+    .filter((p) => p.kind !== "canal-led" && p.kind !== "tampa")
     .reduce((sum, p) => sum + p.volumeCm3, 0);
 
   // ---------- contornos / offsets de conferência ----------
@@ -438,13 +438,6 @@ export function buildSign(
       shapes.flatMap((s) => insetShape(s, start + params.ledChannelWidth)),
     );
   }
-  pushOutlines(
-    "difusor-out",
-    "Difusor (folga)",
-    "#10b981",
-    baseZ,
-    shapes.flatMap((s) => insetShape(s, params.wall + params.clearance)),
-  );
   if (plateOn) {
     pushOutlines("placa-out", "Contorno da placa", "#64748b", plateZ, [
       rectShape(plateMin, plateMax, 10),
