@@ -1,10 +1,10 @@
 import { useMemo, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import { ContactShadows, Grid, OrbitControls } from "@react-three/drei";
-import { Box3, Vector3, type Group } from "three";
+import { Box3, BufferGeometry, Float32BufferAttribute, Vector3, type Group } from "three";
 
 import { useEditor } from "./store";
-import type { SignPart } from "@/lib/sign/build";
+import type { SignOutline, SignPart } from "@/lib/sign/build";
 
 const EXPLODE_ORDER: Record<string, number> = {
   poste: -2,
@@ -20,25 +20,55 @@ const EXPLODE_ORDER: Record<string, number> = {
   tampa: 7,
 };
 
-function PartMesh({ part, explode }: { part: SignPart; explode: number }) {
+function PartMesh({
+  part,
+  explode,
+  wireframe,
+}: {
+  part: SignPart;
+  explode: number;
+  wireframe: boolean;
+}) {
   const offset = (EXPLODE_ORDER[part.kind] ?? 0) * explode;
   return (
     <mesh geometry={part.geometry} position={[0, 0, offset]} castShadow receiveShadow>
       <meshStandardMaterial
         color={part.color}
-        transparent={part.opacity < 1}
-        opacity={part.opacity}
+        wireframe={wireframe}
+        transparent={part.opacity < 1 || wireframe}
+        opacity={wireframe ? 0.9 : part.opacity}
         roughness={part.emissive ? 0.35 : 0.55}
         metalness={0.05}
-        emissive={part.emissive ? part.color : "#000000"}
-        emissiveIntensity={part.emissive ? 0.85 : 0}
+        emissive={part.emissive && !wireframe ? part.color : "#000000"}
+        emissiveIntensity={part.emissive && !wireframe ? 0.85 : 0}
       />
     </mesh>
   );
 }
 
+function OutlineLine({ outline }: { outline: SignOutline }) {
+  const geometry = useMemo(() => {
+    const pts = outline.points;
+    const arr: number[] = [];
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i]!;
+      const b = pts[(i + 1) % pts.length]!;
+      arr.push(a[0], a[1], outline.z, b[0], b[1], outline.z);
+    }
+    const geo = new BufferGeometry();
+    geo.setAttribute("position", new Float32BufferAttribute(arr, 3));
+    return geo;
+  }, [outline]);
+
+  return (
+    <lineSegments geometry={geometry} renderOrder={999}>
+      <lineBasicMaterial color={outline.color} depthTest={false} transparent opacity={0.95} />
+    </lineSegments>
+  );
+}
+
 function Model() {
-  const { build, explode, hidden } = useEditor();
+  const { build, explode, hidden, wireframe, showOutlines } = useEditor();
   const groupRef = useRef<Group>(null);
 
   const { scale, center } = useMemo(() => {
@@ -68,8 +98,10 @@ function Model() {
         {build.parts
           .filter((part) => !hidden.has(part.id))
           .map((part) => (
-            <PartMesh key={part.id} part={part} explode={explode} />
+            <PartMesh key={part.id} part={part} explode={explode} wireframe={wireframe} />
           ))}
+        {showOutlines &&
+          build.outlines.map((outline) => <OutlineLine key={outline.id} outline={outline} />)}
       </group>
     </group>
   );

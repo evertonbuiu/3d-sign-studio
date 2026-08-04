@@ -100,7 +100,20 @@ function MoneyField({
 }
 
 export default function PropertiesPanel() {
-  const { params, setParam, style, build, hidden, togglePart, explode, setExplode } = useEditor();
+  const {
+    params,
+    setParam,
+    style,
+    build,
+    hidden,
+    togglePart,
+    explode,
+    setExplode,
+    wireframe,
+    setWireframe,
+    showOutlines,
+    setShowOutlines,
+  } = useEditor();
 
   return (
     <div className="flex h-full flex-col border-l border-border bg-panel">
@@ -234,7 +247,38 @@ export default function PropertiesPanel() {
           <AccordionItem value="pecas">
             <AccordionTrigger className="text-sm">Peças do modelo</AccordionTrigger>
             <AccordionContent className="space-y-3 pb-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium text-muted-foreground">Modo wireframe</Label>
+                <Switch checked={wireframe} onCheckedChange={setWireframe} />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium text-muted-foreground">
+                  Contornos e offsets
+                </Label>
+                <Switch checked={showOutlines} onCheckedChange={setShowOutlines} />
+              </div>
+              {showOutlines && (
+                <div className="grid grid-cols-2 gap-1 rounded border border-border bg-card p-2 text-xs">
+                  {[
+                    ["#0f172a", "Contorno da letra"],
+                    ["#2563eb", "Parede interna"],
+                    ["#f59e0b", "Canal LED"],
+                    ["#10b981", "Difusor (folga)"],
+                    ["#64748b", "Placa"],
+                    ["#dc2626", "Furos"],
+                  ].map(([color, label]) => (
+                    <span key={label} className="flex items-center gap-1.5">
+                      <span
+                        className="h-2 w-4 rounded-sm"
+                        style={{ background: color as string }}
+                      />
+                      {label}
+                    </span>
+                  ))}
+                </div>
+              )}
               <div className="space-y-1.5">
+
                 <div className="flex items-center justify-between">
                   <Label className="text-sm font-medium text-muted-foreground">Vista explodida</Label>
                   <span className="text-sm tabular-nums">{explode.toFixed(0)} mm</span>
