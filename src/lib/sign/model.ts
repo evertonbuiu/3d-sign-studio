@@ -152,7 +152,7 @@ export const STYLES: SignStyle[] = [
     group: "Acrílico & Impresso",
     description: "Corpo impresso e frente em acrílico encaixada no rebaixo.",
     parts: boxParts,
-    preset: { depth: 50, faceThickness: 3, diffuserInset: 3 },
+    preset: { depth: 50, faceThickness: 3 },
     thumb: { face: "#cfe0f2", body: "#3f4a5a", glow: "front" },
   },
   {
@@ -179,7 +179,7 @@ export const STYLES: SignStyle[] = [
     group: "Acrílico & Impresso",
     description: "Frente em PETG translúcido impressa em camadas finas.",
     parts: boxParts,
-    preset: { depth: 48, faceThickness: 1.2, diffuserThickness: 1.6 },
+    preset: { depth: 48, faceThickness: 1.2 },
     thumb: { face: "#dff1ea", body: "#3f4a5a", glow: "front" },
   },
   {
