@@ -485,23 +485,39 @@ function unionSolid(geos: BufferGeometry[]): BufferGeometry | null {
   if (!valid.length) return null;
   if (valid.length === 1) return valid[0] ?? null;
 
-  const evaluator = new Evaluator();
-  evaluator.useGroups = false;
-  let result = new Brush(valid[0]);
-  result.updateMatrixWorld();
-
-  for (const geometry of valid.slice(1)) {
-    const next = new Brush(geometry);
-    next.updateMatrixWorld();
-    result = evaluator.evaluate(result, next, ADDITION);
-    result.geometry.deleteAttribute("uv");
+  try {
+    const evaluator = new Evaluator();
+    evaluator.useGroups = false;
+    let result = new Brush(prepareForCsg(valid[0]!));
     result.updateMatrixWorld();
-  }
 
-  const geometry = result.geometry.clone();
+    for (const geometry of valid.slice(1)) {
+      const next = new Brush(prepareForCsg(geometry));
+      next.updateMatrixWorld();
+      result = evaluator.evaluate(result, next, ADDITION);
+      result.updateMatrixWorld();
+    }
+
+    const geometry = result.geometry.clone();
+    geometry.clearGroups();
+    return geometry;
+  } catch (error) {
+    console.warn("Falha na união booleana, usando mesclagem simples", error);
+    return combine(valid);
+  }
+}
+
+function prepareForCsg(source: BufferGeometry): BufferGeometry {
+  const geometry = source.clone();
   geometry.clearGroups();
+  if (!geometry.getAttribute("normal")) geometry.computeVertexNormals();
+  const count = geometry.getAttribute("position").count;
+  if (!geometry.getAttribute("uv")) {
+    geometry.setAttribute("uv", new Float32BufferAttribute(new Float32Array(count * 2), 2));
+  }
   return geometry;
 }
+
 
 function mergePositions(geos: BufferGeometry[]): BufferGeometry {
   let total = 0;
