@@ -487,7 +487,8 @@ export function buildSign(
   return {
     parts,
     outlines,
-    width: totalWidth,
+    faceCut,
+
     height: totalHeight,
     depth: totalDepth,
     ledLengthMm: params.led ? ledLengthMm || perimeterMm(shapes) * 0.85 : 0,
