@@ -237,9 +237,7 @@ export function buildSign(
   if (active.has("fundo")) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
-      const back = new Shape(shapePoints(shape));
-      for (const hole of shape.holes) back.holes.push(new Path(hole.getPoints(14)));
-      geos.push(extrude(back, params.backThickness));
+      geos.push(extrude(cloneShape(shape), params.backThickness));
     }
     const geo = combine(geos);
     if (geo) {
