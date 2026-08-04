@@ -154,34 +154,3 @@ export function ringShape(shape: Shape, thickness: number, startInset = 0): Shap
   const ring = inner.length ? differencePaths(outer, inner) : outer;
   return pathsToShapes(ring);
 }
-
-/**
- * Anel com espessuras distintas: `outerThickness` no contorno externo da letra
- * e `innerThickness` nas contra-formas (furos internos).
- */
-export function ringShapeDual(
-  shape: Shape,
-  outerThickness: number,
-  innerThickness: number,
-  startInset = 0,
-): Shape[] {
-  const base = normalize(shapeToCPaths(shape));
-  if (!base.length) return [];
-  const outer = startInset > 0 ? offsetPaths(base, -startInset) : base;
-  if (!outer.length) return [];
-
-  const outers = outer.filter((p) => ClipperLib.Clipper.Orientation(p));
-  const holes = outer.filter((p) => !ClipperLib.Clipper.Orientation(p));
-
-  const shrunk = offsetPaths(outers, -outerThickness);
-  if (!shrunk.length) return pathsToShapes(outer);
-  const grownHoles = holes.length
-    ? offsetPaths(
-        holes.map((p) => [...p].reverse()),
-        innerThickness,
-      )
-    : [];
-  const inner = grownHoles.length ? differencePaths(shrunk, grownHoles) : shrunk;
-  const ring = inner.length ? differencePaths(outer, inner) : outer;
-  return pathsToShapes(ring);
-}

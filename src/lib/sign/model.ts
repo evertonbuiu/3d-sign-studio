@@ -23,15 +23,12 @@ export interface SignParams {
   tracking: number; // mm entre letras
   /** construção */
   depth: number; // profundidade total da caixa (mm)
-  wall: number; // espessura da parede externa (mm)
-  wallInner: number; // espessura da parede interna (contra-formas/furos) (mm)
+  wall: number; // espessura da parede lateral (mm)
   faceThickness: number; // espessura da frente (mm)
   backThickness: number; // espessura do fundo (mm)
   diffuserThickness: number; // espessura do difusor (mm)
   diffuserInset: number; // recuo do difusor em relação à frente (mm)
   clearance: number; // folga de encaixe (mm)
-  frontRebate: boolean; // rebaixo na parede interna com a espessura da frente (acrílico)
-  frontRebateWidth: number; // largura do rebaixo (mm)
   /** iluminação */
   led: boolean;
   ledChannelWidth: number;
@@ -75,14 +72,11 @@ export const DEFAULT_PARAMS: SignParams = {
   tracking: 4,
   depth: 60,
   wall: 2.4,
-  wallInner: 2.4,
   faceThickness: 3,
   backThickness: 3,
   diffuserThickness: 2,
   diffuserInset: 6,
   clearance: 0.3,
-  frontRebate: true,
-  frontRebateWidth: 1.2,
   led: true,
   ledChannelWidth: 12,
   ledChannelHeight: 6,
