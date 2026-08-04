@@ -241,8 +241,7 @@ export function buildSign(
   if (active.has("laterais")) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
-      const ring = ringShape(shape, params.wall);
-      if (ring) geos.push(extrude(ring, bodyHeight));
+      for (const ring of ringShape(shape, params.wall)) geos.push(extrude(ring, bodyHeight));
     }
     const geo = combine(geos);
     if (geo) {
