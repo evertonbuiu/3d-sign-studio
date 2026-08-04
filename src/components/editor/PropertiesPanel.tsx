@@ -19,7 +19,7 @@ import { useEditor } from "./store";
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-[11px] font-medium text-muted-foreground">{label}</Label>
+      <Label className="text-sm font-medium text-muted-foreground">{label}</Label>
       {children}
     </div>
   );
@@ -45,8 +45,8 @@ function NumberSlider({
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <Label className="text-[11px] font-medium text-muted-foreground">{label}</Label>
-        <span className="text-[11px] tabular-nums text-foreground">
+        <Label className="text-sm font-medium text-muted-foreground">{label}</Label>
+        <span className="text-sm tabular-nums text-foreground">
           {value.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} {unit}
         </span>
       </div>
@@ -65,7 +65,7 @@ function ColorField({ label, keyName }: { label: string; keyName: keyof SignPara
   const { params, setParam } = useEditor();
   return (
     <div className="flex items-center justify-between gap-2">
-      <Label className="text-[11px] font-medium text-muted-foreground">{label}</Label>
+      <Label className="text-sm font-medium text-muted-foreground">{label}</Label>
       <input
         type="color"
         value={String(params[keyName])}
@@ -93,7 +93,7 @@ function MoneyField({
         step={step}
         value={Number(params[keyName])}
         onChange={(e) => setParam(keyName, Number(e.target.value) as never)}
-        className="h-8 bg-card text-xs"
+        className="h-9 bg-card text-sm"
       />
     </Field>
   );
@@ -108,13 +108,13 @@ export default function PropertiesPanel() {
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Propriedades
         </h2>
-        <p className="mt-1 text-[11px] text-muted-foreground">{style.description}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{style.description}</p>
       </div>
 
       <div className="flex-1 overflow-y-auto">
         <Accordion type="multiple" defaultValue={["texto", "construcao", "led"]} className="px-3">
           <AccordionItem value="texto">
-            <AccordionTrigger className="text-xs">Texto e fonte</AccordionTrigger>
+            <AccordionTrigger className="text-sm">Texto e fonte</AccordionTrigger>
             <AccordionContent className="space-y-3 pb-4">
               <Field label="Texto">
                 <Input
@@ -129,12 +129,12 @@ export default function PropertiesPanel() {
                   value={params.fontId}
                   onValueChange={(v) => setParam("fontId", v as FontId)}
                 >
-                  <SelectTrigger className="h-8 bg-card text-xs">
+                  <SelectTrigger className="h-9 bg-card text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {FONTS.map((f) => (
-                      <SelectItem key={f.id} value={f.id} className="text-xs">
+                      <SelectItem key={f.id} value={f.id} className="text-sm">
                         {f.label}
                       </SelectItem>
                     ))}
@@ -147,7 +147,7 @@ export default function PropertiesPanel() {
           </AccordionItem>
 
           <AccordionItem value="construcao">
-            <AccordionTrigger className="text-xs">Construção</AccordionTrigger>
+            <AccordionTrigger className="text-sm">Construção</AccordionTrigger>
             <AccordionContent className="space-y-3 pb-4">
               <NumberSlider label="Profundidade" keyName="depth" min={5} max={200} step={1} />
               <NumberSlider label="Parede" keyName="wall" min={0.8} max={12} step={0.1} />
@@ -160,10 +160,10 @@ export default function PropertiesPanel() {
           </AccordionItem>
 
           <AccordionItem value="led">
-            <AccordionTrigger className="text-xs">Iluminação</AccordionTrigger>
+            <AccordionTrigger className="text-sm">Iluminação</AccordionTrigger>
             <AccordionContent className="space-y-3 pb-4">
               <div className="flex items-center justify-between">
-                <Label className="text-[11px] font-medium text-muted-foreground">LED ativo</Label>
+                <Label className="text-sm font-medium text-muted-foreground">LED ativo</Label>
                 <Switch checked={params.led} onCheckedChange={(v) => setParam("led", v)} />
               </div>
               <NumberSlider label="Largura do canal" keyName="ledChannelWidth" min={3} max={40} step={0.5} />
@@ -175,20 +175,20 @@ export default function PropertiesPanel() {
           </AccordionItem>
 
           <AccordionItem value="corpo">
-            <AccordionTrigger className="text-xs">Placa, totem e camadas</AccordionTrigger>
+            <AccordionTrigger className="text-sm">Placa, totem e camadas</AccordionTrigger>
             <AccordionContent className="space-y-3 pb-4">
               <Field label="Modo do corpo">
                 <Select
                   value={params.bodyMode}
                   onValueChange={(v) => setParam("bodyMode", v as SignParams["bodyMode"])}
                 >
-                  <SelectTrigger className="h-8 bg-card text-xs">
+                  <SelectTrigger className="h-9 bg-card text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="letras" className="text-xs">Letras soltas</SelectItem>
-                    <SelectItem value="placa" className="text-xs">Placa</SelectItem>
-                    <SelectItem value="totem" className="text-xs">Totem</SelectItem>
+                    <SelectItem value="letras" className="text-sm">Letras soltas</SelectItem>
+                    <SelectItem value="placa" className="text-sm">Placa</SelectItem>
+                    <SelectItem value="totem" className="text-sm">Totem</SelectItem>
                   </SelectContent>
                 </Select>
               </Field>
@@ -196,7 +196,7 @@ export default function PropertiesPanel() {
               <NumberSlider label="Espessura da placa" keyName="plateThickness" min={2} max={40} step={0.5} />
               <NumberSlider label="Altura do poste" keyName="poleHeight" min={100} max={2000} step={10} />
               <div className="flex items-center justify-between">
-                <Label className="text-[11px] font-medium text-muted-foreground">Letras vazadas</Label>
+                <Label className="text-sm font-medium text-muted-foreground">Letras vazadas</Label>
                 <Switch checked={params.cutout} onCheckedChange={(v) => setParam("cutout", v)} />
               </div>
               <NumberSlider label="Espessura da camada" keyName="layerThickness" min={1} max={30} step={0.5} />
@@ -205,10 +205,10 @@ export default function PropertiesPanel() {
           </AccordionItem>
 
           <AccordionItem value="montagem">
-            <AccordionTrigger className="text-xs">Montagem</AccordionTrigger>
+            <AccordionTrigger className="text-sm">Montagem</AccordionTrigger>
             <AccordionContent className="space-y-3 pb-4">
               <div className="flex items-center justify-between">
-                <Label className="text-[11px] font-medium text-muted-foreground">Furos de fixação</Label>
+                <Label className="text-sm font-medium text-muted-foreground">Furos de fixação</Label>
                 <Switch checked={params.mountHoles} onCheckedChange={(v) => setParam("mountHoles", v)} />
               </div>
               <NumberSlider label="Diâmetro do furo" keyName="holeDiameter" min={2} max={20} step={0.5} />
@@ -219,7 +219,7 @@ export default function PropertiesPanel() {
           </AccordionItem>
 
           <AccordionItem value="custos">
-            <AccordionTrigger className="text-xs">Custos e produção</AccordionTrigger>
+            <AccordionTrigger className="text-sm">Custos e produção</AccordionTrigger>
             <AccordionContent className="space-y-3 pb-4">
               <MoneyField label="Filamento (R$/kg)" keyName="filamentPrice" />
               <MoneyField label="Densidade (g/cm³)" keyName="density" step={0.01} />
@@ -232,12 +232,12 @@ export default function PropertiesPanel() {
           </AccordionItem>
 
           <AccordionItem value="pecas">
-            <AccordionTrigger className="text-xs">Peças do modelo</AccordionTrigger>
+            <AccordionTrigger className="text-sm">Peças do modelo</AccordionTrigger>
             <AccordionContent className="space-y-3 pb-4">
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <Label className="text-[11px] font-medium text-muted-foreground">Vista explodida</Label>
-                  <span className="text-[11px] tabular-nums">{explode.toFixed(0)} mm</span>
+                  <Label className="text-sm font-medium text-muted-foreground">Vista explodida</Label>
+                  <span className="text-sm tabular-nums">{explode.toFixed(0)} mm</span>
                 </div>
                 <Slider
                   value={[explode]}
@@ -253,7 +253,7 @@ export default function PropertiesPanel() {
                     key={part.id}
                     type="button"
                     onClick={() => togglePart(part.id)}
-                    className="flex w-full items-center justify-between rounded border border-border bg-card px-2 py-1.5 text-left text-[11px] hover:border-primary/50"
+                    className="flex w-full items-center justify-between rounded border border-border bg-card px-2 py-1.5 text-left text-sm hover:border-primary/50"
                   >
                     <span className="flex items-center gap-2">
                       <span
