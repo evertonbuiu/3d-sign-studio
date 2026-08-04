@@ -45,7 +45,7 @@ export interface SignBuild {
   printedVolumeCm3: number;
 }
 
-const EXTRUDE = { bevelEnabled: false, curveSegments: 14 };
+const EXTRUDE = { bevelEnabled: false, curveSegments: 24, steps: 1 };
 
 function extrude(shape: Shape | Shape[], depth: number): ExtrudeGeometry {
   return new ExtrudeGeometry(shape, { ...EXTRUDE, depth: Math.max(depth, 0.2) });
