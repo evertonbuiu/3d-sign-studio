@@ -9,6 +9,7 @@ import {
   Vector2,
   Vector3,
 } from "three";
+import { ADDITION, Brush, Evaluator } from "three-bvh-csg";
 
 import { insetShape, offsetShape, ringShape, shapePoints } from "./offset";
 import type { PartKind, SignParams, SignStyle } from "./model";
@@ -261,16 +262,17 @@ export function buildSign(
   if (active.has("laterais")) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
-      // parede completa até o nível onde a frente assenta
-      for (const ring of ringShape(shape, params.wall)) geos.push(extrude(ring, bodyHeight));
+      const wallGeos = ringShape(shape, params.wall).map((ring) => extrude(ring, bodyHeight));
       if (recessOn) {
-        // aba externa contínua acima do degrau (mesma peça, sem divisão vertical)
+        const overlap = Math.min(0.1, bodyHeight / 4);
         for (const outer of ringShape(shape, recessLip)) {
-          const lip = extrude(outer, params.faceThickness);
-          lip.translate(0, 0, bodyHeight);
-          geos.push(lip);
+          const lip = extrude(outer, params.faceThickness + overlap);
+          lip.translate(0, 0, bodyHeight - overlap);
+          wallGeos.push(lip);
         }
       }
+      const wall = unionSolid(wallGeos);
+      if (wall) geos.push(wall);
     }
 
     const geo = combine(geos);
@@ -476,6 +478,29 @@ function combine(geos: BufferGeometry[]): BufferGeometry | null {
   if (!valid.length) return null;
   if (valid.length === 1) return valid[0]!;
   return mergePositions(valid);
+}
+
+function unionSolid(geos: BufferGeometry[]): BufferGeometry | null {
+  const valid = geos.filter((geometry) => geometry.getAttribute("position")?.count);
+  if (!valid.length) return null;
+  if (valid.length === 1) return valid[0] ?? null;
+
+  const evaluator = new Evaluator();
+  evaluator.useGroups = false;
+  let result = new Brush(valid[0]);
+  result.updateMatrixWorld();
+
+  for (const geometry of valid.slice(1)) {
+    const next = new Brush(geometry);
+    next.updateMatrixWorld();
+    result = evaluator.evaluate(result, next, ADDITION);
+    result.geometry.deleteAttribute("uv");
+    result.updateMatrixWorld();
+  }
+
+  const geometry = result.geometry.clone();
+  geometry.clearGroups();
+  return geometry;
 }
 
 function mergePositions(geos: BufferGeometry[]): BufferGeometry {
