@@ -139,7 +139,7 @@ export default function Viewport() {
           fadeDistance={16}
           infiniteGrid
         />
-        <OrbitControls makeDefault enablePan target={[0, 0, 0]} minDistance={2} maxDistance={14} />
+        <OrbitControls makeDefault enablePan target={[0, 0, 0]} minDistance={0.5} maxDistance={14} />
       </Canvas>
 
       <div className="absolute left-4 top-4 w-64 space-y-3 rounded-lg border border-border bg-panel/90 p-3 shadow-lg backdrop-blur">
