@@ -257,19 +257,22 @@ export function buildSign(
     recessLip < params.wall;
   const faceInset = recessOn ? recessLip + params.clearance : 0;
 
-  // ---------- laterais ----------
+  // ---------- laterais (parede + rebaixo em uma peça só) ----------
   if (active.has("laterais")) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
-      for (const ring of ringShape(shape, params.wall)) geos.push(extrude(ring, bodyHeight));
       if (recessOn) {
-        // aba fina no topo, criando o degrau onde a frente encaixa
-        for (const lip of ringShape(shape, recessLip)) {
-          const geo = extrude(lip, params.faceThickness);
-          geo.translate(0, 0, bodyHeight);
-          geos.push(geo);
+        // faixa externa sobe até o topo (aba do rebaixo)
+        for (const outer of ringShape(shape, recessLip)) {
+          geos.push(extrude(outer, bodyHeight + params.faceThickness));
         }
+        // faixa interna para no degrau onde a frente assenta
+        for (const inner of ringShape(shape, params.wall - recessLip, recessLip)) {
+          geos.push(extrude(inner, bodyHeight));
+        }
+        continue;
       }
+      for (const ring of ringShape(shape, params.wall)) geos.push(extrude(ring, bodyHeight));
     }
     const geo = combine(geos);
     if (geo) {
