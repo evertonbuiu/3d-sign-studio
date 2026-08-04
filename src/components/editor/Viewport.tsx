@@ -86,13 +86,11 @@ function Model() {
         }
       }
     }
-    console.log("DBG box", build?.parts.length, box.isEmpty(), JSON.stringify(box));
     if (box.isEmpty()) return { scale: 0.01, center: new Vector3() };
     const size = box.getSize(new Vector3());
     const dims = [size.x, size.y, size.z].filter((v) => Number.isFinite(v) && v > 0);
     const max = dims.length ? Math.max(...dims) : 0;
     if (!max) return { scale: 0.01, center: new Vector3() };
-    console.log("DBG fit", max, size.x, size.y, size.z);
     const s = 2.6 / max;
     const center = box.getCenter(new Vector3());
     return {
