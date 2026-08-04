@@ -30,6 +30,8 @@ export interface SignParams {
   diffuserThickness: number; // espessura do difusor (mm)
   diffuserInset: number; // recuo do difusor em relação à frente (mm)
   clearance: number; // folga de encaixe (mm)
+  frontRebate: boolean; // rebaixo na parede interna com a espessura da frente (acrílico)
+  frontRebateWidth: number; // largura do rebaixo (mm)
   /** iluminação */
   led: boolean;
   ledChannelWidth: number;
