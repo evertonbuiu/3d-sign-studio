@@ -19,7 +19,6 @@ const EXPLODE_ORDER: Record<string, number> = {
   frente: 4,
   "camada-2": 5,
   "camada-3": 6,
-  tampa: 7,
 };
 
 function PartMesh({

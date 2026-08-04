@@ -370,7 +370,7 @@ export function buildSign(
     : params.depth;
 
   const printedVolumeCm3 = parts
-    .filter((p) => p.kind !== "canal-led" && p.kind !== "tampa")
+    .filter((p) => p.kind !== "canal-led")
     .reduce((sum, p) => sum + p.volumeCm3, 0);
 
   // ---------- contornos / offsets de conferência ----------

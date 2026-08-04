@@ -4,7 +4,6 @@ export type PartKind =
   | "fundo"
   | "laterais"
   | "frente"
-  | "tampa"
   | "canal-led"
   | "furos"
   | "camada-2"
@@ -142,7 +141,7 @@ export const STYLES: SignStyle[] = [
     name: "Fundo Impresso + Tampa Acrílica",
     group: "Acrílico & Impresso",
     description: "Caixa impressa em 3D com tampa de acrílico sobreposta.",
-    parts: [...boxParts, "tampa"],
+    parts: boxParts,
     preset: { depth: 55, faceThickness: 3, led: true },
     thumb: { face: "#dbe7f5", body: "#3f4a5a", glow: "front" },
   },
@@ -160,7 +159,7 @@ export const STYLES: SignStyle[] = [
     name: "Fundo Acrílico + Frente Acrílica",
     group: "Acrílico & Impresso",
     description: "Fundo e frente em acrílico com laterais impressas.",
-    parts: [...boxParts, "tampa"],
+    parts: boxParts,
     preset: { depth: 45, backThickness: 3, faceThickness: 3 },
     thumb: { face: "#e6f0fb", body: "#5b6a7d", glow: "both" },
   },
@@ -232,7 +231,7 @@ export const STYLES: SignStyle[] = [
     name: "Front + Back Light",
     group: "Iluminação",
     description: "Luz na frente e halo traseiro simultâneos.",
-    parts: [...boxParts, "tampa"],
+    parts: boxParts,
     preset: { led: true, depth: 60, ledChannelWidth: 16 },
     thumb: { face: "#ffe9ad", body: "#333c48", glow: "both" },
   },
@@ -259,7 +258,7 @@ export const STYLES: SignStyle[] = [
     name: "Caixa iluminada",
     group: "Letras",
     description: "Caixa completa com canal de LED.",
-    parts: [...boxParts, "tampa"],
+    parts: boxParts,
     preset: { led: true, depth: 60 },
     thumb: { face: "#ffe9ad", body: "#3f4a5a", glow: "front" },
   },
