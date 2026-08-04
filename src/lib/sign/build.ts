@@ -261,19 +261,18 @@ export function buildSign(
   if (active.has("laterais")) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
-      if (recessOn) {
-        // faixa externa sobe até o topo (aba do rebaixo)
-        for (const outer of ringShape(shape, recessLip)) {
-          geos.push(extrude(outer, bodyHeight + params.faceThickness));
-        }
-        // faixa interna para no degrau onde a frente assenta
-        for (const inner of ringShape(shape, params.wall - recessLip, recessLip)) {
-          geos.push(extrude(inner, bodyHeight));
-        }
-        continue;
-      }
+      // parede completa até o nível onde a frente assenta
       for (const ring of ringShape(shape, params.wall)) geos.push(extrude(ring, bodyHeight));
+      if (recessOn) {
+        // aba externa contínua acima do degrau (mesma peça, sem divisão vertical)
+        for (const outer of ringShape(shape, recessLip)) {
+          const lip = extrude(outer, params.faceThickness);
+          lip.translate(0, 0, bodyHeight);
+          geos.push(lip);
+        }
+      }
     }
+
     const geo = combine(geos);
     if (geo) {
       geo.translate(0, 0, baseZ + (active.has("fundo") ? params.backThickness : 0));
