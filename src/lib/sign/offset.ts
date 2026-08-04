@@ -84,7 +84,7 @@ function differencePaths(subject: CPath[], clip: CPath[]): CPath[] {
     ClipperLib.PolyFillType.pftNonZero,
     ClipperLib.PolyFillType.pftNonZero,
   );
-  return solution;
+  return ClipperLib.Clipper.CleanPolygons(solution, SCALE * 0.005) as CPath[];
 }
 
 function toVectors(path: CPath): Vector2[] {
