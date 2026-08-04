@@ -248,11 +248,28 @@ export function buildSign(
     }
   }
 
+  // rebaixo (degrau) na parede interna para assentar a frente
+  const recessLip = Math.min(Math.max(params.recessLip, 0.4), Math.max(params.wall - 0.4, 0.4));
+  const recessOn =
+    params.faceRecess &&
+    active.has("frente") &&
+    active.has("laterais") &&
+    recessLip < params.wall;
+  const faceInset = recessOn ? recessLip + params.clearance : 0;
+
   // ---------- laterais ----------
   if (active.has("laterais")) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
       for (const ring of ringShape(shape, params.wall)) geos.push(extrude(ring, bodyHeight));
+      if (recessOn) {
+        // aba fina no topo, criando o degrau onde a frente encaixa
+        for (const lip of ringShape(shape, recessLip)) {
+          const geo = extrude(lip, params.faceThickness);
+          geo.translate(0, 0, bodyHeight);
+          geos.push(geo);
+        }
+      }
     }
     const geo = combine(geos);
     if (geo) {
@@ -264,6 +281,7 @@ export function buildSign(
       );
     }
   }
+
 
   // ---------- canal de LED ----------
   let ledLengthMm = 0;
