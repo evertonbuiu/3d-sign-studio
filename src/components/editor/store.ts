@@ -58,6 +58,7 @@ export function useEditorState(): EditorState {
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [wireframe, setWireframe] = useState(false);
   const [showOutlines, setShowOutlines] = useState(false);
+  const [projectId, setProjectId] = useState<string | null>(null);
   const [projectName, setProjectName] = useState("Novo projeto");
 
   useEffect(() => {
