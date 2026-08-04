@@ -82,7 +82,7 @@ export default function Viewport() {
   const { build, ready } = useEditor();
 
   return (
-    <div className="relative h-full w-full bg-viewport">
+    <div className="absolute inset-0 bg-viewport">
       <Canvas shadows camera={{ position: [0, 1.1, 4.6], fov: 42 }} dpr={[1, 2]}>
         <color attach="background" args={["#e6ebf2"]} />
         <hemisphereLight args={["#ffffff", "#c7d0dc", 1.1]} />
