@@ -322,9 +322,7 @@ export function buildSign(
         }
         continue;
       }
-      const face = new Shape(shapePoints(shape));
-      for (const hole of shape.holes) face.holes.push(new Path(hole.getPoints(14)));
-      geos.push(extrude(face, params.faceThickness));
+      geos.push(extrude(cloneShape(shape), params.faceThickness));
     }
 
     const geo = combine(geos);
