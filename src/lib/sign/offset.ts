@@ -154,3 +154,12 @@ export function ringShape(shape: Shape, thickness: number, startInset = 0): Shap
   const ring = inner.length ? differencePaths(outer, inner) : outer;
   return pathsToShapes(ring);
 }
+
+/** Cópia exata de um Shape (mesmos pontos do contorno e dos furos). */
+export function cloneShape(shape: Shape): Shape {
+  const copy = new Shape(shapePoints(shape).map((p) => p.clone()));
+  for (const hole of shape.holes) {
+    copy.holes.push(new Path(hole.getPoints(CURVE_DIVISIONS).map((p) => p.clone())));
+  }
+  return copy;
+}
