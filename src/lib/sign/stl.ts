@@ -1,5 +1,10 @@
 import type { BufferGeometry } from "three";
 
+/** Arredonda para 1e-4 mm para soldar vértices praticamente coincidentes. */
+function snap(value: number): number {
+  return Math.round(value * 10000) / 10000;
+}
+
 /** Gera um STL binário (mm) a partir de geometrias em coordenadas de mundo. */
 export function geometriesToStl(geometries: BufferGeometry[]): ArrayBuffer {
   const triangles: number[][] = [];
@@ -8,18 +13,35 @@ export function geometriesToStl(geometries: BufferGeometry[]): ArrayBuffer {
     const source = geometry.index ? geometry.toNonIndexed() : geometry;
     const pos = source.getAttribute("position");
     if (!pos) continue;
-    for (let i = 0; i < pos.count; i += 3) {
-      triangles.push([
-        pos.getX(i),
-        pos.getY(i),
-        pos.getZ(i),
-        pos.getX(i + 1),
-        pos.getY(i + 1),
-        pos.getZ(i + 1),
-        pos.getX(i + 2),
-        pos.getY(i + 2),
-        pos.getZ(i + 2),
-      ]);
+    for (let i = 0; i + 2 < pos.count; i += 3) {
+      const t = [
+        snap(pos.getX(i)),
+        snap(pos.getY(i)),
+        snap(pos.getZ(i)),
+        snap(pos.getX(i + 1)),
+        snap(pos.getY(i + 1)),
+        snap(pos.getZ(i + 1)),
+        snap(pos.getX(i + 2)),
+        snap(pos.getY(i + 2)),
+        snap(pos.getZ(i + 2)),
+      ];
+      // descarta triângulos com valores inválidos
+      if (t.some((v) => !Number.isFinite(v))) continue;
+      const [ax, ay, az, bx, by, bz, cx, cy, cz] = t as [
+        number, number, number, number, number, number, number, number, number,
+      ];
+      // descarta triângulos degenerados (área ~0), que quebram slicers
+      const ux = bx - ax;
+      const uy = by - ay;
+      const uz = bz - az;
+      const vx = cx - ax;
+      const vy = cy - ay;
+      const vz = cz - az;
+      const nx = uy * vz - uz * vy;
+      const ny = uz * vx - ux * vz;
+      const nz = ux * vy - uy * vx;
+      if (Math.hypot(nx, ny, nz) / 2 < 1e-7) continue;
+      triangles.push(t);
     }
   }
 
@@ -60,6 +82,7 @@ export function geometriesToStl(geometries: BufferGeometry[]): ArrayBuffer {
 
   return buffer;
 }
+
 
 export function downloadBlob(data: BlobPart, filename: string, type: string) {
   const blob = new Blob([data], { type });
