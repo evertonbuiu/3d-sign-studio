@@ -104,6 +104,19 @@ export default function Toolbar() {
     });
   }
 
+  function exportDxf() {
+    const build = editor.build;
+    if (!build?.faceCut.length) {
+      toast.error("Este estilo não tem peça de frente para corte");
+      return;
+    }
+    const base = slugify(editor.params.text || editor.projectName);
+    const dxf = shapesToDxf(build.faceCut);
+    downloadBlob(new Blob([dxf], { type: "image/vnd.dxf" }), `${base}-frente.dxf`, "image/vnd.dxf");
+    toast.success("DXF da frente exportado");
+  }
+
+
   async function openProject(id: string) {
     const row = await load({ data: { id } });
     if (!row) return;
