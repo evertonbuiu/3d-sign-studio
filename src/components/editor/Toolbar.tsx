@@ -167,7 +167,11 @@ export default function Toolbar() {
             <DropdownMenuItem className="text-xs" onSelect={() => exportStl("pecas")}>
               Peças separadas (.zip)
             </DropdownMenuItem>
+            <DropdownMenuItem className="text-xs" onSelect={() => exportDxf()}>
+              Frente para corte (.dxf)
+            </DropdownMenuItem>
           </DropdownMenuContent>
+
         </DropdownMenu>
 
         {user ? (
