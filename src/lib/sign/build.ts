@@ -248,11 +248,28 @@ export function buildSign(
     }
   }
 
+  // rebaixo (degrau) na parede interna para assentar a frente
+  const recessLip = Math.min(Math.max(params.recessLip, 0.4), Math.max(params.wall - 0.4, 0.4));
+  const recessOn =
+    params.faceRecess &&
+    active.has("frente") &&
+    active.has("laterais") &&
+    recessLip < params.wall;
+  const faceInset = recessOn ? recessLip + params.clearance : 0;
+
   // ---------- laterais ----------
   if (active.has("laterais")) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
       for (const ring of ringShape(shape, params.wall)) geos.push(extrude(ring, bodyHeight));
+      if (recessOn) {
+        // aba fina no topo, criando o degrau onde a frente encaixa
+        for (const lip of ringShape(shape, recessLip)) {
+          const geo = extrude(lip, params.faceThickness);
+          geo.translate(0, 0, bodyHeight);
+          geos.push(geo);
+        }
+      }
     }
     const geo = combine(geos);
     if (geo) {
@@ -264,6 +281,7 @@ export function buildSign(
       );
     }
   }
+
 
   // ---------- canal de LED ----------
   let ledLengthMm = 0;
@@ -295,10 +313,17 @@ export function buildSign(
   if (active.has("frente")) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
+      if (faceInset > 0) {
+        for (const inner of insetShape(shape, faceInset)) {
+          geos.push(extrude(inner, params.faceThickness));
+        }
+        continue;
+      }
       const face = new Shape(shapePoints(shape));
       for (const hole of shape.holes) face.holes.push(new Path(hole.getPoints(14)));
       geos.push(extrude(face, params.faceThickness));
     }
+
     const geo = combine(geos);
     if (geo) {
       const z = plateOn && !active.has("laterais") ? baseZ : baseZ + params.depth - params.faceThickness;
@@ -404,6 +429,16 @@ export function buildSign(
     baseZ,
     shapes.flatMap((s) => insetShape(s, params.wall)),
   );
+  if (recessOn) {
+    pushOutlines(
+      "rebaixo",
+      "Rebaixo da frente",
+      "#16a34a",
+      baseZ,
+      shapes.flatMap((s) => insetShape(s, faceInset)),
+    );
+  }
+
   if (params.led) {
     const start = params.wall + params.ledOffset;
     pushOutlines(
