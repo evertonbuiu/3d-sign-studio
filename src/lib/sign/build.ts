@@ -25,8 +25,17 @@ export interface SignPart {
   count: number;
 }
 
+export interface SignOutline {
+  id: string;
+  name: string;
+  color: string;
+  z: number;
+  points: Array<[number, number]>;
+}
+
 export interface SignBuild {
   parts: SignPart[];
+  outlines: SignOutline[];
   width: number;
   height: number;
   depth: number;
