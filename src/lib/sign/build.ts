@@ -239,12 +239,35 @@ export function buildSign(
     }
   }
 
-  // ---------- laterais ----------
+  // ---------- laterais (com rebaixo para o acrílico da frente) ----------
+  const rebateOn =
+    params.frontRebate &&
+    active.has("laterais") &&
+    active.has("frente") &&
+    params.faceThickness < bodyHeight - 0.4;
+  const rebateW = rebateOn
+    ? Math.min(params.frontRebateWidth, params.wall - 0.6, params.wallInner - 0.6)
+    : 0;
+  const rebateWidth = rebateW > 0.05 ? rebateW : 0;
+  const hasRebate = rebateOn && rebateWidth > 0;
+
   if (active.has("laterais")) {
     const geos: BufferGeometry[] = [];
+    const lowerH = hasRebate ? bodyHeight - params.faceThickness : bodyHeight;
     for (const shape of shapes) {
       for (const ring of ringShapeDual(shape, params.wall, params.wallInner))
-        geos.push(extrude(ring, bodyHeight));
+        geos.push(extrude(ring, lowerH));
+      if (hasRebate) {
+        for (const ring of ringShapeDual(
+          shape,
+          params.wall - rebateWidth,
+          params.wallInner - rebateWidth,
+        )) {
+          const top = extrude(ring, params.faceThickness);
+          top.translate(0, 0, lowerH);
+          geos.push(top);
+        }
+      }
     }
     const geo = combine(geos);
     if (geo) {
@@ -310,7 +333,16 @@ export function buildSign(
   // ---------- frente ----------
   if (active.has("frente")) {
     const geos: BufferGeometry[] = [];
+    const faceInset = hasRebate
+      ? Math.max(params.wall - rebateWidth + params.clearance, 0)
+      : 0;
     for (const shape of shapes) {
+      if (faceInset > 0) {
+        for (const inner of insetShape(shape, faceInset)) {
+          geos.push(extrude(inner, params.faceThickness));
+        }
+        continue;
+      }
       const face = new Shape(shapePoints(shape));
       for (const hole of shape.holes) face.holes.push(new Path(hole.getPoints(14)));
       geos.push(extrude(face, params.faceThickness));
