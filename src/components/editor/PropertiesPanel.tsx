@@ -1,0 +1,282 @@
+import { Eye, EyeOff } from "lucide-react";
+
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { FONTS, type FontId } from "@/lib/sign/fonts";
+import type { SignParams } from "@/lib/sign/model";
+import { useEditor } from "./store";
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-[11px] font-medium text-muted-foreground">{label}</Label>
+      {children}
+    </div>
+  );
+}
+
+function NumberSlider({
+  label,
+  keyName,
+  min,
+  max,
+  step = 0.1,
+  unit = "mm",
+}: {
+  label: string;
+  keyName: keyof SignParams;
+  min: number;
+  max: number;
+  step?: number;
+  unit?: string;
+}) {
+  const { params, setParam } = useEditor();
+  const value = Number(params[keyName]);
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <Label className="text-[11px] font-medium text-muted-foreground">{label}</Label>
+        <span className="text-[11px] tabular-nums text-foreground">
+          {value.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} {unit}
+        </span>
+      </div>
+      <Slider
+        value={[value]}
+        min={min}
+        max={max}
+        step={step}
+        onValueChange={([v]) => setParam(keyName, v as never)}
+      />
+    </div>
+  );
+}
+
+function ColorField({ label, keyName }: { label: string; keyName: keyof SignParams }) {
+  const { params, setParam } = useEditor();
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <Label className="text-[11px] font-medium text-muted-foreground">{label}</Label>
+      <input
+        type="color"
+        value={String(params[keyName])}
+        onChange={(e) => setParam(keyName, e.target.value as never)}
+        className="h-7 w-12 cursor-pointer rounded border border-border bg-card"
+      />
+    </div>
+  );
+}
+
+function MoneyField({
+  label,
+  keyName,
+  step = 1,
+}: {
+  label: string;
+  keyName: keyof SignParams;
+  step?: number;
+}) {
+  const { params, setParam } = useEditor();
+  return (
+    <Field label={label}>
+      <Input
+        type="number"
+        step={step}
+        value={Number(params[keyName])}
+        onChange={(e) => setParam(keyName, Number(e.target.value) as never)}
+        className="h-8 bg-card text-xs"
+      />
+    </Field>
+  );
+}
+
+export default function PropertiesPanel() {
+  const { params, setParam, style, build, hidden, togglePart, explode, setExplode } = useEditor();
+
+  return (
+    <div className="flex h-full flex-col border-l border-border bg-panel">
+      <div className="border-b border-border p-3">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Propriedades
+        </h2>
+        <p className="mt-1 text-[11px] text-muted-foreground">{style.description}</p>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        <Accordion type="multiple" defaultValue={["texto", "construcao", "led"]} className="px-3">
+          <AccordionItem value="texto">
+            <AccordionTrigger className="text-xs">Texto e fonte</AccordionTrigger>
+            <AccordionContent className="space-y-3 pb-4">
+              <Field label="Texto">
+                <Input
+                  value={params.text}
+                  onChange={(e) => setParam("text", e.target.value)}
+                  className="h-9 bg-card font-display text-sm"
+                  maxLength={40}
+                />
+              </Field>
+              <Field label="Fonte">
+                <Select
+                  value={params.fontId}
+                  onValueChange={(v) => setParam("fontId", v as FontId)}
+                >
+                  <SelectTrigger className="h-8 bg-card text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FONTS.map((f) => (
+                      <SelectItem key={f.id} value={f.id} className="text-xs">
+                        {f.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <NumberSlider label="Altura da letra" keyName="letterHeight" min={30} max={800} step={5} />
+              <NumberSlider label="Espaçamento" keyName="tracking" min={-10} max={40} step={0.5} />
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="construcao">
+            <AccordionTrigger className="text-xs">Construção</AccordionTrigger>
+            <AccordionContent className="space-y-3 pb-4">
+              <NumberSlider label="Profundidade" keyName="depth" min={5} max={200} step={1} />
+              <NumberSlider label="Parede" keyName="wall" min={0.8} max={12} step={0.1} />
+              <NumberSlider label="Frente" keyName="faceThickness" min={0.6} max={60} step={0.2} />
+              <NumberSlider label="Fundo" keyName="backThickness" min={0.6} max={20} step={0.2} />
+              <NumberSlider label="Difusor" keyName="diffuserThickness" min={0.6} max={10} step={0.2} />
+              <NumberSlider label="Recuo do difusor" keyName="diffuserInset" min={0} max={30} step={0.5} />
+              <NumberSlider label="Folga de encaixe" keyName="clearance" min={0} max={1.5} step={0.05} />
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="led">
+            <AccordionTrigger className="text-xs">Iluminação</AccordionTrigger>
+            <AccordionContent className="space-y-3 pb-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-[11px] font-medium text-muted-foreground">LED ativo</Label>
+                <Switch checked={params.led} onCheckedChange={(v) => setParam("led", v)} />
+              </div>
+              <NumberSlider label="Largura do canal" keyName="ledChannelWidth" min={3} max={40} step={0.5} />
+              <NumberSlider label="Altura do canal" keyName="ledChannelHeight" min={2} max={30} step={0.5} />
+              <NumberSlider label="Afastamento da parede" keyName="ledOffset" min={0} max={25} step={0.5} />
+              <NumberSlider label="Potência da fita" keyName="ledPowerPerMeter" min={2} max={30} step={0.2} unit="W/m" />
+              <ColorField label="Cor da luz" keyName="ledColor" />
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="corpo">
+            <AccordionTrigger className="text-xs">Placa, totem e camadas</AccordionTrigger>
+            <AccordionContent className="space-y-3 pb-4">
+              <Field label="Modo do corpo">
+                <Select
+                  value={params.bodyMode}
+                  onValueChange={(v) => setParam("bodyMode", v as SignParams["bodyMode"])}
+                >
+                  <SelectTrigger className="h-8 bg-card text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="letras" className="text-xs">Letras soltas</SelectItem>
+                    <SelectItem value="placa" className="text-xs">Placa</SelectItem>
+                    <SelectItem value="totem" className="text-xs">Totem</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <NumberSlider label="Margem da placa" keyName="plateMargin" min={5} max={200} step={1} />
+              <NumberSlider label="Espessura da placa" keyName="plateThickness" min={2} max={40} step={0.5} />
+              <NumberSlider label="Altura do poste" keyName="poleHeight" min={100} max={2000} step={10} />
+              <div className="flex items-center justify-between">
+                <Label className="text-[11px] font-medium text-muted-foreground">Letras vazadas</Label>
+                <Switch checked={params.cutout} onCheckedChange={(v) => setParam("cutout", v)} />
+              </div>
+              <NumberSlider label="Espessura da camada" keyName="layerThickness" min={1} max={30} step={0.5} />
+              <NumberSlider label="Redução por camada" keyName="layerShrink" min={1} max={40} step={0.5} />
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="montagem">
+            <AccordionTrigger className="text-xs">Montagem</AccordionTrigger>
+            <AccordionContent className="space-y-3 pb-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-[11px] font-medium text-muted-foreground">Furos de fixação</Label>
+                <Switch checked={params.mountHoles} onCheckedChange={(v) => setParam("mountHoles", v)} />
+              </div>
+              <NumberSlider label="Diâmetro do furo" keyName="holeDiameter" min={2} max={20} step={0.5} />
+              <ColorField label="Cor da frente" keyName="faceColor" />
+              <ColorField label="Cor do corpo" keyName="bodyColor" />
+              <ColorField label="Cor do fundo" keyName="backColor" />
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="custos">
+            <AccordionTrigger className="text-xs">Custos e produção</AccordionTrigger>
+            <AccordionContent className="space-y-3 pb-4">
+              <MoneyField label="Filamento (R$/kg)" keyName="filamentPrice" />
+              <MoneyField label="Densidade (g/cm³)" keyName="density" step={0.01} />
+              <MoneyField label="Velocidade (cm³/h)" keyName="printSpeed" />
+              <MoneyField label="Mão de obra (R$/h)" keyName="hourlyRate" />
+              <MoneyField label="Energia (R$/kWh)" keyName="energyPrice" step={0.01} />
+              <MoneyField label="Potência da impressora (W)" keyName="printerPower" />
+              <MoneyField label="Margem (%)" keyName="margin" />
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="pecas">
+            <AccordionTrigger className="text-xs">Peças do modelo</AccordionTrigger>
+            <AccordionContent className="space-y-3 pb-4">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label className="text-[11px] font-medium text-muted-foreground">Vista explodida</Label>
+                  <span className="text-[11px] tabular-nums">{explode.toFixed(0)} mm</span>
+                </div>
+                <Slider
+                  value={[explode]}
+                  min={0}
+                  max={120}
+                  step={1}
+                  onValueChange={([v]) => setExplode(v ?? 0)}
+                />
+              </div>
+              <div className="space-y-1">
+                {build?.parts.map((part) => (
+                  <button
+                    key={part.id}
+                    type="button"
+                    onClick={() => togglePart(part.id)}
+                    className="flex w-full items-center justify-between rounded border border-border bg-card px-2 py-1.5 text-left text-[11px] hover:border-primary/50"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span
+                        className="h-3 w-3 rounded-sm border border-border"
+                        style={{ background: part.color }}
+                      />
+                      {part.name}
+                    </span>
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                      {part.volumeCm3.toFixed(1)} cm³
+                      {hidden.has(part.id) ? (
+                        <EyeOff className="h-3.5 w-3.5" />
+                      ) : (
+                        <Eye className="h-3.5 w-3.5" />
+                      )}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      </div>
+    </div>
+  );
+}
