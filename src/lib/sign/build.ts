@@ -498,6 +498,8 @@ function unionSolid(geos: BufferGeometry[]): BufferGeometry | null {
 
     const geometry = result.geometry.clone();
     geometry.clearGroups();
+    // Ensure all faces are strictly oriented outwards to prevent slicer errors
+    geometry.computeVertexNormals();
     return geometry;
   } catch (error) {
     console.warn("Falha na união booleana, usando mesclagem simples", error);
