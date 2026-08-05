@@ -131,6 +131,8 @@ export interface SignStyle {
   parts: PartKind[];
   /** fundo é uma chapa de acrílico cortada, encaixada nas paredes impressas */
   acrylicBack?: boolean;
+  /** frente impressa como tampa separada, com pino de encaixe nas paredes */
+  printedFace?: boolean;
   preset: Partial<SignParams>;
 
   /** dica visual da miniatura */
