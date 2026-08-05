@@ -26,9 +26,12 @@ export interface EditorState {
   showOutlines: boolean;
   svgName: string | null;
   vectorKind: "svg" | "dxf" | null;
+  weldedEdges: Array<{ a: [number, number, number]; b: [number, number, number] }>;
   setSvg: (name: string, content: string) => void;
   setDxf: (name: string, content: string) => void;
   clearSvg: () => void;
+  addWeldedEdge: (edge: { a: [number, number, number]; b: [number, number, number] }) => void;
+  clearWeldedEdges: () => void;
   projectId: string | null;
   projectName: string;
   setParam: <K extends keyof SignParams>(key: K, value: SignParams[K]) => void;
@@ -70,6 +73,7 @@ export function useEditorState(): EditorState {
     content: string;
     kind: "svg" | "dxf";
   } | null>(null);
+  const [weldedEdges, setWeldedEdges] = useState<Array<{ a: [number, number, number]; b: [number, number, number] }>>([]);
   const [projectId, setProjectId] = useState<string | null>(null);
   const [projectName, setProjectName] = useState("Novo projeto");
 
@@ -121,6 +125,9 @@ export function useEditorState(): EditorState {
     setSvg: (name, content) => setSvgState({ name, content, kind: "svg" }),
     setDxf: (name, content) => setSvgState({ name, content, kind: "dxf" }),
     clearSvg: () => setSvgState(null),
+    weldedEdges,
+    addWeldedEdge: (edge) => setWeldedEdges((prev) => [...prev, edge]),
+    clearWeldedEdges: () => setWeldedEdges([]),
     setWireframe,
     setShowOutlines,
     projectId,
