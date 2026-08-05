@@ -181,6 +181,7 @@ export const STYLES: SignStyle[] = [
     description: "Frente impressa opaca sobre fundo translúcido.",
     parts: boxParts,
     acrylicBack: true,
+    printedFace: true,
     preset: { depth: 45, faceThickness: 2.4, led: true },
     thumb: { face: "#8f9db0", body: "#39424f", glow: "halo" },
   },
