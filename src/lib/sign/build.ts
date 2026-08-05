@@ -500,8 +500,12 @@ function unionSolid(geos: BufferGeometry[]): BufferGeometry | null {
       result.updateMatrixWorld();
     }
 
-    const geometry = result.geometry.clone();
+    let geometry = result.geometry.clone();
     geometry.clearGroups();
+
+    // Crucial: merge vertices after boolean operations to close gaps
+    geometry = BufferGeometryUtils.mergeVertices(geometry, 0.001);
+
     // Ensure all faces are strictly oriented outwards to prevent slicer errors
     geometry.computeVertexNormals();
     return geometry;
@@ -512,8 +516,15 @@ function unionSolid(geos: BufferGeometry[]): BufferGeometry | null {
 }
 
 function prepareForCsg(source: BufferGeometry): BufferGeometry {
-  const geometry = source.clone();
+  let geometry = source.clone();
   geometry.clearGroups();
+
+  // Pre-process geometry to be as clean as possible for CSG
+  if (geometry.index) {
+    geometry = geometry.toNonIndexed();
+  }
+  geometry = BufferGeometryUtils.mergeVertices(geometry, 0.001);
+
   if (!geometry.getAttribute("normal")) geometry.computeVertexNormals();
   const count = geometry.getAttribute("position").count;
   if (!geometry.getAttribute("uv")) {
@@ -524,22 +535,8 @@ function prepareForCsg(source: BufferGeometry): BufferGeometry {
 
 
 function mergePositions(geos: BufferGeometry[]): BufferGeometry {
-  let total = 0;
-  const nonIndexed = geos.map((g) => (g.index ? g.toNonIndexed() : g));
-  for (const g of nonIndexed) total += g.getAttribute("position").count;
-  const array = new Float32Array(total * 3);
-  let offset = 0;
-  for (const g of nonIndexed) {
-    const pos = g.getAttribute("position");
-    for (let i = 0; i < pos.count; i++) {
-      array[offset++] = pos.getX(i);
-      array[offset++] = pos.getY(i);
-      array[offset++] = pos.getZ(i);
-    }
-  }
-  const merged = new BufferGeometry();
-  merged.setAttribute("position", new Float32BufferAttribute(array, 3));
-  return merged;
+  const merged = BufferGeometryUtils.mergeGeometries(geos, false);
+  return BufferGeometryUtils.mergeVertices(merged, 0.001);
 }
 
 function shadeColor(hex: string, amount: number): string {
