@@ -6,7 +6,7 @@ import { Canvas } from "@react-three/fiber";
 import { ContactShadows, Grid, OrbitControls } from "@react-three/drei";
 import { Box3, BufferGeometry, Float32BufferAttribute, Vector3, type Group } from "three";
 
-import { useEditor } from "./store";
+import { axisScale, useEditor } from "./store";
 import type { SignOutline, SignPart } from "@/lib/sign/build";
 
 const EXPLODE_ORDER: Record<string, number> = {
@@ -69,7 +69,7 @@ function OutlineLine({ outline }: { outline: SignOutline }) {
 }
 
 function Model() {
-  const { build, explode, hidden, wireframe, showOutlines } = useEditor();
+  const { build, explode, hidden, wireframe, showOutlines, params } = useEditor();
   const groupRef = useRef<Group>(null);
 
   const { scale, center } = useMemo(() => {
@@ -83,13 +83,20 @@ function Model() {
     }
     if (box.isEmpty()) return { scale: 0.01, center: new Vector3() };
     const size = box.getSize(new Vector3());
-    const max = Math.max(size.x, size.y, size.z) || 1;
-    const s = 2.6 / max;
+    // O enquadramento usa o tamanho SEM as escalas do usuário, para que ajustar
+    // X, Y ou Z realmente apareça na tela em vez de ser anulado pelo auto-fit.
+    const a = axisScale(params);
+    const base = Math.max(size.x / (a.x || 1), size.y / (a.y || 1), size.z / (a.z || 1)) || 1;
+    const raw = 2.6 / base;
+    const onScreen = Math.max(size.x, size.y, size.z) * raw;
+    // limite de segurança para escalas extremas não saírem do quadro
+    const s = onScreen > 4 ? (raw * 4) / onScreen : raw;
     return {
-      scale: Number.isFinite(s) ? s : 0.01,
+      scale: Number.isFinite(s) && s > 0 ? s : 0.01,
       center: box.getCenter(new Vector3()),
     };
-  }, [build]);
+  }, [build, params]);
+
 
   if (!build) return null;
 
