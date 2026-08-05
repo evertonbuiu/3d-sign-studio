@@ -114,7 +114,9 @@ export default function PropertiesPanel() {
     showOutlines,
     setShowOutlines,
     svgName,
+    vectorKind,
     setSvg,
+    setDxf,
     clearSvg,
   } = useEditor();
 
@@ -141,37 +143,58 @@ export default function PropertiesPanel() {
                   disabled={Boolean(svgName)}
                 />
               </Field>
-              <Field label="Importar SVG">
+              <Field label="Importar vetor (SVG / DXF)">
                 {svgName ? (
                   <div className="flex items-center gap-2 rounded border border-border bg-card px-3 py-2">
+                    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">
+                      {vectorKind}
+                    </span>
                     <span className="flex-1 truncate text-sm">{svgName}</span>
                     <button
                       type="button"
                       onClick={clearSvg}
                       className="text-muted-foreground hover:text-foreground"
-                      title="Remover SVG e voltar ao texto"
+                      title="Remover arquivo e voltar ao texto"
                     >
                       <X className="h-4 w-4" />
                     </button>
                   </div>
                 ) : (
-                  <label className="flex h-9 cursor-pointer items-center gap-2 rounded border border-dashed border-border bg-card px-3 text-sm text-muted-foreground hover:border-primary hover:text-foreground">
-                    <Upload className="h-4 w-4" />
-                    Escolher arquivo .svg
-                    <input
-                      type="file"
-                      accept=".svg,image/svg+xml"
-                      className="hidden"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        setSvg(file.name, await file.text());
-                        e.target.value = "";
-                      }}
-                    />
-                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="flex h-9 cursor-pointer items-center justify-center gap-2 rounded border border-dashed border-border bg-card px-2 text-sm text-muted-foreground hover:border-primary hover:text-foreground">
+                      <Upload className="h-4 w-4" />
+                      .svg
+                      <input
+                        type="file"
+                        accept=".svg,image/svg+xml"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setSvg(file.name, await file.text());
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                    <label className="flex h-9 cursor-pointer items-center justify-center gap-2 rounded border border-dashed border-border bg-card px-2 text-sm text-muted-foreground hover:border-primary hover:text-foreground">
+                      <Upload className="h-4 w-4" />
+                      .dxf
+                      <input
+                        type="file"
+                        accept=".dxf,image/vnd.dxf,application/dxf"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setDxf(file.name, await file.text());
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                  </div>
                 )}
               </Field>
+
               <Field label="Fonte">
                 <Select
                   value={params.fontId}
