@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import type { Font } from "opentype.js";
+ import type { Font } from "opentype.js";
+ import { Vector3 } from "three";
 
 import { loadFont, textToShapes } from "@/lib/sign/fonts";
 import { svgToShapes } from "@/lib/sign/svg";
@@ -41,6 +42,7 @@ export interface EditorState {
   setWireframe: (value: boolean) => void;
   setShowOutlines: (value: boolean) => void;
   togglePart: (id: string) => void;
+  weldSelectedEdges: (selected: Array<{ a: [number, number, number]; b: [number, number, number]; partId: string }>) => void;
   loadProject: (p: {
     id: string;
     name: string;
@@ -147,6 +149,34 @@ export function useEditorState(): EditorState {
         else next.add(id);
         return next;
       }),
+    weldSelectedEdges: (selected) => {
+      if (selected.length < 2) return;
+      const points: Vector3[] = [];
+      selected.forEach(e => {
+        points.push(new Vector3(...e.a), new Vector3(...e.b));
+      });
+      if (points.length < 2) return;
+
+      let maxDist = -1;
+      let p1: Vector3 = points[0]!;
+      let p2: Vector3 = points[1]!;
+      for (let i = 0; i < points.length; i++) {
+        const pi = points[i]!;
+        for (let j = i + 1; j < points.length; j++) {
+          const pj = points[j]!;
+          const d = pi.distanceTo(pj);
+          if (d > maxDist) {
+            maxDist = d;
+            p1 = pi;
+            p2 = pj;
+          }
+        }
+      }
+      setWeldedEdges((prev) => [...prev, {
+        a: [p1.x, p1.y, p1.z],
+        b: [p2.x, p2.y, p2.z]
+      }]);
+    },
     loadProject: (p) => {
       setStyleId(p.styleId);
       setParamsState({ ...DEFAULT_PARAMS, ...p.params });
