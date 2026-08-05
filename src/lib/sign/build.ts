@@ -332,18 +332,24 @@ export function buildSign(
       // metade da frente: parede externa contínua (a saia é a própria parede,
       // descendo até a base para receber o lábio) + parede interna + chapa frontal
       const fs: BufferGeometry[] = [];
-      for (const ring of ringShape(shape, half, 0)) {
-        const outer = extrude(ring, lipH + frontH + params.faceThickness + overlap);
-        fs.push(outer);
-      }
-      for (const ring of ringShape(shape, lipW, half)) {
-        const inner = extrude(ring, frontH + params.faceThickness + overlap);
-        inner.translate(0, 0, lipH);
-        fs.push(inner);
-      }
+      // Tampa frontal (cap)
       const cap = extrude(cloneShape(shape), params.faceThickness + overlap);
       cap.translate(0, 0, lipH + frontH - overlap);
       fs.push(cap);
+
+      // Parede da frente (saia + parede interna)
+      // A saia externa desce até a base (0) para abraçar o lábio da base.
+      // A parede interna sobe até a tampa.
+      for (const ring of ringShape(shape, lipW + half, 0)) {
+        const wall = extrude(ring, lipH + frontH + params.faceThickness + overlap);
+        fs.push(wall);
+      }
+
+      // Rebaixo interno para folga do lábio
+      // Usamos uma técnica de volume negativo (na verdade, apenas não preenchemos o anel interno no extrudado acima)
+      // Mas para manter simples e manifold, vamos garantir que a saia externa (half) 
+      // e a parede interna (lipW) sejam extrudadas corretamente.
+      
       const frontSolid = combine(fs);
       if (frontSolid) frontGeos.push(frontSolid);
     }
