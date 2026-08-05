@@ -116,19 +116,29 @@ function PartMesh({
   wireframe: boolean;
 }) {
   const offset = (EXPLODE_ORDER[part.kind] ?? 0) * explode;
+  // Usamos EdgesGeometry para mostrar apenas as arestas reais (ângulo > 25 graus)
+  // ocultando as diagonais da triangulação que poluem o wireframe.
+  const edges = useMemo(() => new EdgesGeometry(part.geometry, 25), [part.geometry]);
+
   return (
-    <mesh geometry={part.geometry} position={[0, 0, offset]} castShadow receiveShadow>
-      <meshStandardMaterial
-        color={part.color}
-        wireframe={wireframe}
-        transparent={part.opacity < 1 || wireframe}
-        opacity={wireframe ? 0.9 : part.opacity}
-        roughness={part.emissive ? 0.35 : 0.55}
-        metalness={0.05}
-        emissive={part.emissive && !wireframe ? part.color : "#000000"}
-        emissiveIntensity={part.emissive && !wireframe ? 0.85 : 0}
-      />
-    </mesh>
+    <group position={[0, 0, offset]}>
+      <mesh geometry={part.geometry} castShadow receiveShadow>
+        <meshStandardMaterial
+          color={part.color}
+          transparent={part.opacity < 1 || wireframe}
+          opacity={wireframe ? 0.15 : part.opacity}
+          roughness={part.emissive ? 0.35 : 0.55}
+          metalness={0.05}
+          emissive={part.emissive && !wireframe ? part.color : "#000000"}
+          emissiveIntensity={part.emissive && !wireframe ? 0.85 : 0}
+        />
+      </mesh>
+      {wireframe && (
+        <lineSegments geometry={edges}>
+          <lineBasicMaterial color={part.color} transparent opacity={0.8} />
+        </lineSegments>
+      )}
+    </group>
   );
 }
 
