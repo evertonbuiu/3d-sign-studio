@@ -1,104 +1,27 @@
 import type { BufferGeometry } from "three";
 
-/** Tolerância de solda de vértices (mm). Vértices dentro dessa grade viram o mesmo ponto. */
-const WELD = 1e-3;
-
-/** Arredonda para a grade de solda, evitando -0. */
-function snap(value: number): number {
-  const v = Math.round(value / WELD) * WELD;
-  return Object.is(v, -0) ? 0 : Number(v.toFixed(4));
-}
-
-interface FaceIdentity {
-  key: string;
-  orientation: 1 | -1;
-}
-
-/**
- * Identifica faces coincidentes e preserva o sentido da normal.
- */
-function faceIdentity(t: number[]): FaceIdentity {
-  const vertices = [
-    `${t[0]},${t[1]},${t[2]}`,
-    `${t[3]},${t[4]},${t[5]}`,
-    `${t[6]},${t[7]},${t[8]}`,
-  ];
-  const sorted = [...vertices].sort();
-  const permutation = vertices.map((vertex) => sorted.indexOf(vertex));
-  let inversions = 0;
-  for (let i = 0; i < permutation.length; i++) {
-    for (let j = i + 1; j < permutation.length; j++) {
-      if (permutation[i]! > permutation[j]!) inversions++;
-    }
-  }
-  return {
-    key: sorted.join("|"),
-    orientation: inversions % 2 === 0 ? 1 : -1,
-  };
-}
-
 /** Gera um STL binário (mm) a partir de geometrias em coordenadas de mundo. */
 export function geometriesToStl(geometries: BufferGeometry[]): ArrayBuffer {
-  const collected: number[][] = [];
+  const triangles: number[][] = [];
 
   for (const geometry of geometries) {
     const source = geometry.index ? geometry.toNonIndexed() : geometry;
     const pos = source.getAttribute("position");
     if (!pos) continue;
-    for (let i = 0; i + 2 < pos.count; i += 3) {
-      const t = [
-        snap(pos.getX(i)),
-        snap(pos.getY(i)),
-        snap(pos.getZ(i)),
-        snap(pos.getX(i + 1)),
-        snap(pos.getY(i + 1)),
-        snap(pos.getZ(i + 1)),
-        snap(pos.getX(i + 2)),
-        snap(pos.getY(i + 2)),
-        snap(pos.getZ(i + 2)),
-      ];
-      if (t.some((v) => !Number.isFinite(v))) continue;
-      const [ax, ay, az, bx, by, bz, cx, cy, cz] = t as [
-        number, number, number, number, number, number, number, number, number,
-      ];
-      const ux = bx - ax;
-      const uy = by - ay;
-      const uz = bz - az;
-      const vx = cx - ax;
-      const vy = cy - ay;
-      const vz = cz - az;
-      const nx = uy * vz - uz * vy;
-      const ny = uz * vx - ux * vz;
-      const nz = ux * vy - uy * vx;
-      if (Math.hypot(nx, ny, nz) / 2 < 1e-7) continue;
-      collected.push(t);
+    for (let i = 0; i < pos.count; i += 3) {
+      triangles.push([
+        pos.getX(i),
+        pos.getY(i),
+        pos.getZ(i),
+        pos.getX(i + 1),
+        pos.getY(i + 1),
+        pos.getZ(i + 1),
+        pos.getX(i + 2),
+        pos.getY(i + 2),
+        pos.getZ(i + 2),
+      ]);
     }
   }
-
-  const buckets = new Map<string, { positive: number[]; negative: number[] }>();
-  collected.forEach((t, index) => {
-    const identity = faceIdentity(t);
-    const bucket = buckets.get(identity.key) ?? { positive: [], negative: [] };
-    if (identity.orientation === 1) bucket.positive.push(index);
-    else bucket.negative.push(index);
-    buckets.set(identity.key, bucket);
-  });
-
-  const drop = new Set<number>();
-  for (const { positive, negative } of buckets.values()) {
-    const cancelled = Math.min(positive.length, negative.length);
-    for (let i = 0; i < cancelled; i++) {
-      drop.add(positive[i]!);
-      drop.add(negative[i]!);
-    }
-    // Remove duplicatas no mesmo sentido (casca externa consolidada)
-    for (const list of [positive.slice(cancelled), negative.slice(cancelled)]) {
-      for (let i = 1; i < list.length; i++) drop.add(list[i]!);
-    }
-  }
-
-  const triangles = collected.filter((_, index) => !drop.has(index));
-
 
   const buffer = new ArrayBuffer(84 + triangles.length * 50);
   const view = new DataView(buffer);
@@ -137,7 +60,6 @@ export function geometriesToStl(geometries: BufferGeometry[]): ArrayBuffer {
 
   return buffer;
 }
-
 
 export function downloadBlob(data: BlobPart, filename: string, type: string) {
   const blob = new Blob([data], { type });

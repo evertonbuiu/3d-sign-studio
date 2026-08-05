@@ -9,7 +9,9 @@ import {
   Vector2,
   Vector3,
 } from "three";
-import { cloneShape, insetShape, offsetShape, ringShape, shapePoints } from "./offset";
+import { ADDITION, Brush, Evaluator } from "three-bvh-csg";
+
+import { insetShape, offsetShape, ringShape, shapePoints } from "./offset";
 import type { PartKind, SignParams, SignStyle } from "./model";
 
 export interface SignPart {
@@ -35,8 +37,6 @@ export interface SignOutline {
 export interface SignBuild {
   parts: SignPart[];
   outlines: SignOutline[];
-  /** Contornos 2D da frente (mm) para corte de acrílico. */
-  faceCut: Shape[];
   width: number;
   height: number;
   depth: number;
@@ -45,7 +45,7 @@ export interface SignBuild {
   printedVolumeCm3: number;
 }
 
-const EXTRUDE = { bevelEnabled: false, curveSegments: 24, steps: 1 };
+const EXTRUDE = { bevelEnabled: false, curveSegments: 14 };
 
 function extrude(shape: Shape | Shape[], depth: number): ExtrudeGeometry {
   return new ExtrudeGeometry(shape, { ...EXTRUDE, depth: Math.max(depth, 0.2) });
@@ -113,10 +113,9 @@ function shapesBounds(shapes: Shape[]): Box2 {
 
 function translateShapes(shapes: Shape[], dx: number, dy: number): Shape[] {
   return shapes.map((shape) => {
-    const src = cloneShape(shape);
-    const moved = new Shape(shapePoints(src).map((p) => new Vector2(p.x + dx, p.y + dy)));
-    for (const hole of src.holes) {
-      moved.holes.push(new Path(hole.getPoints(24).map((p) => new Vector2(p.x + dx, p.y + dy))));
+    const moved = new Shape(shapePoints(shape).map((p) => new Vector2(p.x + dx, p.y + dy)));
+    for (const hole of shape.holes) {
+      moved.holes.push(new Path(hole.getPoints(14).map((p) => new Vector2(p.x + dx, p.y + dy))));
     }
     return moved;
   });
@@ -233,24 +232,13 @@ export function buildSign(
     params.wall,
   );
 
-  // rebaixo (degrau) na parede interna para assentar a frente
-  const recessLip = Math.min(Math.max(params.recessLip, 0.4), Math.max(params.wall - 0.4, 0.4));
-  const recessOn =
-    params.faceRecess &&
-    active.has("frente") &&
-    active.has("laterais") &&
-    recessLip < params.wall;
-  const faceInset = recessOn ? recessLip + params.clearance : 0;
-
-  const backOn = active.has("fundo");
-  const wallsOn = active.has("laterais");
-  const fused = backOn && wallsOn;
-
-  // ---------- fundo (sozinho) ----------
-  if (backOn && !fused) {
+  // ---------- fundo ----------
+  if (active.has("fundo")) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
-      geos.push(extrude(cloneShape(shape), params.backThickness));
+      const back = new Shape(shapePoints(shape));
+      for (const hole of shape.holes) back.holes.push(new Path(hole.getPoints(14)));
+      geos.push(extrude(back, params.backThickness));
     }
     const geo = combine(geos);
     if (geo) {
@@ -261,60 +249,42 @@ export function buildSign(
     }
   }
 
-  // ---------- corpo: fundo + laterais + rebaixo em uma peça só ----------
-  if (wallsOn) {
+  // rebaixo (degrau) na parede interna para assentar a frente
+  const recessLip = Math.min(Math.max(params.recessLip, 0.4), Math.max(params.wall - 0.4, 0.4));
+  const recessOn =
+    params.faceRecess &&
+    active.has("frente") &&
+    active.has("laterais") &&
+    recessLip < params.wall;
+  const faceInset = recessOn ? recessLip + params.clearance : 0;
+
+  // ---------- laterais (parede + rebaixo em uma peça só) ----------
+  if (active.has("laterais")) {
     const geos: BufferGeometry[] = [];
-    const zWall = fused ? params.backThickness : 0;
-    
-    // Agrupa todas as seções por tipo para um merge global mais eficiente
-    const backSections: BufferGeometry[] = [];
-    const wallSections: BufferGeometry[] = [];
-    const lipSections: BufferGeometry[] = [];
-
     for (const shape of shapes) {
-      // Cada seção é uma casca fechada e há uma pequena interseção entre elas.
-      // Assim o STL permanece manifold sem depender da triangulação instável
-      // de operações booleanas em contornos tipográficos complexos.
-      const overlap = 0.05;
-      
-      if (fused) {
-        backSections.push(extrude(cloneShape(shape), params.backThickness + overlap));
-      }
-
-      for (const ring of ringShape(shape, params.wall)) {
-        const wall = extrude(ring, bodyHeight + overlap * 2);
-        wall.translate(0, 0, zWall - overlap);
-        wallSections.push(wall);
-      }
-
+      const wallGeos = ringShape(shape, params.wall).map((ring) => extrude(ring, bodyHeight));
       if (recessOn) {
-        for (const lipShape of ringShape(shape, recessLip)) {
-          const lip = extrude(lipShape, params.faceThickness + overlap * 2);
-          lip.translate(0, 0, zWall + bodyHeight - overlap);
-          lipSections.push(lip);
+        const overlap = Math.min(0.1, bodyHeight / 4);
+        for (const outer of ringShape(shape, recessLip)) {
+          const lip = extrude(outer, params.faceThickness + overlap);
+          lip.translate(0, 0, bodyHeight - overlap);
+          wallGeos.push(lip);
         }
       }
+      const wall = unionSolid(wallGeos);
+      if (wall) geos.push(wall);
     }
 
-    // Combina todas as partes em um único BufferGeometry contínuo
-    const allSections = [...backSections, ...wallSections, ...lipSections];
-    const geo = combine(allSections);
-    
+    const geo = combine(geos);
     if (geo) {
-      geo.translate(0, 0, baseZ);
+      geo.translate(0, 0, baseZ + (active.has("fundo") ? params.backThickness : 0));
       parts.push(
-        makePart(
-          "laterais",
-          "laterais",
-          fused ? "Corpo (fundo + laterais)" : "Laterais",
-          fused ? params.backColor : params.bodyColor,
-          geo,
-          { count: 1 }, // Agora é uma geometria única consolidada
-        ),
+        makePart("laterais", "laterais", "Laterais", params.bodyColor, geo, {
+          count: shapes.length,
+        }),
       );
     }
   }
-
 
 
   // ---------- canal de LED ----------
@@ -344,22 +314,19 @@ export function buildSign(
 
 
   // ---------- frente ----------
-  const faceCut: Shape[] = [];
   if (active.has("frente")) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
       if (faceInset > 0) {
         for (const inner of insetShape(shape, faceInset)) {
-          faceCut.push(inner);
           geos.push(extrude(inner, params.faceThickness));
         }
         continue;
       }
-      const clone = cloneShape(shape);
-      faceCut.push(clone);
-      geos.push(extrude(clone, params.faceThickness));
+      const face = new Shape(shapePoints(shape));
+      for (const hole of shape.holes) face.holes.push(new Path(hole.getPoints(14)));
+      geos.push(extrude(face, params.faceThickness));
     }
-
 
     const geo = combine(geos);
     if (geo) {
@@ -452,7 +419,7 @@ export function buildSign(
           name,
           color,
           z,
-          points: hole.getPoints(24).map((p) => [p.x, p.y] as [number, number]),
+          points: hole.getPoints(14).map((p) => [p.x, p.y] as [number, number]),
         });
       });
     });
@@ -497,10 +464,7 @@ export function buildSign(
   return {
     parts,
     outlines,
-    faceCut,
     width: totalWidth,
-
-
     height: totalHeight,
     depth: totalDepth,
     ledLengthMm: params.led ? ledLengthMm || perimeterMm(shapes) * 0.85 : 0,
@@ -515,6 +479,45 @@ function combine(geos: BufferGeometry[]): BufferGeometry | null {
   if (valid.length === 1) return valid[0]!;
   return mergePositions(valid);
 }
+
+function unionSolid(geos: BufferGeometry[]): BufferGeometry | null {
+  const valid = geos.filter((geometry) => geometry.getAttribute("position")?.count);
+  if (!valid.length) return null;
+  if (valid.length === 1) return valid[0] ?? null;
+
+  try {
+    const evaluator = new Evaluator();
+    evaluator.useGroups = false;
+    let result = new Brush(prepareForCsg(valid[0]!));
+    result.updateMatrixWorld();
+
+    for (const geometry of valid.slice(1)) {
+      const next = new Brush(prepareForCsg(geometry));
+      next.updateMatrixWorld();
+      result = evaluator.evaluate(result, next, ADDITION);
+      result.updateMatrixWorld();
+    }
+
+    const geometry = result.geometry.clone();
+    geometry.clearGroups();
+    return geometry;
+  } catch (error) {
+    console.warn("Falha na união booleana, usando mesclagem simples", error);
+    return combine(valid);
+  }
+}
+
+function prepareForCsg(source: BufferGeometry): BufferGeometry {
+  const geometry = source.clone();
+  geometry.clearGroups();
+  if (!geometry.getAttribute("normal")) geometry.computeVertexNormals();
+  const count = geometry.getAttribute("position").count;
+  if (!geometry.getAttribute("uv")) {
+    geometry.setAttribute("uv", new Float32BufferAttribute(new Float32Array(count * 2), 2));
+  }
+  return geometry;
+}
+
 
 function mergePositions(geos: BufferGeometry[]): BufferGeometry {
   let total = 0;

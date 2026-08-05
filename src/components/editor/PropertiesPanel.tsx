@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { Eye, EyeOff, Upload, X } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -43,38 +42,13 @@ function NumberSlider({
 }) {
   const { params, setParam } = useEditor();
   const value = Number(params[keyName]);
-  const [editValue, setEditValue] = useState(String(value));
-
-  useEffect(() => {
-    setEditValue(String(value));
-  }, [value]);
-
-  const commit = (raw: string) => {
-    const parsed = Number(raw.replace(",", "."));
-    if (Number.isNaN(parsed)) return;
-    const clamped = Math.max(min, Math.min(max, parsed));
-    const rounded = Math.round(clamped / step) * step;
-    setParam(keyName, rounded as never);
-  };
-
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
         <Label className="text-sm font-medium text-muted-foreground">{label}</Label>
-        <div className="flex items-center gap-1.5">
-          <Input
-            type="text"
-            inputMode="decimal"
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            onBlur={() => commit(editValue)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") commit(editValue);
-            }}
-            className="h-7 w-20 bg-card px-2 text-right text-sm tabular-nums"
-          />
-          <span className="text-sm tabular-nums text-foreground w-8">{unit}</span>
-        </div>
+        <span className="text-sm tabular-nums text-foreground">
+          {value.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} {unit}
+        </span>
       </div>
       <Slider
         value={[value]}
@@ -224,9 +198,9 @@ export default function PropertiesPanel() {
             <AccordionTrigger className="text-sm">Construção</AccordionTrigger>
             <AccordionContent className="space-y-3 pb-4">
               <NumberSlider label="Profundidade" keyName="depth" min={5} max={200} step={1} />
-              <NumberSlider label="Parede" keyName="wall" min={0.5} max={12} step={0.1} />
-              <NumberSlider label="Frente" keyName="faceThickness" min={0.5} max={60} step={0.2} />
-              <NumberSlider label="Fundo" keyName="backThickness" min={0.5} max={20} step={0.2} />
+              <NumberSlider label="Parede" keyName="wall" min={0.8} max={12} step={0.1} />
+              <NumberSlider label="Frente" keyName="faceThickness" min={0.6} max={60} step={0.2} />
+              <NumberSlider label="Fundo" keyName="backThickness" min={0.6} max={20} step={0.2} />
               <NumberSlider label="Folga de encaixe" keyName="clearance" min={0} max={1.5} step={0.05} />
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium text-muted-foreground">
@@ -241,8 +215,8 @@ export default function PropertiesPanel() {
                 <NumberSlider
                   label="Aba do rebaixo"
                   keyName="recessLip"
-                  min={0.5}
-                  max={Math.max(params.wall - 0.5, 0.6)}
+                  min={0.4}
+                  max={Math.max(params.wall - 0.4, 0.6)}
                   step={0.1}
                 />
               ) : null}
@@ -283,13 +257,13 @@ export default function PropertiesPanel() {
                 </Select>
               </Field>
               <NumberSlider label="Margem da placa" keyName="plateMargin" min={5} max={200} step={1} />
-              <NumberSlider label="Espessura da placa" keyName="plateThickness" min={0.5} max={40} step={0.5} />
+              <NumberSlider label="Espessura da placa" keyName="plateThickness" min={2} max={40} step={0.5} />
               <NumberSlider label="Altura do poste" keyName="poleHeight" min={100} max={2000} step={10} />
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium text-muted-foreground">Letras vazadas</Label>
                 <Switch checked={params.cutout} onCheckedChange={(v) => setParam("cutout", v)} />
               </div>
-              <NumberSlider label="Espessura da camada" keyName="layerThickness" min={0.5} max={30} step={0.5} />
+              <NumberSlider label="Espessura da camada" keyName="layerThickness" min={1} max={30} step={0.5} />
               <NumberSlider label="Redução por camada" keyName="layerShrink" min={1} max={40} step={0.5} />
             </AccordionContent>
           </AccordionItem>
