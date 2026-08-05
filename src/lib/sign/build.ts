@@ -382,7 +382,6 @@ export function buildSign(
       if (printedCap) {
         // tampa: chapa cheia + pino interno que entra na caixa das paredes
         const clone = cloneShape(shape);
-        faceCut.push(clone);
         geos.push(extrude(clone, params.faceThickness + overlap));
         for (const plug of ringShape(shape, plugWall, params.wall + params.clearance)) {
           const pin = extrude(plug, plugDepth + overlap);
