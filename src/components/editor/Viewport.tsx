@@ -286,8 +286,8 @@ export default function Viewport() {
     if (points.length < 2) return;
 
     let maxDist = -1;
-    let p1 = points[0];
-    let p2 = points[1];
+    let p1: Vector3 = points[0]!;
+    let p2: Vector3 = points[1]!;
     
     for (let i = 0; i < points.length; i++) {
       const pi = points[i]!;
