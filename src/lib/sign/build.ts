@@ -305,49 +305,51 @@ export function buildSign(
     const frontGeos: BufferGeometry[] = [];
 
     for (const shape of shapes) {
-      // Metade inferior: Fundo + paredes unificados em uma única geometria contínua.
-      // USAMOS A MESMA LÓGICA DE FUSÃO DO "CORPO" (cascas sobrepostas de 0.05mm)
-      // para garantir que fundo e parede sejam um único sólido manifold.
-      const overlap = 0.05;
+      // Metade inferior: Fundo + paredes + encaixe interno unificados
+      const overlap = 0.1; // Aumentado para 0.1mm para garantir fusão física
       const bs: BufferGeometry[] = [];
       
       // 1. O fundo (base)
+      // Aumentamos levemente a espessura para garantir que a parede a atravesse
       bs.push(extrude(cloneShape(shape), params.backThickness + overlap));
       
       // 2. A parede principal (externa da metade inferior)
-      // Ela sobe até backH.
+      // Ela nasce DENTRO do fundo (z = 0) e sobe até backH + backThickness
       for (const ring of ringShape(shape, half, 0)) {
-        const wall = extrude(ring, backH + overlap * 2);
-        wall.translate(0, 0, params.backThickness - overlap);
+        const wall = extrude(ring, backH + params.backThickness + overlap);
+        wall.translate(0, 0, 0); // Começa na base absoluta para fundir com o fundo
         bs.push(wall);
       }
       
       // 3. O lábio de encaixe (parede interna)
-      // Ele sobe até backH + lipH. Unificado na mesma peça.
+      // Nasce DENTRO do fundo e sobe até a altura total do encaixe
       for (const ring of ringShape(shape, lipW, half)) {
-        const lip = extrude(ring, backH + lipH + overlap * 2);
-        lip.translate(0, 0, params.backThickness - overlap);
+        const lip = extrude(ring, backH + lipH + params.backThickness + overlap);
+        lip.translate(0, 0, 0); // Começa na base absoluta
         bs.push(lip);
       }
       
       const backSolid = combine(bs);
       if (backSolid) backGeos.push(backSolid);
 
-      // metade da frente: parede externa contínua (a saia é a própria parede,
-      // descendo até a base para receber o lábio) + parede interna + chapa frontal
+      // Metade superior: Frente + saia externa + parede interna
       const fs: BufferGeometry[] = [];
+      // A parede externa (saia) desce até abraçar o lábio inferior
       for (const ring of ringShape(shape, half, 0)) {
-        const outer = extrude(ring, lipH + frontH + params.faceThickness + overlap * 2);
+        const outer = extrude(ring, lipH + frontH + params.faceThickness + overlap);
         fs.push(outer);
       }
+      // Parede interna
       for (const ring of ringShape(shape, lipW, half)) {
-        const inner = extrude(ring, frontH + params.faceThickness + overlap * 2);
-        inner.translate(0, 0, lipH - overlap);
+        const inner = extrude(ring, frontH + params.faceThickness + overlap);
+        inner.translate(0, 0, lipH);
         fs.push(inner);
       }
+      // Chapa frontal (tampa)
       const cap = extrude(cloneShape(shape), params.faceThickness + overlap);
-      cap.translate(0, 0, lipH + frontH - overlap);
+      cap.translate(0, 0, lipH + frontH - 0.01);
       fs.push(cap);
+      
       const frontSolid = combine(fs);
       if (frontSolid) frontGeos.push(frontSolid);
     }
