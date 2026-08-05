@@ -220,7 +220,14 @@ function contains(outer: Pt[], p: Pt): boolean {
  */
 export function dxfToShapes(dxfText: string, targetHeight: number): Shape[] {
   const parser = new DxfParser();
-  const dxf: any = parser.parseSync(dxfText);
+  let dxf: any = null;
+  try {
+    // linhas vazias no fim quebram o parser
+    dxf = parser.parseSync(dxfText.replace(/\r\n?/g, "\n").replace(/\s+$/, ""));
+  } catch (error) {
+    console.error("Falha ao ler o arquivo DXF", error);
+    return [];
+  }
   if (!dxf) return [];
 
   const flat = flatten(dxf.entities ?? [], dxf.blocks ?? {}, ID);
