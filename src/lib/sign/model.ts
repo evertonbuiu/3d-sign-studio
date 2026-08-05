@@ -131,6 +131,8 @@ export interface SignStyle {
   parts: PartKind[];
   /** fundo é uma chapa de acrílico cortada, encaixada nas paredes impressas */
   acrylicBack?: boolean;
+  /** frente impressa como tampa separada, com pino de encaixe nas paredes */
+  printedFace?: boolean;
   preset: Partial<SignParams>;
 
   /** dica visual da miniatura */
@@ -179,6 +181,7 @@ export const STYLES: SignStyle[] = [
     description: "Frente impressa opaca sobre fundo translúcido.",
     parts: boxParts,
     acrylicBack: true,
+    printedFace: true,
     preset: { depth: 45, faceThickness: 2.4, led: true },
     thumb: { face: "#8f9db0", body: "#39424f", glow: "halo" },
   },

@@ -238,15 +238,18 @@ export function buildSign(
 
   // rebaixo (degrau) na parede interna para assentar a frente
   const recessLip = Math.min(Math.max(params.recessLip, 0.4), Math.max(params.wall - 0.4, 0.4));
+  const backOn = active.has("fundo");
+  const wallsOn = active.has("laterais");
+  // frente impressa como tampa separada com pino de encaixe
+  const printedCap = Boolean(style.printedFace) && active.has("frente") && wallsOn;
   const recessOn =
     params.faceRecess &&
     active.has("frente") &&
-    active.has("laterais") &&
+    wallsOn &&
+    !printedCap &&
     recessLip < params.wall;
   const faceInset = recessOn ? recessLip + params.clearance : 0;
 
-  const backOn = active.has("fundo");
-  const wallsOn = active.has("laterais");
   // fundo em acrílico é uma chapa cortada à parte, encaixada num rebaixo das paredes
   const acrylicBack = Boolean(style.acrylicBack) && backOn && wallsOn;
   const fused = backOn && wallsOn && !acrylicBack;
@@ -372,7 +375,21 @@ export function buildSign(
   const faceCut: Shape[] = [];
   if (active.has("frente")) {
     const geos: BufferGeometry[] = [];
+    const overlap = 0.05;
+    const plugWall = Math.min(Math.max(params.wall * 0.8, 0.8), 2.4);
+    const plugDepth = Math.min(Math.max(bodyHeight * 0.35, 2), 6);
     for (const shape of shapes) {
+      if (printedCap) {
+        // tampa: chapa cheia + pino interno que entra na caixa das paredes
+        const clone = cloneShape(shape);
+        geos.push(extrude(clone, params.faceThickness + overlap));
+        for (const plug of ringShape(shape, plugWall, params.wall + params.clearance)) {
+          const pin = extrude(plug, plugDepth + overlap);
+          pin.translate(0, 0, -plugDepth);
+          geos.push(pin);
+        }
+        continue;
+      }
       if (faceInset > 0) {
         for (const inner of insetShape(shape, faceInset)) {
           faceCut.push(inner);
@@ -391,13 +408,14 @@ export function buildSign(
       const z = plateOn && !active.has("laterais") ? baseZ : baseZ + params.depth - params.faceThickness;
       geo.translate(0, 0, Math.max(z, baseZ));
       parts.push(
-        makePart("frente", "frente", "Frente", params.faceColor, geo, {
-          emissive: params.led,
+        makePart("frente", "frente", printedCap ? "Frente (tampa encaixável)" : "Frente", params.faceColor, geo, {
+          emissive: params.led && !printedCap,
           count: shapes.length,
         }),
       );
     }
   }
+
 
   // ---------- camadas extras ----------
   const layerDefs: Array<{ kind: PartKind; index: number }> = [];
