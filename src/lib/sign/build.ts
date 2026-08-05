@@ -46,11 +46,12 @@ export interface SignBuild {
   printedVolumeCm3: number;
 }
 
-const EXTRUDE = { bevelEnabled: false, curveSegments: 24, steps: 1 };
+const EXTRUDE = { bevelEnabled: false, curveSegments: 32, steps: 1 };
 
-function extrude(shape: Shape | Shape[], depth: number): ExtrudeGeometry {
-  const geo = new ExtrudeGeometry(shape, { ...EXTRUDE, depth: Math.max(depth, 0.2) });
-  // Ensure the geometry is manifold and valid for CSG operations
+function extrude(shape: Shape | Shape[], depth: number): BufferGeometry {
+  const baseGeo = new ExtrudeGeometry(shape, { ...EXTRUDE, depth: Math.max(depth, 0.2) });
+  // Aggressively merge vertices immediately after extrusion
+  const geo = BufferGeometryUtils.mergeVertices(baseGeo, 0.001);
   geo.computeVertexNormals();
   return geo;
 }
