@@ -523,6 +523,8 @@ export function buildSign(
     parts,
     outlines,
     faceCut,
+    backCut,
+
     width: totalWidth,
 
 
