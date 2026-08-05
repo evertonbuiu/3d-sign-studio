@@ -266,6 +266,7 @@ export default function Viewport() {
     setShowOutlines,
     addWeldedEdge,
     clearWeldedEdges,
+    weldSelectedEdges,
   } = useEditor();
 
   const [edgeSelect, setEdgeSelect] = useState(false);
@@ -296,36 +297,7 @@ export default function Viewport() {
 
   const handleWeldEdges = () => {
     if (selected.length < 2) return;
-    
-    const points: Vector3[] = [];
-    selected.forEach(e => {
-      points.push(new Vector3(...e.a), new Vector3(...e.b));
-    });
-    
-    if (points.length < 2) return;
-
-    let maxDist = -1;
-    let p1: Vector3 = points[0]!;
-    let p2: Vector3 = points[1]!;
-    
-    for (let i = 0; i < points.length; i++) {
-      const pi = points[i]!;
-      for (let j = i + 1; j < points.length; j++) {
-        const pj = points[j]!;
-        const d = pi.distanceTo(pj);
-        if (d > maxDist) {
-          maxDist = d;
-          p1 = pi;
-          p2 = pj;
-        }
-      }
-    }
-
-    const first = selected[0]!;
-    addWeldedEdge({
-      a: [p1.x, p1.y, p1.z],
-      b: [p2.x, p2.y, p2.z],
-    });
+    weldSelectedEdges(selected);
     setSelected([]);
   };
 
