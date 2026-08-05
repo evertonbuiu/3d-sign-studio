@@ -24,6 +24,7 @@ export interface EditorState {
   hidden: Set<string>;
   wireframe: boolean;
   showOutlines: boolean;
+  lockXY: boolean;
   svgName: string | null;
   setSvg: (name: string, content: string) => void;
   clearSvg: () => void;
@@ -35,6 +36,7 @@ export interface EditorState {
   setExplode: (value: number) => void;
   setWireframe: (value: boolean) => void;
   setShowOutlines: (value: boolean) => void;
+  setLockXY: (value: boolean) => void;
   togglePart: (id: string) => void;
   loadProject: (p: {
     id: string;
@@ -121,6 +123,7 @@ export function useEditorState(): EditorState {
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [wireframe, setWireframe] = useState(false);
   const [showOutlines, setShowOutlines] = useState(false);
+  const [lockXY, setLockXY] = useState(true);
   const [svg, setSvgState] = useState<{ name: string; content: string } | null>(null);
   const [projectId, setProjectId] = useState<string | null>(null);
   const [projectName, setProjectName] = useState("Novo projeto");
@@ -180,9 +183,20 @@ export function useEditorState(): EditorState {
     clearSvg: () => setSvgState(null),
     setWireframe,
     setShowOutlines,
+    lockXY,
+    setLockXY: (value: boolean) => {
+      setLockXY(value);
+      if (value) setParamsState((prev) => ({ ...prev, scaleY: prev.scaleX }));
+    },
     projectId,
     projectName,
-    setParam: (key, value) => setParamsState((prev) => ({ ...prev, [key]: value })),
+    setParam: (key, value) =>
+      setParamsState((prev) => {
+        if (lockXY && (key === "scaleX" || key === "scaleY")) {
+          return { ...prev, scaleX: value as number, scaleY: value as number };
+        }
+        return { ...prev, [key]: value };
+      }),
     setParams: (patch) => setParamsState((prev) => ({ ...prev, ...patch })),
     selectStyle: (id) => {
       setStyleId(id);
