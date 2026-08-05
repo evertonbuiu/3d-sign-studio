@@ -55,10 +55,10 @@ function normalize(paths: CPath[]): CPath[] {
   clipper.Execute(
     ClipperLib.ClipType.ctUnion,
     solution,
-    ClipperLib.PolyFillType.pftEvenOdd,
-    ClipperLib.PolyFillType.pftEvenOdd,
+    ClipperLib.PolyFillType.pftNonZero,
+    ClipperLib.PolyFillType.pftNonZero,
   );
-  return ClipperLib.Clipper.CleanPolygons(solution, SCALE * 0.005) as CPath[];
+  return ClipperLib.Clipper.CleanPolygons(solution, SCALE * 0.001) as CPath[];
 }
 
 function offsetPaths(paths: CPath[], delta: number): CPath[] {
