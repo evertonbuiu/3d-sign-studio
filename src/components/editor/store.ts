@@ -44,6 +44,37 @@ export interface EditorState {
   setProject: (id: string | null, name: string) => void;
 }
 
+const SCALED_KEYS = [
+  "letterHeight",
+  "tracking",
+  "depth",
+  "wall",
+  "faceThickness",
+  "backThickness",
+  "clearance",
+  "recessLip",
+  "ledChannelWidth",
+  "ledChannelHeight",
+  "ledOffset",
+  "layerThickness",
+  "layerShrink",
+  "holeDiameter",
+  "plateMargin",
+  "plateThickness",
+  "poleHeight",
+] as const satisfies readonly (keyof SignParams)[];
+
+/** Aplica a escala global (%) a todas as medidas em mm. */
+export function scaleParams(params: SignParams): SignParams {
+  const k = (params.scale || 100) / 100;
+  if (k === 1) return params;
+  const out: SignParams = { ...params };
+  for (const key of SCALED_KEYS) {
+    out[key] = Number(((params[key] as number) * k).toFixed(4));
+  }
+  return out;
+}
+
 const EditorContext = createContext<EditorState | null>(null);
 
 export function useEditor(): EditorState {
