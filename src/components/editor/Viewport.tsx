@@ -351,6 +351,18 @@ export default function Viewport() {
                 </Button>
                 <Button
                   size="sm"
+                  variant="default"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                  onClick={() => {
+                    // Lógica visual de "soldar": remove as arestas da seleção 
+                    // Simulando a união técnica das peças
+                    setSelected([]);
+                  }}
+                >
+                  Soldar
+                </Button>
+                <Button
+                  size="sm"
                   variant="destructive"
                   className="flex-1"
                   onClick={handleDeleteEdges}
