@@ -298,8 +298,7 @@ export function buildSign(
     const half = Math.max(params.wall / 2, 0.6);
     const lipW = Math.max(half - params.clearance, 0.5);
     const lipH = Math.max(Math.min(params.fitDepth, bodyHeight * 0.6), 0.5);
-    const wallDiff = 1.0; // Fundo 1mm menor que a frente
-    const backH = Math.max(bodyHeight * 0.5 - wallDiff / 2, params.wall);
+    const backH = Math.max(bodyHeight * 0.5, params.wall);
     const frontH = Math.max(bodyHeight - backH - lipH, params.wall);
 
     const backGeos: BufferGeometry[] = [];
