@@ -458,7 +458,7 @@ export function buildSign(
 
   // ---------- frente ----------
   const faceCut: Shape[] = [];
-  if (active.has("frente") && !fusedFace) {
+  if (active.has("frente") && !fusedFace && !splitShell) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
       if (faceInset > 0) {
