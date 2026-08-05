@@ -322,6 +322,13 @@ export function buildSign(
         }
       }
 
+      if (fusedFace) {
+        // tampa frontal cheia, unida ao topo das paredes
+        const cap = extrude(cloneShape(shape), params.faceThickness + overlap);
+        cap.translate(0, 0, zWall + bodyHeight - overlap);
+        sections.push(cap);
+      }
+
       const solid = combine(sections);
       if (solid) geos.push(solid);
     }
@@ -329,11 +336,18 @@ export function buildSign(
     const geo = combine(geos);
     if (geo) {
       geo.translate(0, 0, baseZ);
+      const label = fusedFace
+        ? fused
+          ? "Corpo (fundo + laterais + frente)"
+          : "Corpo (laterais + frente)"
+        : fused
+          ? "Corpo (fundo + laterais)"
+          : "Laterais";
       parts.push(
         makePart(
           "laterais",
           "laterais",
-          fused ? "Corpo (fundo + laterais)" : "Laterais",
+          label,
           fused ? params.backColor : params.bodyColor,
           geo,
           { count: shapes.length },
