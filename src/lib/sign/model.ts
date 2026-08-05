@@ -193,7 +193,7 @@ export const STYLES: SignStyle[] = [
     parts: boxParts,
     printedFace: true,
     preset: { depth: 40, faceThickness: 3, backThickness: 3 },
-    thumb: { face: "#7f8 da0".replace(" ", ""), body: "#39424f", glow: "none" },
+    thumb: { face: "#7f8da0", body: "#39424f", glow: "none" },
   },
   {
     id: "face-lit",
