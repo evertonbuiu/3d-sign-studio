@@ -265,33 +265,41 @@ export function buildSign(
   if (wallsOn) {
     const geos: BufferGeometry[] = [];
     const zWall = fused ? params.backThickness : 0;
+    
+    // Agrupa todas as seções por tipo para um merge global mais eficiente
+    const backSections: BufferGeometry[] = [];
+    const wallSections: BufferGeometry[] = [];
+    const lipSections: BufferGeometry[] = [];
+
     for (const shape of shapes) {
       // Cada seção é uma casca fechada e há uma pequena interseção entre elas.
       // Assim o STL permanece manifold sem depender da triangulação instável
       // de operações booleanas em contornos tipográficos complexos.
       const overlap = 0.05;
-      const sections: BufferGeometry[] = [];
-      if (fused) sections.push(extrude(cloneShape(shape), params.backThickness + overlap));
+      
+      if (fused) {
+        backSections.push(extrude(cloneShape(shape), params.backThickness + overlap));
+      }
 
       for (const ring of ringShape(shape, params.wall)) {
         const wall = extrude(ring, bodyHeight + overlap * 2);
         wall.translate(0, 0, zWall - overlap);
-        sections.push(wall);
+        wallSections.push(wall);
       }
 
       if (recessOn) {
         for (const lipShape of ringShape(shape, recessLip)) {
           const lip = extrude(lipShape, params.faceThickness + overlap * 2);
           lip.translate(0, 0, zWall + bodyHeight - overlap);
-          sections.push(lip);
+          lipSections.push(lip);
         }
       }
-
-      const solid = combine(sections);
-      if (solid) geos.push(solid);
     }
 
-    const geo = combine(geos);
+    // Combina todas as partes em um único BufferGeometry contínuo
+    const allSections = [...backSections, ...wallSections, ...lipSections];
+    const geo = combine(allSections);
+    
     if (geo) {
       geo.translate(0, 0, baseZ);
       parts.push(
@@ -301,7 +309,7 @@ export function buildSign(
           fused ? "Corpo (fundo + laterais)" : "Laterais",
           fused ? params.backColor : params.bodyColor,
           geo,
-          { count: shapes.length },
+          { count: 1 }, // Agora é uma geometria única consolidada
         ),
       );
     }
