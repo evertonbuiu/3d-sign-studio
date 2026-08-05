@@ -168,7 +168,7 @@ export function useEditorState(): EditorState {
           if (d > maxDist) {
             maxDist = d;
             p1 = pi;
-            pj && (p2 = pj);
+            p2 = pj;
           }
         }
       }
