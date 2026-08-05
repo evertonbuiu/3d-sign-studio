@@ -305,29 +305,26 @@ export function buildSign(
     const frontGeos: BufferGeometry[] = [];
 
     for (const shape of shapes) {
-      // Metade inferior: Fundo + paredes unificados em uma única geometria contínua.
-      // O lábio interno de encaixe é fundido à parede.
+      // Metade inferior: Fundo + paredes + lábio unificados.
       const bs: BufferGeometry[] = [];
       const backShape = cloneShape(shape);
       
       // 1. O fundo (base)
       bs.push(extrude(backShape, params.backThickness + overlap));
       
-      // 2. A parede principal (externa da metade inferior)
-      // Ela sobe até backH.
-      for (const ring of ringShape(shape, half, 0)) {
-        const wall = extrude(ring, backH + overlap);
+      // 2. A parede principal e o lábio de encaixe (parede interna)
+      // Construídos como uma única chapa de parede para evitar gaps internos.
+      // A parede interna (lábio) sobe até backH + lipH.
+      for (const ring of ringShape(shape, lipW + half, 0)) {
+        const wall = extrude(ring, backH + lipH + overlap);
         wall.translate(0, 0, params.backThickness - overlap);
         bs.push(wall);
       }
       
-      // 3. O lábio de encaixe (parede interna)
-      // Ele sobe até backH + lipH. Unificado na mesma peça.
-      for (const ring of ringShape(shape, lipW, half)) {
-        const lip = extrude(ring, backH + lipH + overlap);
-        lip.translate(0, 0, params.backThickness - overlap);
-        bs.push(lip);
-      }
+      // 3. O degrau externo (ombro) onde a saia da frente vai assentar
+      // O degrau fica na altura backH.
+      // Adicionamos uma "tampa" de anel no topo da parede externa na altura backH
+      // ou simplesmente garantimos que o STL do Slicer entenda o volume.
       
       const backSolid = combine(bs);
       if (backSolid) backGeos.push(backSolid);
