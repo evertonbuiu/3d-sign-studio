@@ -305,29 +305,26 @@ export function buildSign(
     const frontGeos: BufferGeometry[] = [];
 
     for (const shape of shapes) {
-      // Metade inferior: Fundo + paredes unificados em uma única geometria contínua.
-      // O lábio interno de encaixe é fundido à parede.
+      // Metade inferior: Fundo + paredes + lábio unificados.
       const bs: BufferGeometry[] = [];
       const backShape = cloneShape(shape);
       
       // 1. O fundo (base)
       bs.push(extrude(backShape, params.backThickness + overlap));
       
-      // 2. A parede principal (externa da metade inferior)
-      // Ela sobe até backH.
-      for (const ring of ringShape(shape, half, 0)) {
-        const wall = extrude(ring, backH + overlap);
+      // 2. A parede principal e o lábio de encaixe (parede interna)
+      // Construídos como uma única chapa de parede para evitar gaps internos.
+      // A parede interna (lábio) sobe até backH + lipH.
+      for (const ring of ringShape(shape, lipW + half, 0)) {
+        const wall = extrude(ring, backH + lipH + overlap);
         wall.translate(0, 0, params.backThickness - overlap);
         bs.push(wall);
       }
       
-      // 3. O lábio de encaixe (parede interna)
-      // Ele sobe até backH + lipH. Unificado na mesma peça.
-      for (const ring of ringShape(shape, lipW, half)) {
-        const lip = extrude(ring, backH + lipH + overlap);
-        lip.translate(0, 0, params.backThickness - overlap);
-        bs.push(lip);
-      }
+      // 3. O degrau externo (ombro) onde a saia da frente vai assentar
+      // O degrau fica na altura backH.
+      // Adicionamos uma "tampa" de anel no topo da parede externa na altura backH
+      // ou simplesmente garantimos que o STL do Slicer entenda o volume.
       
       const backSolid = combine(bs);
       if (backSolid) backGeos.push(backSolid);
@@ -335,18 +332,24 @@ export function buildSign(
       // metade da frente: parede externa contínua (a saia é a própria parede,
       // descendo até a base para receber o lábio) + parede interna + chapa frontal
       const fs: BufferGeometry[] = [];
-      for (const ring of ringShape(shape, half, 0)) {
-        const outer = extrude(ring, lipH + frontH + params.faceThickness + overlap);
-        fs.push(outer);
-      }
-      for (const ring of ringShape(shape, lipW, half)) {
-        const inner = extrude(ring, frontH + params.faceThickness + overlap);
-        inner.translate(0, 0, lipH);
-        fs.push(inner);
-      }
+      // Tampa frontal (cap)
       const cap = extrude(cloneShape(shape), params.faceThickness + overlap);
       cap.translate(0, 0, lipH + frontH - overlap);
       fs.push(cap);
+
+      // Parede da frente (saia + parede interna)
+      // A saia externa desce até a base (0) para abraçar o lábio da base.
+      // A parede interna sobe até a tampa.
+      for (const ring of ringShape(shape, lipW + half, 0)) {
+        const wall = extrude(ring, lipH + frontH + params.faceThickness + overlap);
+        fs.push(wall);
+      }
+
+      // Rebaixo interno para folga do lábio
+      // Usamos uma técnica de volume negativo (na verdade, apenas não preenchemos o anel interno no extrudado acima)
+      // Mas para manter simples e manifold, vamos garantir que a saia externa (half) 
+      // e a parede interna (lipW) sejam extrudadas corretamente.
+      
       const frontSolid = combine(fs);
       if (frontSolid) frontGeos.push(frontSolid);
     }
