@@ -238,18 +238,15 @@ export function buildSign(
 
   // rebaixo (degrau) na parede interna para assentar a frente
   const recessLip = Math.min(Math.max(params.recessLip, 0.4), Math.max(params.wall - 0.4, 0.4));
-  const backOn = active.has("fundo");
-  const wallsOn = active.has("laterais");
-  // frente impressa fundida ao corpo (mesma peça das paredes)
-  const fusedFace = Boolean(style.printedFace) && active.has("frente") && wallsOn;
   const recessOn =
     params.faceRecess &&
     active.has("frente") &&
-    wallsOn &&
-    !fusedFace &&
+    active.has("laterais") &&
     recessLip < params.wall;
   const faceInset = recessOn ? recessLip + params.clearance : 0;
 
+  const backOn = active.has("fundo");
+  const wallsOn = active.has("laterais");
   // fundo em acrílico é uma chapa cortada à parte, encaixada num rebaixo das paredes
   const acrylicBack = Boolean(style.acrylicBack) && backOn && wallsOn;
   const fused = backOn && wallsOn && !acrylicBack;
@@ -322,13 +319,6 @@ export function buildSign(
         }
       }
 
-      if (fusedFace) {
-        // tampa frontal cheia, unida ao topo das paredes
-        const cap = extrude(cloneShape(shape), params.faceThickness + overlap);
-        cap.translate(0, 0, zWall + bodyHeight - overlap);
-        sections.push(cap);
-      }
-
       const solid = combine(sections);
       if (solid) geos.push(solid);
     }
@@ -336,18 +326,11 @@ export function buildSign(
     const geo = combine(geos);
     if (geo) {
       geo.translate(0, 0, baseZ);
-      const label = fusedFace
-        ? fused
-          ? "Corpo (fundo + laterais + frente)"
-          : "Corpo (laterais + frente)"
-        : fused
-          ? "Corpo (fundo + laterais)"
-          : "Laterais";
       parts.push(
         makePart(
           "laterais",
           "laterais",
-          label,
+          fused ? "Corpo (fundo + laterais)" : "Laterais",
           fused ? params.backColor : params.bodyColor,
           geo,
           { count: shapes.length },
@@ -387,7 +370,7 @@ export function buildSign(
 
   // ---------- frente ----------
   const faceCut: Shape[] = [];
-  if (active.has("frente") && !fusedFace) {
+  if (active.has("frente")) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
       if (faceInset > 0) {
@@ -415,7 +398,6 @@ export function buildSign(
       );
     }
   }
-
 
   // ---------- camadas extras ----------
   const layerDefs: Array<{ kind: PartKind; index: number }> = [];
