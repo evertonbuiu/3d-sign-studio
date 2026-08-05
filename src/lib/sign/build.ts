@@ -166,8 +166,9 @@ export function buildSign(
   const rawBounds = shapesBounds(letterShapes);
   const size = rawBounds.getSize(new Vector2());
   const center = rawBounds.getCenter(new Vector2());
+  // Apply a tiny offset (0.01) to "heal" precision errors in font contours before main operations
   const shapes = translateShapes(letterShapes, -center.x, -center.y).flatMap((s) =>
-    offsetShape(s, 0),
+    offsetShape(s, 0.01),
   );
   const bounds = shapesBounds(shapes);
 
@@ -497,6 +498,8 @@ function unionSolid(geos: BufferGeometry[]): BufferGeometry | null {
 
     const geometry = result.geometry.clone();
     geometry.clearGroups();
+    // Ensure all faces are strictly oriented outwards to prevent slicer errors
+    geometry.computeVertexNormals();
     return geometry;
   } catch (error) {
     console.warn("Falha na união booleana, usando mesclagem simples", error);
