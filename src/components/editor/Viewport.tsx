@@ -155,7 +155,19 @@ function OutlineLine({ outline }: { outline: SignOutline }) {
   );
 }
 
-function Model() {
+function Model({
+  edgeSelect,
+  hover,
+  selected,
+  onHover,
+  onPick,
+}: {
+  edgeSelect: boolean;
+  hover: PickedEdge | null;
+  selected: PickedEdge[];
+  onHover: (edge: PickedEdge | null) => void;
+  onPick: (edge: PickedEdge, additive: boolean) => void;
+}) {
   const { build, explode, hidden, wireframe, showOutlines } = useEditor();
   const groupRef = useRef<Group>(null);
 
@@ -180,13 +192,28 @@ function Model() {
 
   if (!build) return null;
 
+  const visible = build.parts.filter((part) => !hidden.has(part.id));
+
   return (
     <group ref={groupRef} scale={scale} rotation={[-0.05, 0, 0]}>
       <group position={[-center.x, -center.y, -center.z]}>
-        {build.parts
-          .filter((part) => !hidden.has(part.id))
-          .map((part) => (
-            <PartMesh key={part.id} part={part} explode={explode} wireframe={wireframe} />
+        {visible.map((part) => (
+          <PartMesh key={part.id} part={part} explode={explode} wireframe={wireframe} />
+        ))}
+        {edgeSelect &&
+          visible.map((part) => (
+            <EdgePicker
+              key={`edges-${part.id}`}
+              part={part}
+              offset={(EXPLODE_ORDER[part.kind] ?? 0) * explode}
+              onHover={onHover}
+              onPick={onPick}
+            />
+          ))}
+        {edgeSelect && hover && <EdgeHighlight edge={hover} color="#38bdf8" />}
+        {edgeSelect &&
+          selected.map((edge) => (
+            <EdgeHighlight key={edge.key} edge={edge} color="#f97316" />
           ))}
         {showOutlines &&
           build.outlines.map((outline) => <OutlineLine key={outline.id} outline={outline} />)}
@@ -194,6 +221,7 @@ function Model() {
     </group>
   );
 }
+
 
 export default function Viewport() {
   const {
