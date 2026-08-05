@@ -24,7 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
-import { geometriesToStl, downloadBlob, slugify } from "@/lib/sign/stl";
+import { geometriesToStl, downloadBlob, slugify, unionGeometriesForStl } from "@/lib/sign/stl";
 import {
   deleteSignProject,
   getSignProject,
@@ -89,9 +89,21 @@ export default function Toolbar() {
     }
     const base = slugify(editor.params.text || editor.projectName);
     if (mode === "unico") {
-      const buffer = geometriesToStl(parts.map((p) => p.geometry));
+      let united;
+      try {
+        united = unionGeometriesForStl(parts.map((p) => p.geometry));
+      } catch (error) {
+        console.error("Falha ao consolidar as malhas para STL", error);
+        toast.error("Não foi possível unir as malhas para exportação");
+        return;
+      }
+      if (!united) {
+        toast.error("Nenhuma geometria válida para exportar");
+        return;
+      }
+      const buffer = geometriesToStl([united]);
       downloadBlob(buffer, `${base}.stl`, "model/stl");
-      toast.success("STL exportado");
+      toast.success("STL exportado como malha consolidada");
       return;
     }
     const zip = new JSZip();
