@@ -140,7 +140,7 @@ function PartMesh({
             <meshBasicMaterial color={part.color} transparent opacity={0.05} depthWrite={false} />
           </mesh>
           <lineSegments geometry={edges}>
-            <lineBasicMaterial color={part.color} transparent opacity={0.8} />
+            <lineBasicMaterial color={part.color} transparent opacity={0.9} />
           </lineSegments>
         </>
       )}

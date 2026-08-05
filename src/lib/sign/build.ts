@@ -45,10 +45,25 @@ export interface SignBuild {
   printedVolumeCm3: number;
 }
 
-const EXTRUDE = { bevelEnabled: false, curveSegments: 24, steps: 1 };
+const EXTRUDE = { 
+  bevelEnabled: true, 
+  bevelThickness: 0.4, 
+  bevelSize: 0.4, 
+  bevelOffset: 0, 
+  bevelSegments: 3,
+  curveSegments: 32, 
+  steps: 1 
+};
 
 function extrude(shape: Shape | Shape[], depth: number): ExtrudeGeometry {
-  return new ExtrudeGeometry(shape, { ...EXTRUDE, depth: Math.max(depth, 0.2) });
+  const d = Math.max(depth, 0.2);
+  // Se o depth for muito pequeno, desabilitamos o bevel para evitar artefatos
+  const useBevel = d > 1.2;
+  return new ExtrudeGeometry(shape, { 
+    ...EXTRUDE, 
+    bevelEnabled: useBevel,
+    depth: useBevel ? d - EXTRUDE.bevelThickness * 2 : d 
+  });
 }
 
 function geometryVolumeCm3(geometry: BufferGeometry): number {
@@ -166,10 +181,12 @@ export function buildSign(
   const rawBounds = shapesBounds(letterShapes);
   const size = rawBounds.getSize(new Vector2());
   const center = rawBounds.getCenter(new Vector2());
-  // Apply a tiny offset (0.01) to "heal" precision errors in font contours before main operations
-  const shapes = translateShapes(letterShapes, -center.x, -center.y).flatMap((s) =>
-    offsetShape(s, 0.01),
+  // Clean font contours by applying a small offset and insetting back
+  // This removes self-intersections and tiny artifacts common in fonts/SVGs
+  const cleanedShapes = translateShapes(letterShapes, -center.x, -center.y).flatMap((s) =>
+    offsetShape(s, 0.05),
   );
+  const shapes = cleanedShapes.flatMap((s) => insetShape(s, 0.05));
   const bounds = shapesBounds(shapes);
 
   const plateOn = active.has("placa");
@@ -263,7 +280,7 @@ export function buildSign(
 
       // Se for o estilo específico, une com o fundo para exportar peça única
       if (mergeWithBack && active.has("fundo")) {
-        const back = extrude(cloneShape(shape), params.backThickness);
+        const back = extrude(cloneShape(shape), params.backThickness + 0.01);
         back.translate(0, 0, -params.backThickness);
         wallGeos.push(back);
       }
@@ -516,6 +533,8 @@ function unionSolid(geos: BufferGeometry[]): BufferGeometry | null {
     geometry.clearGroups();
     // Ensure all faces are strictly oriented outwards to prevent slicer errors
     geometry.computeVertexNormals();
+    geometry.computeBoundingBox();
+    geometry.computeBoundingSphere();
     return geometry;
   } catch (error) {
     console.warn("Falha na união booleana, usando mesclagem simples", error);
