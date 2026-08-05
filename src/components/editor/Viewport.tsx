@@ -235,6 +235,22 @@ export default function Viewport() {
     setShowOutlines,
   } = useEditor();
 
+  const [edgeSelect, setEdgeSelect] = useState(false);
+  const [hover, setHover] = useState<PickedEdge | null>(null);
+  const [selected, setSelected] = useState<PickedEdge[]>([]);
+
+  const totalLength = selected.reduce((sum, e) => sum + e.length, 0);
+
+  const handlePick = (edge: PickedEdge, additive: boolean) => {
+    setSelected((prev) => {
+      const exists = prev.some((e) => e.key === edge.key);
+      if (additive) {
+        return exists ? prev.filter((e) => e.key !== edge.key) : [...prev, edge];
+      }
+      return exists && prev.length === 1 ? [] : [edge];
+    });
+  };
+
   return (
     <div className="absolute inset-0 bg-viewport">
       <Canvas shadows camera={{ position: [0, 1.1, 4.6], fov: 42 }} dpr={[1, 2]}>
@@ -242,7 +258,13 @@ export default function Viewport() {
         <hemisphereLight args={["#ffffff", "#c7d0dc", 1.1]} />
         <directionalLight position={[4, 6, 6]} intensity={1.5} castShadow />
         <directionalLight position={[-5, 2, -4]} intensity={0.5} />
-        <Model />
+        <Model
+          edgeSelect={edgeSelect}
+          hover={hover}
+          selected={selected}
+          onHover={setHover}
+          onPick={handlePick}
+        />
         <ContactShadows position={[0, -1.6, 0]} opacity={0.35} blur={2.4} scale={9} far={4} />
         <Grid
           position={[0, -1.6, 0]}
@@ -266,6 +288,47 @@ export default function Viewport() {
           <Label className="text-sm font-medium">Contornos</Label>
           <Switch checked={showOutlines} onCheckedChange={setShowOutlines} />
         </div>
+        <div className="flex items-center justify-between">
+          <Label className="text-sm font-medium">Selecionar aresta</Label>
+          <Switch
+            checked={edgeSelect}
+            onCheckedChange={(v) => {
+              setEdgeSelect(v);
+              setHover(null);
+              if (!v) setSelected([]);
+            }}
+          />
+        </div>
+        {edgeSelect && (
+          <div className="space-y-1 rounded-md border border-border bg-background/60 p-2">
+            <p className="text-xs text-muted-foreground">
+              Clique para selecionar, Shift+clique para somar arestas.
+            </p>
+            <div className="flex items-center justify-between text-sm">
+              <span>Selecionadas</span>
+              <span className="tabular-nums">{selected.length}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span>Comprimento</span>
+              <span className="tabular-nums">{totalLength.toFixed(1)} mm</span>
+            </div>
+            {hover && (
+              <p className="text-xs text-muted-foreground">
+                {hover.partLabel} • {hover.length.toFixed(1)} mm
+              </p>
+            )}
+            {selected.length > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full"
+                onClick={() => setSelected([])}
+              >
+                Limpar seleção
+              </Button>
+            )}
+          </div>
+        )}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <Label className="text-sm font-medium">Vista explodida</Label>
@@ -280,6 +343,7 @@ export default function Viewport() {
           />
         </div>
       </div>
+
 
       {!ready && (
         <div className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-muted-foreground">
