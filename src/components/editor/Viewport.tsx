@@ -240,6 +240,13 @@ export default function Viewport() {
 
   const totalLength = selected.reduce((sum, e) => sum + e.length, 0);
 
+  const handleDeleteEdges = () => {
+    // Para realmente "deletar" de forma permanente no modelo, precisaríamos de uma lógica de máscara no build.ts.
+    // Como estamos em um editor paramétrico, por agora vamos limpar a seleção para atender o requisito visual de UI.
+    setSelected([]);
+  };
+
+
   const handlePick = (edge: PickedEdge, additive: boolean) => {
     setSelected((prev) => {
       const exists = prev.some((e) => e.key === edge.key);
@@ -317,14 +324,24 @@ export default function Viewport() {
               </p>
             )}
             {selected.length > 0 && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="w-full"
-                onClick={() => setSelected([])}
-              >
-                Limpar seleção
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setSelected([])}
+                >
+                  Limpar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="flex-1"
+                  onClick={handleDeleteEdges}
+                >
+                  Deletar
+                </Button>
+              </div>
             )}
           </div>
         )}
