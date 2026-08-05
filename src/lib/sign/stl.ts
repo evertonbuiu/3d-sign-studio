@@ -1,22 +1,12 @@
 import type { BufferGeometry } from "three";
 
 /** Tolerância de solda de vértices (mm). Vértices dentro dessa grade viram o mesmo ponto. */
-const WELD = 1e-3;
+const WELD = 1e-4;
 
 /** Arredonda para a grade de solda, evitando -0. */
 function snap(value: number): number {
   const v = Math.round(value / WELD) * WELD;
-  return Object.is(v, -0) ? 0 : Number(v.toFixed(4));
-}
-
-/** Chave canônica de um triângulo (independente da ordem dos vértices). */
-function faceKey(t: number[]): string {
-  const verts = [
-    `${t[0]},${t[1]},${t[2]}`,
-    `${t[3]},${t[4]},${t[5]}`,
-    `${t[6]},${t[7]},${t[8]}`,
-  ].sort();
-  return verts.join("|");
+  return Object.is(v, -0) ? 0 : Number(v.toFixed(5));
 }
 
 /** Gera um STL binário (mm) a partir de geometrias em coordenadas de mundo. */
@@ -59,27 +49,10 @@ export function geometriesToStl(geometries: BufferGeometry[]): ArrayBuffer {
     }
   }
 
-  // Remove faces internas: pares de triângulos coincidentes com orientação oposta
-  // (resultado típico de uniões booleanas) e duplicatas exatas.
-  const buckets = new Map<string, number[]>();
-  collected.forEach((t, index) => {
-    const key = faceKey(t);
-    const list = buckets.get(key);
-    if (list) list.push(index);
-    else buckets.set(key, [index]);
-  });
-
-  const drop = new Set<number>();
-  for (const list of buckets.values()) {
-    if (list.length < 2) continue;
-    // mantém apenas uma face por posição; pares opostos são descartados por completo
-    const keep = list.length % 2 === 1 ? list[list.length - 1]! : -1;
-    for (const index of list) {
-      if (index !== keep) drop.add(index);
-    }
-  }
-
-  const triangles = collected.filter((_, index) => !drop.has(index));
+  // Não remova faces pela posição. Peças fechadas que se interceptam podem
+  // compartilhar triângulos válidos; apagá-los abre a casca e cria exatamente
+  // as arestas não-manifold que o reparo tentava evitar.
+  const triangles = collected;
 
 
   const buffer = new ArrayBuffer(84 + triangles.length * 50);

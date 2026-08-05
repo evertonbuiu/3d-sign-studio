@@ -9,8 +9,6 @@ import {
   Vector2,
   Vector3,
 } from "three";
-import { ADDITION, Brush, Evaluator } from "three-bvh-csg";
-
 import { cloneShape, insetShape, offsetShape, ringShape, shapePoints } from "./offset";
 import type { PartKind, SignParams, SignStyle } from "./model";
 
@@ -268,24 +266,28 @@ export function buildSign(
     const geos: BufferGeometry[] = [];
     const zWall = fused ? params.backThickness : 0;
     for (const shape of shapes) {
-      const solidGeos: BufferGeometry[] = [];
-      if (fused) {
-        solidGeos.push(extrude(cloneShape(shape), params.backThickness));
-      }
+      // Cada seção é uma casca fechada e há uma pequena interseção entre elas.
+      // Assim o STL permanece manifold sem depender da triangulação instável
+      // de operações booleanas em contornos tipográficos complexos.
+      const overlap = 0.05;
+      const sections: BufferGeometry[] = [];
+      if (fused) sections.push(extrude(cloneShape(shape), params.backThickness + overlap));
+
       for (const ring of ringShape(shape, params.wall)) {
-        const wall = extrude(ring, bodyHeight + (fused ? Math.min(0.1, params.backThickness / 4) : 0));
-        wall.translate(0, 0, zWall - (fused ? Math.min(0.1, params.backThickness / 4) : 0));
-        solidGeos.push(wall);
+        const wall = extrude(ring, bodyHeight + overlap * 2);
+        wall.translate(0, 0, zWall - overlap);
+        sections.push(wall);
       }
+
       if (recessOn) {
-        const overlap = Math.min(0.1, bodyHeight / 4);
-        for (const outer of ringShape(shape, recessLip)) {
-          const lip = extrude(outer, params.faceThickness + overlap);
+        for (const lipShape of ringShape(shape, recessLip)) {
+          const lip = extrude(lipShape, params.faceThickness + overlap * 2);
           lip.translate(0, 0, zWall + bodyHeight - overlap);
-          solidGeos.push(lip);
+          sections.push(lip);
         }
       }
-      const solid = unionSolid(solidGeos);
+
+      const solid = combine(sections);
       if (solid) geos.push(solid);
     }
 
@@ -505,45 +507,6 @@ function combine(geos: BufferGeometry[]): BufferGeometry | null {
   if (valid.length === 1) return valid[0]!;
   return mergePositions(valid);
 }
-
-function unionSolid(geos: BufferGeometry[]): BufferGeometry | null {
-  const valid = geos.filter((geometry) => geometry.getAttribute("position")?.count);
-  if (!valid.length) return null;
-  if (valid.length === 1) return valid[0] ?? null;
-
-  try {
-    const evaluator = new Evaluator();
-    evaluator.useGroups = false;
-    let result = new Brush(prepareForCsg(valid[0]!));
-    result.updateMatrixWorld();
-
-    for (const geometry of valid.slice(1)) {
-      const next = new Brush(prepareForCsg(geometry));
-      next.updateMatrixWorld();
-      result = evaluator.evaluate(result, next, ADDITION);
-      result.updateMatrixWorld();
-    }
-
-    const geometry = result.geometry.clone();
-    geometry.clearGroups();
-    return geometry;
-  } catch (error) {
-    console.warn("Falha na união booleana, usando mesclagem simples", error);
-    return combine(valid);
-  }
-}
-
-function prepareForCsg(source: BufferGeometry): BufferGeometry {
-  const geometry = source.clone();
-  geometry.clearGroups();
-  if (!geometry.getAttribute("normal")) geometry.computeVertexNormals();
-  const count = geometry.getAttribute("position").count;
-  if (!geometry.getAttribute("uv")) {
-    geometry.setAttribute("uv", new Float32BufferAttribute(new Float32Array(count * 2), 2));
-  }
-  return geometry;
-}
-
 
 function mergePositions(geos: BufferGeometry[]): BufferGeometry {
   let total = 0;
