@@ -63,6 +63,10 @@ export interface SignParams {
   margin: number; // %
   /** escala global do modelo em % (100 = tamanho real) */
   scale: number;
+  /** escala independente por eixo em % */
+  scaleX: number;
+  scaleY: number;
+  scaleZ: number;
 }
 
 export const DEFAULT_PARAMS: SignParams = {
@@ -106,6 +110,9 @@ export const DEFAULT_PARAMS: SignParams = {
   printerPower: 180,
   margin: 45,
   scale: 100,
+  scaleX: 100,
+  scaleY: 100,
+  scaleZ: 100,
 };
 
 export type StyleGroup =
