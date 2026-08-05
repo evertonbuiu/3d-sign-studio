@@ -457,8 +457,9 @@ export function buildSign(
     : params.depth;
 
   const printedVolumeCm3 = parts
-    .filter((p) => p.kind !== "canal-led")
+    .filter((p) => p.kind !== "canal-led" && !(acrylicBack && p.kind === "fundo"))
     .reduce((sum, p) => sum + p.volumeCm3, 0);
+
 
   // ---------- contornos / offsets de conferência ----------
   const outlines: SignOutline[] = [];
