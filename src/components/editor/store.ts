@@ -53,7 +53,6 @@ const Y_KEYS = ["letterHeight", "poleHeight"] as const;
 const XY_KEYS = [
   "wall",
   "clearance",
-  "shellClearance",
   "recessLip",
   "ledChannelWidth",
   "ledOffset",
