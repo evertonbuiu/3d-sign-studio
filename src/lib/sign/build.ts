@@ -304,7 +304,9 @@ export function buildSign(
       if (separateBack) {
         // aba inferior que segura a chapa de acrílico
         for (const lipShape of ringShape(shape, backLip)) {
-          const lip = extrude(lipShape, params.backThickness + overlap);
+          // Aumentamos a sobreposição vertical e horizontal para garantir fusão física
+          const lip = extrude(lipShape, params.backThickness + overlap * 2);
+          lip.translate(0, 0, zWall - overlap);
           sections.push(lip);
         }
       }
