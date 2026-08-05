@@ -6,7 +6,7 @@ import { Canvas } from "@react-three/fiber";
 import { ContactShadows, Grid, OrbitControls } from "@react-three/drei";
 import { Box3, BufferGeometry, Float32BufferAttribute, Vector3, type Group } from "three";
 
-import { useEditor } from "./store";
+import { axisScale, useEditor } from "./store";
 import type { SignOutline, SignPart } from "@/lib/sign/build";
 
 const EXPLODE_ORDER: Record<string, number> = {
