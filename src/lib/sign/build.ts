@@ -306,17 +306,18 @@ export function buildSign(
 
     for (const shape of shapes) {
       // Metade inferior: Fundo + paredes unificados em uma única geometria contínua.
-      // O lábio interno de encaixe é fundido à parede.
+      // USAMOS A MESMA LÓGICA DE FUSÃO DO "CORPO" (cascas sobrepostas de 0.05mm)
+      // para garantir que fundo e parede sejam um único sólido manifold.
+      const overlap = 0.05;
       const bs: BufferGeometry[] = [];
-      const backShape = cloneShape(shape);
       
       // 1. O fundo (base)
-      bs.push(extrude(backShape, params.backThickness + overlap));
+      bs.push(extrude(cloneShape(shape), params.backThickness + overlap));
       
       // 2. A parede principal (externa da metade inferior)
       // Ela sobe até backH.
       for (const ring of ringShape(shape, half, 0)) {
-        const wall = extrude(ring, backH + overlap);
+        const wall = extrude(ring, backH + overlap * 2);
         wall.translate(0, 0, params.backThickness - overlap);
         bs.push(wall);
       }
@@ -324,7 +325,7 @@ export function buildSign(
       // 3. O lábio de encaixe (parede interna)
       // Ele sobe até backH + lipH. Unificado na mesma peça.
       for (const ring of ringShape(shape, lipW, half)) {
-        const lip = extrude(ring, backH + lipH + overlap);
+        const lip = extrude(ring, backH + lipH + overlap * 2);
         lip.translate(0, 0, params.backThickness - overlap);
         bs.push(lip);
       }
@@ -336,12 +337,12 @@ export function buildSign(
       // descendo até a base para receber o lábio) + parede interna + chapa frontal
       const fs: BufferGeometry[] = [];
       for (const ring of ringShape(shape, half, 0)) {
-        const outer = extrude(ring, lipH + frontH + params.faceThickness + overlap);
+        const outer = extrude(ring, lipH + frontH + params.faceThickness + overlap * 2);
         fs.push(outer);
       }
       for (const ring of ringShape(shape, lipW, half)) {
-        const inner = extrude(ring, frontH + params.faceThickness + overlap);
-        inner.translate(0, 0, lipH);
+        const inner = extrude(ring, frontH + params.faceThickness + overlap * 2);
+        inner.translate(0, 0, lipH - overlap);
         fs.push(inner);
       }
       const cap = extrude(cloneShape(shape), params.faceThickness + overlap);
