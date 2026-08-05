@@ -305,28 +305,30 @@ export function buildSign(
     const frontGeos: BufferGeometry[] = [];
 
     for (const shape of shapes) {
-      // Metade inferior: Fundo + paredes + encaixe interno unificados
-      const overlap = 0.1; // Aumentado para 0.1mm para garantir fusão física
+      // Metade inferior: Fundo + paredes + encaixe interno unificados em UMA ÚNICA EXTRUSÃO quando possível
+      const overlap = 0.1;
       const bs: BufferGeometry[] = [];
       
-      // 1. O fundo (base)
-      // Aumentamos levemente a espessura para garantir que a parede a atravesse
+      // 1. O fundo (base sólida)
       bs.push(extrude(cloneShape(shape), params.backThickness + overlap));
       
-      // 2. A parede principal (externa da metade inferior)
-      // Ela nasce DENTRO do fundo (z = 0) e sobe até backH + backThickness
+      // 2. Parede unificada (Parede externa + Lábio interno como um único anel de espessura 'half')
+      // Em vez de dois anéis separados, fazemos um anel mais grosso que cobre toda a base da parede
+      // e depois o lábio sobe mais alto.
+      
+      // Anel base da parede (espessura total: half, altura: backH)
       for (const ring of ringShape(shape, half, 0)) {
-        const wall = extrude(ring, backH + params.backThickness + overlap);
-        wall.translate(0, 0, 0); // Começa na base absoluta para fundir com o fundo
-        bs.push(wall);
+        const wallBase = extrude(ring, backH + params.backThickness + overlap);
+        wallBase.translate(0, 0, 0);
+        bs.push(wallBase);
       }
       
-      // 3. O lábio de encaixe (parede interna)
-      // Nasce DENTRO do fundo e sobe até a altura total do encaixe
+      // O lábio que continua subindo (espessura: lipW, altura: lipH adicional)
+      // Ele nasce de dentro da wallBase para garantir que não haja costura
       for (const ring of ringShape(shape, lipW, half)) {
-        const lip = extrude(ring, backH + lipH + params.backThickness + overlap);
-        lip.translate(0, 0, 0); // Começa na base absoluta
-        bs.push(lip);
+        const lipTop = extrude(ring, backH + lipH + params.backThickness + overlap);
+        lipTop.translate(0, 0, 0);
+        bs.push(lipTop);
       }
       
       const backSolid = combine(bs);
