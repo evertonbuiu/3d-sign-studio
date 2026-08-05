@@ -305,32 +305,34 @@ export function buildSign(
     const frontGeos: BufferGeometry[] = [];
 
     for (const shape of shapes) {
-      // metade do fundo: chapa + paredes + lábio interno
+      // metade do fundo: chapa + parede contínua (o lábio é a própria parede interna,
+      // extrudada de baixo até o topo, sem anel empilhado)
       const bs: BufferGeometry[] = [];
       bs.push(extrude(cloneShape(shape), params.backThickness + overlap));
-      for (const ring of ringShape(shape, params.wall)) {
-        const wall = extrude(ring, backH + overlap * 2);
-        wall.translate(0, 0, params.backThickness - overlap);
-        bs.push(wall);
-      }
       for (const ring of ringShape(shape, lipW, half)) {
-        const lip = extrude(ring, lipH + overlap);
-        lip.translate(0, 0, params.backThickness + backH - overlap);
-        bs.push(lip);
+        const inner = extrude(ring, backH + lipH + overlap);
+        inner.translate(0, 0, params.backThickness - overlap);
+        bs.push(inner);
+      }
+      for (const ring of ringShape(shape, half, 0)) {
+        const outer = extrude(ring, backH + overlap * 2);
+        outer.translate(0, 0, params.backThickness - overlap);
+        bs.push(outer);
       }
       const backSolid = combine(bs);
       if (backSolid) backGeos.push(backSolid);
 
-      // metade da frente: saia externa (recebe o lábio) + paredes + chapa frontal
+      // metade da frente: parede externa contínua (a saia é a própria parede,
+      // descendo até a base para receber o lábio) + parede interna + chapa frontal
       const fs: BufferGeometry[] = [];
       for (const ring of ringShape(shape, half, 0)) {
-        const skirt = extrude(ring, lipH + overlap);
-        fs.push(skirt);
+        const outer = extrude(ring, lipH + frontH + params.faceThickness + overlap);
+        fs.push(outer);
       }
-      for (const ring of ringShape(shape, params.wall)) {
-        const wall = extrude(ring, frontH + overlap * 2);
-        wall.translate(0, 0, lipH - overlap);
-        fs.push(wall);
+      for (const ring of ringShape(shape, lipW, half)) {
+        const inner = extrude(ring, frontH + params.faceThickness + overlap);
+        inner.translate(0, 0, lipH);
+        fs.push(inner);
       }
       const cap = extrude(cloneShape(shape), params.faceThickness + overlap);
       cap.translate(0, 0, lipH + frontH - overlap);
@@ -338,6 +340,7 @@ export function buildSign(
       const frontSolid = combine(fs);
       if (frontSolid) frontGeos.push(frontSolid);
     }
+
 
     const backGeo = combine(backGeos);
     if (backGeo) {
