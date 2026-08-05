@@ -1,10 +1,18 @@
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, type ThreeEvent } from "@react-three/fiber";
 import { ContactShadows, Grid, OrbitControls } from "@react-three/drei";
-import { Box3, BufferGeometry, Float32BufferAttribute, Vector3, type Group } from "three";
+import {
+  Box3,
+  BufferGeometry,
+  EdgesGeometry,
+  Float32BufferAttribute,
+  Vector3,
+  type Group,
+} from "three";
 
 import { useEditor } from "./store";
 import type { SignOutline, SignPart } from "@/lib/sign/build";
@@ -20,6 +28,84 @@ const EXPLODE_ORDER: Record<string, number> = {
   "camada-2": 5,
   "camada-3": 6,
 };
+
+export interface PickedEdge {
+  key: string;
+  partId: string;
+  partLabel: string;
+  a: [number, number, number];
+  b: [number, number, number];
+  offset: number;
+  length: number;
+}
+
+function EdgePicker({
+  part,
+  offset,
+  onHover,
+  onPick,
+}: {
+  part: SignPart;
+  offset: number;
+  onHover: (edge: PickedEdge | null) => void;
+  onPick: (edge: PickedEdge, additive: boolean) => void;
+}) {
+  const edges = useMemo(() => new EdgesGeometry(part.geometry, 20), [part.geometry]);
+
+  const edgeAt = (index: number): PickedEdge | null => {
+    const pos = edges.getAttribute("position");
+    const i = index - (index % 2);
+    if (!pos || i + 1 >= pos.count) return null;
+    const a: [number, number, number] = [pos.getX(i), pos.getY(i), pos.getZ(i)];
+    const b: [number, number, number] = [pos.getX(i + 1), pos.getY(i + 1), pos.getZ(i + 1)];
+    const length = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+    return {
+      key: `${part.id}:${i}`,
+      partId: part.id,
+      partLabel: part.label ?? part.kind,
+      a,
+      b,
+      offset,
+      length,
+    };
+  };
+
+  const handle = (event: ThreeEvent<PointerEvent>, pick: boolean) => {
+    const index = event.index;
+    if (index == null) return;
+    const edge = edgeAt(index);
+    if (!edge) return;
+    event.stopPropagation();
+    if (pick) onPick(edge, event.nativeEvent.shiftKey);
+    else onHover(edge);
+  };
+
+  return (
+    <lineSegments
+      geometry={edges}
+      position={[0, 0, offset]}
+      raycast-params-Line-threshold={1}
+      onPointerMove={(e) => handle(e, false)}
+      onPointerOut={() => onHover(null)}
+      onClick={(e) => handle(e as unknown as ThreeEvent<PointerEvent>, true)}
+    >
+      <lineBasicMaterial color="#64748b" transparent opacity={0.55} />
+    </lineSegments>
+  );
+}
+
+function EdgeHighlight({ edge, color }: { edge: PickedEdge; color: string }) {
+  const geometry = useMemo(() => {
+    const geo = new BufferGeometry();
+    geo.setAttribute("position", new Float32BufferAttribute([...edge.a, ...edge.b], 3));
+    return geo;
+  }, [edge]);
+  return (
+    <lineSegments geometry={geometry} position={[0, 0, edge.offset]} renderOrder={1000}>
+      <lineBasicMaterial color={color} depthTest={false} transparent opacity={1} />
+    </lineSegments>
+  );
+}
 
 function PartMesh({
   part,
@@ -46,6 +132,7 @@ function PartMesh({
     </mesh>
   );
 }
+
 
 function OutlineLine({ outline }: { outline: SignOutline }) {
   const geometry = useMemo(() => {
