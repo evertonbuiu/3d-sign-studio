@@ -240,13 +240,13 @@ export function buildSign(
   const recessLip = Math.min(Math.max(params.recessLip, 0.4), Math.max(params.wall - 0.4, 0.4));
   const backOn = active.has("fundo");
   const wallsOn = active.has("laterais");
-  // frente impressa como tampa separada com pino de encaixe
-  const printedCap = Boolean(style.printedFace) && active.has("frente") && wallsOn;
+  // frente impressa fundida ao corpo (mesma peça das paredes)
+  const fusedFace = Boolean(style.printedFace) && active.has("frente") && wallsOn;
   const recessOn =
     params.faceRecess &&
     active.has("frente") &&
     wallsOn &&
-    !printedCap &&
+    !fusedFace &&
     recessLip < params.wall;
   const faceInset = recessOn ? recessLip + params.clearance : 0;
 
@@ -322,6 +322,13 @@ export function buildSign(
         }
       }
 
+      if (fusedFace) {
+        // tampa frontal cheia, unida ao topo das paredes
+        const cap = extrude(cloneShape(shape), params.faceThickness + overlap);
+        cap.translate(0, 0, zWall + bodyHeight - overlap);
+        sections.push(cap);
+      }
+
       const solid = combine(sections);
       if (solid) geos.push(solid);
     }
@@ -329,11 +336,18 @@ export function buildSign(
     const geo = combine(geos);
     if (geo) {
       geo.translate(0, 0, baseZ);
+      const label = fusedFace
+        ? fused
+          ? "Corpo (fundo + laterais + frente)"
+          : "Corpo (laterais + frente)"
+        : fused
+          ? "Corpo (fundo + laterais)"
+          : "Laterais";
       parts.push(
         makePart(
           "laterais",
           "laterais",
-          fused ? "Corpo (fundo + laterais)" : "Laterais",
+          label,
           fused ? params.backColor : params.bodyColor,
           geo,
           { count: shapes.length },
@@ -373,23 +387,9 @@ export function buildSign(
 
   // ---------- frente ----------
   const faceCut: Shape[] = [];
-  if (active.has("frente")) {
+  if (active.has("frente") && !fusedFace) {
     const geos: BufferGeometry[] = [];
-    const overlap = 0.05;
-    const plugWall = Math.min(Math.max(params.wall * 0.8, 0.8), 2.4);
-    const plugDepth = Math.min(Math.max(bodyHeight * 0.35, 2), 6);
     for (const shape of shapes) {
-      if (printedCap) {
-        // tampa: chapa cheia + pino interno que entra na caixa das paredes
-        const clone = cloneShape(shape);
-        geos.push(extrude(clone, params.faceThickness + overlap));
-        for (const plug of ringShape(shape, plugWall, params.wall + params.clearance)) {
-          const pin = extrude(plug, plugDepth + overlap);
-          pin.translate(0, 0, -plugDepth);
-          geos.push(pin);
-        }
-        continue;
-      }
       if (faceInset > 0) {
         for (const inner of insetShape(shape, faceInset)) {
           faceCut.push(inner);
@@ -408,8 +408,8 @@ export function buildSign(
       const z = plateOn && !active.has("laterais") ? baseZ : baseZ + params.depth - params.faceThickness;
       geo.translate(0, 0, Math.max(z, baseZ));
       parts.push(
-        makePart("frente", "frente", printedCap ? "Frente (tampa encaixável)" : "Frente", params.faceColor, geo, {
-          emissive: params.led && !printedCap,
+        makePart("frente", "frente", "Frente", params.faceColor, geo, {
+          emissive: params.led,
           count: shapes.length,
         }),
       );
