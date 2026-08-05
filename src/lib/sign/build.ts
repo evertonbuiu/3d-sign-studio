@@ -312,19 +312,20 @@ export function buildSign(
       // 1. O fundo (base sólida)
       bs.push(extrude(cloneShape(shape), params.backThickness + overlap));
       
-      // 2. Parede unificada (Parede externa + Lábio interno como um único anel de espessura 'half')
-      // Em vez de dois anéis separados, fazemos um anel mais grosso que cobre toda a base da parede
-      // e depois o lábio sobe mais alto.
+      // 2. PAREDE ÚNICA E CONTÍNUA
+      // Criamos uma única forma de anel que representa a parede completa (externa + lábio)
+      // A espessura total dessa parede unificada é 'half + lipW'
+      const fullWallThickness = half + lipW;
       
-      // Anel base da parede (espessura total: half, altura: backH)
-      for (const ring of ringShape(shape, half, 0)) {
+      // Primeiro extrudamos a parte mais grossa (parede + base do lábio) até backH
+      for (const ring of ringShape(shape, fullWallThickness, 0)) {
         const wallBase = extrude(ring, backH + params.backThickness + overlap);
         wallBase.translate(0, 0, 0);
         bs.push(wallBase);
       }
       
-      // O lábio que continua subindo (espessura: lipW, altura: lipH adicional)
-      // Ele nasce de dentro da wallBase para garantir que não haja costura
+      // Depois o topo do lábio (apenas a parte interna 'lipW') sobe o restante 'lipH'
+      // Usamos um offset de 'half' para que ele nasça exatamente alinhado com a face interna da base
       for (const ring of ringShape(shape, lipW, half)) {
         const lipTop = extrude(ring, backH + lipH + params.backThickness + overlap);
         lipTop.translate(0, 0, 0);
