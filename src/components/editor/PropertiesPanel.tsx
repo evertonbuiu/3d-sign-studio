@@ -225,7 +225,7 @@ export default function PropertiesPanel() {
           <AccordionItem value="construcao">
             <AccordionTrigger className="text-sm">Construção</AccordionTrigger>
             <AccordionContent className="space-y-3 pb-4">
-              <NumberSlider label="Escala geral" keyName="scale" min={10} max={400} step={1} unit="%" />
+              
               <div className="flex items-center justify-between">
                 <Label className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
                   {lockXY ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
