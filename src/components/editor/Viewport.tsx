@@ -265,12 +265,55 @@ export default function Viewport() {
 
   const handlePick = (edge: PickedEdge, additive: boolean) => {
     setSelected((prev) => {
+      // Se a aresta já faz parte de um grupo "soldado", lidamos com o grupo todo?
+      // Por enquanto mantemos a lógica de seleção individual para permitir compor o grupo
       const exists = prev.some((e) => e.key === edge.key);
       if (additive) {
         return exists ? prev.filter((e) => e.key !== edge.key) : [...prev, edge];
       }
       return exists && prev.length === 1 ? [] : [edge];
     });
+  };
+
+  const handleWeldEdges = () => {
+    if (selected.length < 2) return;
+    
+    const points: Vector3[] = [];
+    selected.forEach(e => {
+      points.push(new Vector3(...e.a), new Vector3(...e.b));
+    });
+    
+    if (points.length < 2) return;
+
+    let maxDist = -1;
+    let p1: Vector3 = points[0]!;
+    let p2: Vector3 = points[1]!;
+    
+    for (let i = 0; i < points.length; i++) {
+      const pi = points[i]!;
+      for (let j = i + 1; j < points.length; j++) {
+        const pj = points[j]!;
+        const d = pi.distanceTo(pj);
+        if (d > maxDist) {
+          maxDist = d;
+          p1 = pi;
+          p2 = pj;
+        }
+      }
+    }
+
+    const first = selected[0]!;
+    const weldedEdge: PickedEdge = {
+      key: `welded-${Date.now()}`,
+      partId: "welded",
+      partLabel: "Aresta Soldada",
+      a: [p1.x, p1.y, p1.z],
+      b: [p2.x, p2.y, p2.z],
+      offset: first.offset,
+      length: maxDist
+    };
+
+    setSelected([weldedEdge]);
   };
 
   return (
@@ -353,11 +396,8 @@ export default function Viewport() {
                   size="sm"
                   variant="default"
                   className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                  onClick={() => {
-                    // Lógica visual de "soldar": remove as arestas da seleção 
-                    // Simulando a união técnica das peças
-                    setSelected([]);
-                  }}
+                  disabled={selected.length < 2}
+                  onClick={handleWeldEdges}
                 >
                   Soldar
                 </Button>
