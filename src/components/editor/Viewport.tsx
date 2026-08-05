@@ -278,35 +278,38 @@ export default function Viewport() {
   const handleWeldEdges = () => {
     if (selected.length < 2) return;
     
-    // Calcula a bounding box combinada das arestas para encontrar os novos pontos extremos
     const points: Vector3[] = [];
     selected.forEach(e => {
       points.push(new Vector3(...e.a), new Vector3(...e.b));
     });
     
-    // Encontra os dois pontos mais distantes entre si para formar a nova "aresta única"
+    if (points.length < 2) return;
+
     let maxDist = -1;
     let p1 = points[0];
     let p2 = points[1];
     
     for (let i = 0; i < points.length; i++) {
+      const pi = points[i]!;
       for (let j = i + 1; j < points.length; j++) {
-        const d = points[i].distanceTo(points[j]);
+        const pj = points[j]!;
+        const d = pi.distanceTo(pj);
         if (d > maxDist) {
           maxDist = d;
-          p1 = points[i];
-          p2 = points[j];
+          p1 = pi;
+          p2 = pj;
         }
       }
     }
 
+    const first = selected[0]!;
     const weldedEdge: PickedEdge = {
       key: `welded-${Date.now()}`,
       partId: "welded",
       partLabel: "Aresta Soldada",
       a: [p1.x, p1.y, p1.z],
       b: [p2.x, p2.y, p2.z],
-      offset: selected[0].offset,
+      offset: first.offset,
       length: maxDist
     };
 
