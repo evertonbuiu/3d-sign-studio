@@ -3,7 +3,6 @@ import type { Font } from "opentype.js";
 
 import { loadFont, textToShapes } from "@/lib/sign/fonts";
 import { svgToShapes } from "@/lib/sign/svg";
-import { scaleShapes } from "@/lib/sign/transform";
 import { buildSign, type SignBuild } from "@/lib/sign/build";
 import { computeCost, type CostBreakdown } from "@/lib/sign/cost";
 import {
@@ -24,7 +23,6 @@ export interface EditorState {
   hidden: Set<string>;
   wireframe: boolean;
   showOutlines: boolean;
-  lockXY: boolean;
   svgName: string | null;
   setSvg: (name: string, content: string) => void;
   clearSvg: () => void;
@@ -36,7 +34,6 @@ export interface EditorState {
   setExplode: (value: number) => void;
   setWireframe: (value: boolean) => void;
   setShowOutlines: (value: boolean) => void;
-  setLockXY: (value: boolean) => void;
   togglePart: (id: string) => void;
   loadProject: (p: {
     id: string;
@@ -46,64 +43,6 @@ export interface EditorState {
   }) => void;
   setProject: (id: string | null, name: string) => void;
 }
-
-/** Medidas do plano XY (largura/altura) e do eixo Z (profundidade). */
-const X_KEYS = ["tracking"] as const;
-const Y_KEYS = ["letterHeight", "poleHeight"] as const;
-const XY_KEYS = [
-  "wall",
-  "clearance",
-  "recessLip",
-  "ledChannelWidth",
-  "ledOffset",
-  "layerShrink",
-  "holeDiameter",
-  "plateMargin",
-] as const;
-const Z_KEYS = [
-  "depth",
-  "faceThickness",
-  "backThickness",
-  "plateThickness",
-  "layerThickness",
-  "ledChannelHeight",
-] as const;
-
-export interface AxisScale {
-  x: number;
-  y: number;
-  z: number;
-}
-
-export function axisScale(params: SignParams): AxisScale {
-  const g = (params.scale || 100) / 100;
-  return {
-    x: (g * (params.scaleX || 100)) / 100,
-    y: (g * (params.scaleY || 100)) / 100,
-    z: (g * (params.scaleZ || 100)) / 100,
-  };
-}
-
-const round = (n: number) => Number(n.toFixed(4));
-
-/**
- * Aplica escala por eixo às medidas em mm.
- * Os contornos são gerados na altura escalada em Y; o estiramento horizontal
- * extra (x/y) é aplicado depois, direto nos contornos.
- */
-export function scaleParams(params: SignParams): SignParams {
-  const s = axisScale(params);
-  if (s.x === 1 && s.y === 1 && s.z === 1) return params;
-  const out: SignParams = { ...params };
-  const xy = (s.x + s.y) / 2;
-  for (const key of Y_KEYS) out[key] = round(params[key] * s.y);
-  // tracking entra na geração do texto antes do estiramento x/y
-  for (const key of X_KEYS) out[key] = round(params[key] * s.y);
-  for (const key of XY_KEYS) out[key] = round(params[key] * xy);
-  for (const key of Z_KEYS) out[key] = round(params[key] * s.z);
-  return out;
-}
-
 
 const EditorContext = createContext<EditorState | null>(null);
 
@@ -123,7 +62,6 @@ export function useEditorState(): EditorState {
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [wireframe, setWireframe] = useState(false);
   const [showOutlines, setShowOutlines] = useState(false);
-  const [lockXY, setLockXY] = useState(true);
   const [svg, setSvgState] = useState<{ name: string; content: string } | null>(null);
   const [projectId, setProjectId] = useState<string | null>(null);
   const [projectName, setProjectName] = useState("Novo projeto");
@@ -142,31 +80,22 @@ export function useEditorState(): EditorState {
 
   const style = useMemo(() => getStyle(styleId), [styleId]);
 
-  const scaledParams = useMemo(() => scaleParams(params), [params]);
-
   const build = useMemo(() => {
     try {
-      const p = scaledParams;
-      const s = axisScale(params);
-      const base = svg
-        ? svgToShapes(svg.content, p.letterHeight)
+      const shapes = svg
+        ? svgToShapes(svg.content, params.letterHeight)
         : font
-          ? textToShapes(font, p.text.toUpperCase(), p.letterHeight, p.tracking)
+          ? textToShapes(font, params.text.toUpperCase(), params.letterHeight, params.tracking)
           : [];
-      const shapes = s.y === 0 ? base : scaleShapes(base, s.x / s.y, 1);
-
       if (!shapes.length) return null;
-      return buildSign(shapes, p, style);
+      return buildSign(shapes, params, style);
     } catch (error) {
       console.error("Falha ao gerar geometria", error);
       return null;
     }
-  }, [font, svg, params, scaledParams, style]);
+  }, [font, svg, params, style]);
 
-  const cost = useMemo(
-    () => (build ? computeCost(build, scaledParams) : null),
-    [build, scaledParams],
-  );
+  const cost = useMemo(() => (build ? computeCost(build, params) : null), [build, params]);
 
   return {
     params,
@@ -183,20 +112,9 @@ export function useEditorState(): EditorState {
     clearSvg: () => setSvgState(null),
     setWireframe,
     setShowOutlines,
-    lockXY,
-    setLockXY: (value: boolean) => {
-      setLockXY(value);
-      if (value) setParamsState((prev) => ({ ...prev, scaleY: prev.scaleX }));
-    },
     projectId,
     projectName,
-    setParam: (key, value) =>
-      setParamsState((prev) => {
-        if (lockXY && (key === "scaleX" || key === "scaleY")) {
-          return { ...prev, scaleX: value as number, scaleY: value as number };
-        }
-        return { ...prev, [key]: value };
-      }),
+    setParam: (key, value) => setParamsState((prev) => ({ ...prev, [key]: value })),
     setParams: (patch) => setParamsState((prev) => ({ ...prev, ...patch })),
     selectStyle: (id) => {
       setStyleId(id);

@@ -37,9 +37,6 @@ export interface SignBuild {
   outlines: SignOutline[];
   /** Contornos 2D da frente (mm) para corte de acrílico. */
   faceCut: Shape[];
-  /** Contornos 2D do fundo (mm) para corte de acrílico, quando aplicável. */
-  backCut: Shape[];
-
   width: number;
   height: number;
   depth: number;
@@ -247,40 +244,19 @@ export function buildSign(
 
   const backOn = active.has("fundo");
   const wallsOn = active.has("laterais");
-  // fundo em acrílico é uma chapa cortada à parte, encaixada num rebaixo das paredes
-  const acrylicBack = Boolean(style.acrylicBack) && backOn && wallsOn;
-  const fused = backOn && wallsOn && !acrylicBack;
-  const backLip = Math.min(Math.max(params.recessLip, 0.4), Math.max(params.wall - 0.4, 0.4));
-  const backCut: Shape[] = [];
+  const fused = backOn && wallsOn;
 
   // ---------- fundo (sozinho) ----------
   if (backOn && !fused) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
-      if (acrylicBack) {
-        // chapa recuada para assentar no degrau interno das paredes
-        for (const inner of insetShape(shape, backLip + params.clearance)) {
-          backCut.push(inner);
-          geos.push(extrude(inner, params.backThickness));
-        }
-        continue;
-      }
-      const clone = cloneShape(shape);
-      backCut.push(clone);
-      geos.push(extrude(clone, params.backThickness));
+      geos.push(extrude(cloneShape(shape), params.backThickness));
     }
     const geo = combine(geos);
     if (geo) {
       geo.translate(0, 0, baseZ);
       parts.push(
-        makePart(
-          "fundo",
-          "fundo",
-          acrylicBack ? "Fundo acrílico (corte)" : "Fundo",
-          acrylicBack ? params.faceColor : params.backColor,
-          geo,
-          { count: shapes.length, opacity: acrylicBack ? 0.55 : 1 },
-        ),
+        makePart("fundo", "fundo", "Fundo", params.backColor, geo, { count: shapes.length }),
       );
     }
   }
@@ -288,7 +264,7 @@ export function buildSign(
   // ---------- corpo: fundo + laterais + rebaixo em uma peça só ----------
   if (wallsOn) {
     const geos: BufferGeometry[] = [];
-    const zWall = fused || acrylicBack ? params.backThickness : 0;
+    const zWall = fused ? params.backThickness : 0;
     for (const shape of shapes) {
       // Cada seção é uma casca fechada e há uma pequena interseção entre elas.
       // Assim o STL permanece manifold sem depender da triangulação instável
@@ -296,14 +272,6 @@ export function buildSign(
       const overlap = 0.05;
       const sections: BufferGeometry[] = [];
       if (fused) sections.push(extrude(cloneShape(shape), params.backThickness + overlap));
-
-      if (acrylicBack) {
-        // aba inferior que segura a chapa de acrílico
-        for (const lipShape of ringShape(shape, backLip)) {
-          const lip = extrude(lipShape, params.backThickness + overlap);
-          sections.push(lip);
-        }
-      }
 
       for (const ring of ringShape(shape, params.wall)) {
         const wall = extrude(ring, bodyHeight + overlap * 2);
@@ -338,7 +306,6 @@ export function buildSign(
       );
     }
   }
-
 
 
 
@@ -457,9 +424,8 @@ export function buildSign(
     : params.depth;
 
   const printedVolumeCm3 = parts
-    .filter((p) => p.kind !== "canal-led" && !(acrylicBack && p.kind === "fundo"))
+    .filter((p) => p.kind !== "canal-led")
     .reduce((sum, p) => sum + p.volumeCm3, 0);
-
 
   // ---------- contornos / offsets de conferência ----------
   const outlines: SignOutline[] = [];
@@ -524,8 +490,6 @@ export function buildSign(
     parts,
     outlines,
     faceCut,
-    backCut,
-
     width: totalWidth,
 
 

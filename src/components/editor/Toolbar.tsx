@@ -108,30 +108,15 @@ export default function Toolbar() {
 
   function exportDxf() {
     const build = editor.build;
-    if (!build?.faceCut.length && !build?.backCut.length) {
-      toast.error("Este estilo não tem peça de acrílico para corte");
+    if (!build?.faceCut.length) {
+      toast.error("Este estilo não tem peça de frente para corte");
       return;
     }
     const base = slugify(editor.params.text || editor.projectName);
-    if (build.faceCut.length) {
-      const dxf = shapesToDxf(build.faceCut);
-      downloadBlob(
-        new Blob([dxf], { type: "image/vnd.dxf" }),
-        `${base}-frente.dxf`,
-        "image/vnd.dxf",
-      );
-    }
-    if (build.backCut.length) {
-      const dxf = shapesToDxf(build.backCut);
-      downloadBlob(
-        new Blob([dxf], { type: "image/vnd.dxf" }),
-        `${base}-fundo.dxf`,
-        "image/vnd.dxf",
-      );
-    }
-    toast.success("DXF de corte exportado");
+    const dxf = shapesToDxf(build.faceCut);
+    downloadBlob(new Blob([dxf], { type: "image/vnd.dxf" }), `${base}-frente.dxf`, "image/vnd.dxf");
+    toast.success("DXF da frente exportado");
   }
-
 
 
   async function openProject(id: string) {

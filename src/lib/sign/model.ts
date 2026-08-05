@@ -61,12 +61,6 @@ export interface SignParams {
   energyPrice: number; // R$/kWh
   printerPower: number; // W
   margin: number; // %
-  /** escala global do modelo em % (100 = tamanho real) */
-  scale: number;
-  /** escala independente por eixo em % */
-  scaleX: number;
-  scaleY: number;
-  scaleZ: number;
 }
 
 export const DEFAULT_PARAMS: SignParams = {
@@ -109,10 +103,6 @@ export const DEFAULT_PARAMS: SignParams = {
   energyPrice: 0.92,
   printerPower: 180,
   margin: 45,
-  scale: 100,
-  scaleX: 100,
-  scaleY: 100,
-  scaleZ: 100,
 };
 
 export type StyleGroup =
@@ -129,10 +119,7 @@ export interface SignStyle {
   description: string;
   /** peças ativas neste estilo */
   parts: PartKind[];
-  /** fundo é uma chapa de acrílico cortada, encaixada nas paredes impressas */
-  acrylicBack?: boolean;
   preset: Partial<SignParams>;
-
   /** dica visual da miniatura */
   thumb: {
     face: string;
@@ -154,6 +141,15 @@ const boxParts: PartKind[] = [
 
 export const STYLES: SignStyle[] = [
   {
+    id: "fundo-impresso-tampa-acrilica",
+    name: "Fundo Impresso + Tampa Acrílica",
+    group: "Acrílico & Impresso",
+    description: "Caixa impressa em 3D com tampa de acrílico sobreposta.",
+    parts: boxParts,
+    preset: { depth: 55, faceThickness: 3, led: true },
+    thumb: { face: "#dbe7f5", body: "#3f4a5a", glow: "front" },
+  },
+  {
     id: "fundo-impresso-frente-acrilica",
     name: "Fundo Impresso + Frente Acrílica",
     group: "Acrílico & Impresso",
@@ -168,7 +164,6 @@ export const STYLES: SignStyle[] = [
     group: "Acrílico & Impresso",
     description: "Fundo e frente em acrílico com laterais impressas.",
     parts: boxParts,
-    acrylicBack: true,
     preset: { depth: 45, backThickness: 3, faceThickness: 3 },
     thumb: { face: "#e6f0fb", body: "#5b6a7d", glow: "both" },
   },
@@ -178,9 +173,26 @@ export const STYLES: SignStyle[] = [
     group: "Acrílico & Impresso",
     description: "Frente impressa opaca sobre fundo translúcido.",
     parts: boxParts,
-    acrylicBack: true,
     preset: { depth: 45, faceThickness: 2.4, led: true },
     thumb: { face: "#8f9db0", body: "#39424f", glow: "halo" },
+  },
+  {
+    id: "frente-petg",
+    name: "Frente PETG",
+    group: "Acrílico & Impresso",
+    description: "Frente em PETG translúcido impressa em camadas finas.",
+    parts: boxParts,
+    preset: { depth: 48, faceThickness: 1.2 },
+    thumb: { face: "#dff1ea", body: "#3f4a5a", glow: "front" },
+  },
+  {
+    id: "frente-acrilico-leitoso",
+    name: "Frente Acrílico Leitoso",
+    group: "Acrílico & Impresso",
+    description: "Difusão suave e uniforme com acrílico leitoso.",
+    parts: boxParts,
+    preset: { depth: 52, ledColor: "#fff6e0" },
+    thumb: { face: "#f6f8fb", body: "#3f4a5a", glow: "front" },
   },
   {
     id: "face-lit",

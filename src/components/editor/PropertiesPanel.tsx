@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Eye, EyeOff, Lock, Unlock, Upload, X } from "lucide-react";
+import { Eye, EyeOff, Upload, X } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -139,8 +139,6 @@ export default function PropertiesPanel() {
     setWireframe,
     showOutlines,
     setShowOutlines,
-    lockXY,
-    setLockXY,
     svgName,
     setSvg,
     clearSvg,
@@ -225,26 +223,6 @@ export default function PropertiesPanel() {
           <AccordionItem value="construcao">
             <AccordionTrigger className="text-sm">Construção</AccordionTrigger>
             <AccordionContent className="space-y-3 pb-4">
-              
-              <div className="flex items-center justify-between">
-                <Label className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
-                  {lockXY ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
-                  Travar proporção X/Y
-                </Label>
-                <Switch checked={lockXY} onCheckedChange={setLockXY} />
-              </div>
-              <NumberSlider
-                label={lockXY ? "Escala X/Y (largura e altura)" : "Escala X (largura)"}
-                keyName="scaleX"
-                min={10}
-                max={400}
-                step={1}
-                unit="%"
-              />
-              {!lockXY && (
-                <NumberSlider label="Escala Y (altura)" keyName="scaleY" min={10} max={400} step={1} unit="%" />
-              )}
-              
               <NumberSlider label="Profundidade" keyName="depth" min={5} max={200} step={1} />
               <NumberSlider label="Parede" keyName="wall" min={0.5} max={12} step={0.1} />
               <NumberSlider label="Frente" keyName="faceThickness" min={0.5} max={60} step={0.2} />
