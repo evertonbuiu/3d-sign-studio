@@ -240,13 +240,13 @@ export function buildSign(
   const recessLip = Math.min(Math.max(params.recessLip, 0.4), Math.max(params.wall - 0.4, 0.4));
   const backOn = active.has("fundo");
   const wallsOn = active.has("laterais");
-  // frente impressa como tampa separada com pino de encaixe
-  const printedCap = Boolean(style.printedFace) && active.has("frente") && wallsOn;
+  // frente impressa fundida ao corpo (mesma peça das paredes)
+  const fusedFace = Boolean(style.printedFace) && active.has("frente") && wallsOn;
   const recessOn =
     params.faceRecess &&
     active.has("frente") &&
     wallsOn &&
-    !printedCap &&
+    !fusedFace &&
     recessLip < params.wall;
   const faceInset = recessOn ? recessLip + params.clearance : 0;
 
