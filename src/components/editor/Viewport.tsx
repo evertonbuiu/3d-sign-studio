@@ -84,7 +84,7 @@ function EdgePicker({
     <lineSegments
       geometry={edges}
       position={[0, 0, offset]}
-      raycast-params-Line-threshold={1}
+      raycast-params-Line-threshold={0.02}
       onPointerMove={(e) => handle(e, false)}
       onPointerOut={() => onHover(null)}
       onClick={(e) => handle(e as unknown as ThreeEvent<PointerEvent>, true)}
