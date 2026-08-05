@@ -134,7 +134,9 @@ function pathsToShapes(paths: CPath[]): Shape[] {
 export function offsetShape(shape: Shape, delta: number): Shape[] {
   const base = normalize(shapeToCPaths(shape));
   if (!base.length) return [];
-  const result = delta === 0 ? base : offsetPaths(base, delta);
+  // Use a slight cleaning for zero or near-zero offsets
+  const cleanDelta = Math.abs(delta) < 0.001 ? 0.001 : delta;
+  const result = offsetPaths(base, cleanDelta);
   return pathsToShapes(result);
 }
 

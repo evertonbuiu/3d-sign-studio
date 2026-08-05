@@ -533,6 +533,8 @@ function unionSolid(geos: BufferGeometry[]): BufferGeometry | null {
     geometry.clearGroups();
     // Ensure all faces are strictly oriented outwards to prevent slicer errors
     geometry.computeVertexNormals();
+    geometry.computeBoundingBox();
+    geometry.computeBoundingSphere();
     return geometry;
   } catch (error) {
     console.warn("Falha na união booleana, usando mesclagem simples", error);
