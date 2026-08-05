@@ -238,15 +238,18 @@ export function buildSign(
 
   // rebaixo (degrau) na parede interna para assentar a frente
   const recessLip = Math.min(Math.max(params.recessLip, 0.4), Math.max(params.wall - 0.4, 0.4));
+  const backOn = active.has("fundo");
+  const wallsOn = active.has("laterais");
+  // frente impressa como tampa separada com pino de encaixe
+  const printedCap = Boolean(style.printedFace) && active.has("frente") && wallsOn;
   const recessOn =
     params.faceRecess &&
     active.has("frente") &&
-    active.has("laterais") &&
+    wallsOn &&
+    !printedCap &&
     recessLip < params.wall;
   const faceInset = recessOn ? recessLip + params.clearance : 0;
 
-  const backOn = active.has("fundo");
-  const wallsOn = active.has("laterais");
   // fundo em acrílico é uma chapa cortada à parte, encaixada num rebaixo das paredes
   const acrylicBack = Boolean(style.acrylicBack) && backOn && wallsOn;
   const fused = backOn && wallsOn && !acrylicBack;
