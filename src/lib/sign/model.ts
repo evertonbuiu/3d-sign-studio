@@ -119,7 +119,10 @@ export interface SignStyle {
   description: string;
   /** peças ativas neste estilo */
   parts: PartKind[];
+  /** fundo é uma chapa de acrílico cortada, encaixada nas paredes impressas */
+  acrylicBack?: boolean;
   preset: Partial<SignParams>;
+
   /** dica visual da miniatura */
   thumb: {
     face: string;
