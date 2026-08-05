@@ -181,10 +181,12 @@ export function buildSign(
   const rawBounds = shapesBounds(letterShapes);
   const size = rawBounds.getSize(new Vector2());
   const center = rawBounds.getCenter(new Vector2());
-  // Apply a tiny offset (0.01) to "heal" precision errors in font contours before main operations
-  const shapes = translateShapes(letterShapes, -center.x, -center.y).flatMap((s) =>
-    offsetShape(s, 0.01),
+  // Clean font contours by applying a small offset and insetting back
+  // This removes self-intersections and tiny artifacts common in fonts/SVGs
+  const cleanedShapes = translateShapes(letterShapes, -center.x, -center.y).flatMap((s) =>
+    offsetShape(s, 0.05),
   );
+  const shapes = cleanedShapes.flatMap((s) => insetShape(s, 0.05));
   const bounds = shapesBounds(shapes);
 
   const plateOn = active.has("placa");
