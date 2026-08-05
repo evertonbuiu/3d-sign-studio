@@ -244,7 +244,9 @@ export function buildSign(
   );
 
   // ---------- fundo ----------
-  const isUnifiedBody = style.id === "fundo-impresso-frente-acrilica";
+  // Unificamos o fundo à parede se ambos forem impressos e o estilo for de "caixa"
+  const isUnifiedBody = active.has("fundo") && active.has("laterais");
+  
   if (active.has("fundo") && !isUnifiedBody) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
@@ -275,16 +277,19 @@ export function buildSign(
       const wallGeos = ringShape(shape, params.wall).map((ring) => extrude(ring, bodyHeight));
       
       if (isUnifiedBody) {
-        // No estilo unido, o fundo é a base da peça
+        // No estilo unido, o fundo é a base da peça e as paredes crescem a partir dele
         const base = extrude(cloneShape(shape), params.backThickness);
+        // O fundo fica em z=0 (relativo ao grupo da lateral) e a parede é movida para cima dele
+        for (const w of wallGeos) w.translate(0, 0, params.backThickness);
         wallGeos.push(base);
       }
 
       if (recessOn) {
+        const wallTop = isUnifiedBody ? bodyHeight + params.backThickness : bodyHeight;
         const overlap = Math.min(0.1, bodyHeight / 4);
         for (const outer of ringShape(shape, recessLip)) {
           const lip = extrude(outer, params.faceThickness + overlap);
-          lip.translate(0, 0, bodyHeight - overlap);
+          lip.translate(0, 0, wallTop - overlap);
           wallGeos.push(lip);
         }
       }
@@ -294,7 +299,9 @@ export function buildSign(
 
     const geo = combine(geos);
     if (geo) {
-      geo.translate(0, 0, baseZ + (active.has("fundo") ? params.backThickness : 0));
+      // Se estiver unido, começamos direto do baseZ. Se não, a lateral começa acima do fundo separado.
+      const z = isUnifiedBody ? baseZ : baseZ + params.backThickness;
+      geo.translate(0, 0, z);
       parts.push(
         makePart("laterais", "laterais", "Laterais", params.bodyColor, geo, {
           count: shapes.length,
