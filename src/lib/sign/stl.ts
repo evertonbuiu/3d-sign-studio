@@ -1,12 +1,12 @@
 import type { BufferGeometry } from "three";
 
 /** Tolerância de solda de vértices (mm). Vértices dentro dessa grade viram o mesmo ponto. */
-const WELD = 1e-3;
+const WELD = 1e-4;
 
 /** Arredonda para a grade de solda, evitando -0. */
 function snap(value: number): number {
   const v = Math.round(value / WELD) * WELD;
-  return Object.is(v, -0) ? 0 : Number(v.toFixed(4));
+  return Object.is(v, -0) ? 0 : Number(v.toFixed(5));
 }
 
 interface FaceIdentity {
