@@ -3,7 +3,6 @@ import { Path, Shape } from "three";
 
 type Pt = { x: number; y: number };
 
-const TOL = 0.05; // tolerância de junção entre pontas (unidades do DXF)
 const ARC_SEG = 24;
 
 function arcPoints(
