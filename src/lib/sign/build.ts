@@ -278,7 +278,7 @@ export function buildSign(
 
       // Se for o estilo específico, une com o fundo para exportar peça única
       if (mergeWithBack && active.has("fundo")) {
-        const back = extrude(cloneShape(shape), params.backThickness);
+        const back = extrude(cloneShape(shape), params.backThickness + 0.01);
         back.translate(0, 0, -params.backThickness);
         wallGeos.push(back);
       }
