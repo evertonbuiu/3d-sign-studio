@@ -62,7 +62,6 @@ const XY_KEYS = [
 ] as const;
 const Z_KEYS = [
   "depth",
-  "fitDepth",
   "faceThickness",
   "backThickness",
   "plateThickness",

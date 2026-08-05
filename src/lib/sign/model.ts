@@ -25,7 +25,6 @@ export interface SignParams {
   faceThickness: number; // espessura da frente (mm)
   backThickness: number; // espessura do fundo (mm)
   clearance: number; // folga de encaixe (mm)
-  fitDepth: number; // profundidade do encaixe entre metades (mm)
   faceRecess: boolean; // parede interna com rebaixo para a frente
   recessLip: number; // largura da aba externa que segura a frente (mm)
   /** iluminação */
@@ -80,7 +79,6 @@ export const DEFAULT_PARAMS: SignParams = {
   faceThickness: 3,
   backThickness: 3,
   clearance: 0.3,
-  fitDepth: 6,
   faceRecess: true,
   recessLip: 1.2,
   led: false,
@@ -135,8 +133,6 @@ export interface SignStyle {
   acrylicBack?: boolean;
   /** frente impressa como tampa separada, com pino de encaixe nas paredes */
   printedFace?: boolean;
-  /** duas metades impressas (fundo+paredes e frente+paredes) que se encaixam */
-  splitShell?: boolean;
   preset: Partial<SignParams>;
 
   /** dica visual da miniatura */
@@ -193,10 +189,9 @@ export const STYLES: SignStyle[] = [
     id: "fundo-impresso-frente-impressa",
     name: "Fundo Impresso + Frente Impressa",
     group: "Acrílico & Impresso",
-    description: "Duas metades impressas: fundo com paredes e frente com paredes que encaixam.",
+    description: "Peça totalmente impressa: fundo, laterais e frente unificados.",
     parts: boxParts,
     printedFace: true,
-    splitShell: true,
     preset: { depth: 40, faceThickness: 3, backThickness: 3 },
     thumb: { face: "#7f8da0", body: "#39424f", glow: "none" },
   },

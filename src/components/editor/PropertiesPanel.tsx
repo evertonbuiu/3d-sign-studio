@@ -250,15 +250,6 @@ export default function PropertiesPanel() {
               <NumberSlider label="Frente" keyName="faceThickness" min={0.5} max={60} step={0.2} />
               <NumberSlider label="Fundo" keyName="backThickness" min={0.5} max={20} step={0.2} />
               <NumberSlider label="Folga de encaixe" keyName="clearance" min={0} max={1.5} step={0.05} />
-              {style.splitShell ? (
-                <NumberSlider
-                  label="Profundidade do encaixe"
-                  keyName="fitDepth"
-                  min={1}
-                  max={40}
-                  step={0.5}
-                />
-              ) : null}
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium text-muted-foreground">
                   Rebaixo para a frente

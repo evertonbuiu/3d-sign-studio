@@ -240,17 +240,13 @@ export function buildSign(
   const recessLip = Math.min(Math.max(params.recessLip, 0.4), Math.max(params.wall - 0.4, 0.4));
   const backOn = active.has("fundo");
   const wallsOn = active.has("laterais");
-  // duas metades impressas: fundo+paredes e frente+paredes, encaixadas por lábio
-  const splitShell = Boolean(style.splitShell) && active.has("frente") && wallsOn;
   // frente impressa fundida ao corpo (mesma peça das paredes)
-  const fusedFace =
-    Boolean(style.printedFace) && active.has("frente") && wallsOn && !splitShell;
+  const fusedFace = Boolean(style.printedFace) && active.has("frente") && wallsOn;
   const recessOn =
     params.faceRecess &&
     active.has("frente") &&
     wallsOn &&
     !fusedFace &&
-    !splitShell &&
     recessLip < params.wall;
   const faceInset = recessOn ? recessLip + params.clearance : 0;
 
@@ -292,81 +288,8 @@ export function buildSign(
     }
   }
 
-  // ---------- duas metades impressas que se encaixam ----------
-  if (splitShell) {
-    const half = Math.max(params.wall / 2, 0.6);
-    const lipW = Math.max(half - params.clearance, 0.5);
-    const lipH = Math.max(Math.min(params.fitDepth, bodyHeight * 0.6), 0.5);
-    const backH = Math.max(bodyHeight * 0.5, params.wall);
-    const frontH = Math.max(bodyHeight - backH - lipH, params.wall);
-
-    const backGeos: BufferGeometry[] = [];
-    const frontGeos: BufferGeometry[] = [];
-
-    for (const shape of shapes) {
-      const overlap = 0.15;
-      const bs: BufferGeometry[] = [];
-      
-      // 1. O fundo (base sólida)
-      bs.push(extrude(cloneShape(shape), params.backThickness + overlap));
-      
-      // 2. PAREDE ÚNICA E CONTÍNUA (base + lábio)
-      const fullWallThickness = half + lipW;
-      for (const ring of ringShape(shape, fullWallThickness, 0)) {
-        const wallBase = extrude(ring, backH + params.backThickness + overlap);
-        wallBase.translate(0, 0, 0);
-        bs.push(wallBase);
-      }
-      for (const ring of ringShape(shape, lipW, half)) {
-        const lipTop = extrude(ring, backH + lipH + params.backThickness + overlap);
-        lipTop.translate(0, 0, 0);
-        bs.push(lipTop);
-      }
-      
-      const backSolid = combine(bs);
-      if (backSolid) backGeos.push(backSolid);
-
-      // Metade superior: Frente + saia externa + parede interna
-      const fs: BufferGeometry[] = [];
-      for (const ring of ringShape(shape, half, 0)) {
-        const outer = extrude(ring, lipH + frontH + params.faceThickness + overlap);
-        fs.push(outer);
-      }
-      for (const ring of ringShape(shape, lipW, half)) {
-        const inner = extrude(ring, frontH + params.faceThickness + overlap);
-        inner.translate(0, 0, lipH);
-        fs.push(inner);
-      }
-      const cap = extrude(cloneShape(shape), params.faceThickness + overlap);
-      cap.translate(0, 0, lipH + frontH - 0.05);
-      fs.push(cap);
-      
-      const frontSolid = combine(fs);
-      if (frontSolid) frontGeos.push(frontSolid);
-    }
-
-    const finalBackGeo = combine(backGeos);
-    if (finalBackGeo) {
-      finalBackGeo.translate(0, 0, baseZ);
-      parts.push(
-        makePart("laterais", "laterais", "Fundo + paredes", params.backColor, finalBackGeo, {
-          count: 1,
-        }),
-      );
-    }
-    const finalFrontGeo = combine(frontGeos);
-    if (finalFrontGeo) {
-      finalFrontGeo.translate(0, 0, baseZ + params.backThickness + backH);
-      parts.push(
-        makePart("frente", "frente", "Frente + paredes", params.faceColor, finalFrontGeo, {
-          count: 1,
-        }),
-      );
-    }
-  }
-
   // ---------- corpo: fundo + laterais + rebaixo em uma peça só ----------
-  if (wallsOn && !splitShell) {
+  if (wallsOn) {
     const geos: BufferGeometry[] = [];
     const zWall = fused || acrylicBack ? params.backThickness : 0;
     for (const shape of shapes) {
@@ -464,7 +387,7 @@ export function buildSign(
 
   // ---------- frente ----------
   const faceCut: Shape[] = [];
-  if (active.has("frente") && !fusedFace && !splitShell) {
+  if (active.has("frente") && !fusedFace) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
       if (faceInset > 0) {
