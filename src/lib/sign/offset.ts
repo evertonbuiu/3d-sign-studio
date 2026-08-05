@@ -2,8 +2,8 @@ import ClipperLib from "clipper-lib";
 import { Path, Shape, Vector2 } from "three";
 
 const SCALE = 1000; // mm -> unidades inteiras do clipper
-const CURVE_DIVISIONS = 24;
-const ARC_TOLERANCE = 0.05 * SCALE;
+const CURVE_DIVISIONS = 32;
+const ARC_TOLERANCE = 0.02 * SCALE;
 const MITER_LIMIT = 2;
 
 type CPoint = { X: number; Y: number };
