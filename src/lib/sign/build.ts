@@ -9,8 +9,6 @@ import {
   Vector2,
   Vector3,
 } from "three";
-import { SUBTRACTION, Brush, Evaluator } from "three-bvh-csg";
-
 import { cloneShape, insetShape, offsetShape, ringShape, shapePoints } from "./offset";
 import type { PartKind, SignParams, SignStyle } from "./model";
 
@@ -268,29 +266,28 @@ export function buildSign(
     const geos: BufferGeometry[] = [];
     const zWall = fused ? params.backThickness : 0;
     for (const shape of shapes) {
-      // Constrói o corpo a partir de um único sólido externo e remove as
-      // cavidades. Isso evita as emendas T e faces coplanares produzidas pela
-      // união de fundo, parede e aba — principal causa de STL não-manifold.
-      const totalHeight = zWall + bodyHeight + (recessOn ? params.faceThickness : 0);
-      const outer = extrude(cloneShape(shape), totalHeight);
-      const cutters: BufferGeometry[] = [];
-      const epsilon = 0.05;
+      // Cada seção é uma casca fechada e há uma pequena interseção entre elas.
+      // Assim o STL permanece manifold sem depender da triangulação instável
+      // de operações booleanas em contornos tipográficos complexos.
+      const overlap = 0.05;
+      const sections: BufferGeometry[] = [];
+      if (fused) sections.push(extrude(cloneShape(shape), params.backThickness + overlap));
 
-      for (const inner of insetShape(shape, params.wall)) {
-        const cavity = extrude(inner, bodyHeight + epsilon * 2);
-        cavity.translate(0, 0, zWall - epsilon);
-        cutters.push(cavity);
+      for (const ring of ringShape(shape, params.wall)) {
+        const wall = extrude(ring, bodyHeight + overlap * 2);
+        wall.translate(0, 0, zWall - overlap);
+        sections.push(wall);
       }
 
       if (recessOn) {
-        for (const opening of insetShape(shape, recessLip)) {
-          const seat = extrude(opening, params.faceThickness + epsilon * 2);
-          seat.translate(0, 0, zWall + bodyHeight - epsilon);
-          cutters.push(seat);
+        for (const lipShape of ringShape(shape, recessLip)) {
+          const lip = extrude(lipShape, params.faceThickness + overlap * 2);
+          lip.translate(0, 0, zWall + bodyHeight - overlap);
+          sections.push(lip);
         }
       }
 
-      const solid = subtractSolid(outer, cutters);
+      const solid = combine(sections);
       if (solid) geos.push(solid);
     }
 
@@ -510,45 +507,6 @@ function combine(geos: BufferGeometry[]): BufferGeometry | null {
   if (valid.length === 1) return valid[0]!;
   return mergePositions(valid);
 }
-
-function subtractSolid(base: BufferGeometry, cutters: BufferGeometry[]): BufferGeometry | null {
-  const validCutters = cutters.filter((geometry) => geometry.getAttribute("position")?.count);
-  if (!base.getAttribute("position")?.count) return null;
-  if (!validCutters.length) return base;
-
-  try {
-    const evaluator = new Evaluator();
-    evaluator.useGroups = false;
-    let result = new Brush(prepareForCsg(base));
-    result.updateMatrixWorld();
-
-    for (const geometry of validCutters) {
-      const cutter = new Brush(prepareForCsg(geometry));
-      cutter.updateMatrixWorld();
-      result = evaluator.evaluate(result, cutter, SUBTRACTION);
-      result.updateMatrixWorld();
-    }
-
-    const geometry = result.geometry.clone();
-    geometry.clearGroups();
-    return geometry;
-  } catch (error) {
-    console.warn("Falha ao abrir cavidade do corpo", error);
-    return null;
-  }
-}
-
-function prepareForCsg(source: BufferGeometry): BufferGeometry {
-  const geometry = source.clone();
-  geometry.clearGroups();
-  if (!geometry.getAttribute("normal")) geometry.computeVertexNormals();
-  const count = geometry.getAttribute("position").count;
-  if (!geometry.getAttribute("uv")) {
-    geometry.setAttribute("uv", new Float32BufferAttribute(new Float32Array(count * 2), 2));
-  }
-  return geometry;
-}
-
 
 function mergePositions(geos: BufferGeometry[]): BufferGeometry {
   let total = 0;
