@@ -45,10 +45,25 @@ export interface SignBuild {
   printedVolumeCm3: number;
 }
 
-const EXTRUDE = { bevelEnabled: false, curveSegments: 32, steps: 1 };
+const EXTRUDE = { 
+  bevelEnabled: true, 
+  bevelThickness: 0.4, 
+  bevelSize: 0.4, 
+  bevelOffset: 0, 
+  bevelSegments: 3,
+  curveSegments: 32, 
+  steps: 1 
+};
 
 function extrude(shape: Shape | Shape[], depth: number): ExtrudeGeometry {
-  return new ExtrudeGeometry(shape, { ...EXTRUDE, depth: Math.max(depth, 0.2) });
+  const d = Math.max(depth, 0.2);
+  // Se o depth for muito pequeno, desabilitamos o bevel para evitar artefatos
+  const useBevel = d > 1.2;
+  return new ExtrudeGeometry(shape, { 
+    ...EXTRUDE, 
+    bevelEnabled: useBevel,
+    depth: useBevel ? d - EXTRUDE.bevelThickness * 2 : d 
+  });
 }
 
 function geometryVolumeCm3(geometry: BufferGeometry): number {
