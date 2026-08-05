@@ -81,7 +81,6 @@ export const DEFAULT_PARAMS: SignParams = {
   clearance: 0.3,
   faceRecess: true,
   recessLip: 1.2,
-  led: true,
   ledChannelWidth: 12,
   ledChannelHeight: 6,
   ledOffset: 3,
@@ -182,7 +181,7 @@ export const STYLES: SignStyle[] = [
     parts: boxParts,
     acrylicBack: true,
     printedFace: true,
-    preset: { depth: 45, faceThickness: 2.4, led: true },
+    preset: { depth: 45, faceThickness: 2.4 },
     thumb: { face: "#8f9db0", body: "#39424f", glow: "halo" },
   },
   {
@@ -191,7 +190,7 @@ export const STYLES: SignStyle[] = [
     group: "Iluminação",
     description: "Luz frontal difusa em toda a face da letra.",
     parts: boxParts,
-    preset: { led: true, depth: 55, ledChannelWidth: 14 },
+    preset: { depth: 55, ledChannelWidth: 14 },
     thumb: { face: "#fff3cf", body: "#3f4a5a", glow: "front" },
   },
   {
@@ -200,7 +199,7 @@ export const STYLES: SignStyle[] = [
     group: "Iluminação",
     description: "Letra opaca com halo de luz projetado na parede.",
     parts: boxParts,
-    preset: { led: true, depth: 45, faceThickness: 4, ledOffset: 6 },
+    preset: { depth: 45, faceThickness: 4, ledOffset: 6 },
     thumb: { face: "#7b8798", body: "#2f3742", glow: "halo" },
   },
   {
@@ -209,7 +208,7 @@ export const STYLES: SignStyle[] = [
     group: "Iluminação",
     description: "Iluminação traseira com fundo aberto.",
     parts: boxParts,
-    preset: { led: true, depth: 50, backThickness: 2 },
+    preset: { depth: 50, backThickness: 2 },
     thumb: { face: "#6f7c8f", body: "#2f3742", glow: "back" },
   },
   {
@@ -218,7 +217,7 @@ export const STYLES: SignStyle[] = [
     group: "Iluminação",
     description: "Somente a frente acende, laterais opacas.",
     parts: boxParts,
-    preset: { led: true, depth: 48 },
+    preset: { depth: 48 },
     thumb: { face: "#ffeeb8", body: "#3a4350", glow: "front" },
   },
   {
@@ -227,7 +226,7 @@ export const STYLES: SignStyle[] = [
     group: "Iluminação",
     description: "Luz na frente e halo traseiro simultâneos.",
     parts: boxParts,
-    preset: { led: true, depth: 60, ledChannelWidth: 16 },
+    preset: { depth: 60, ledChannelWidth: 16 },
     thumb: { face: "#ffe9ad", body: "#333c48", glow: "both" },
   },
   {
@@ -236,7 +235,7 @@ export const STYLES: SignStyle[] = [
     group: "Iluminação",
     description: "Luz nas bordas com acrílico gravado.",
     parts: boxParts,
-    preset: { led: true, depth: 30, ledChannelWidth: 8, ledOffset: 1.5 },
+    preset: { depth: 30, ledChannelWidth: 8, ledOffset: 1.5 },
     thumb: { face: "#d5ecff", body: "#2f3742", glow: "edge" },
   },
   {
@@ -254,7 +253,7 @@ export const STYLES: SignStyle[] = [
     group: "Letras",
     description: "Caixa completa com canal de LED.",
     parts: boxParts,
-    preset: { led: true, depth: 60 },
+    preset: { depth: 60 },
     thumb: { face: "#ffe9ad", body: "#3f4a5a", glow: "front" },
   },
   {
@@ -310,7 +309,6 @@ export const STYLES: SignStyle[] = [
     parts: ["placa", "canal-led", "furos"],
     preset: {
       bodyMode: "placa",
-      led: true,
       ledChannelWidth: 8,
       ledChannelHeight: 10,
       plateThickness: 8,
@@ -326,7 +324,6 @@ export const STYLES: SignStyle[] = [
     parts: ["placa", "canal-led", "furos"],
     preset: {
       bodyMode: "placa",
-      led: true,
       ledChannelWidth: 6,
       ledChannelHeight: 12,
       plateThickness: 8,
@@ -358,7 +355,7 @@ export const STYLES: SignStyle[] = [
     group: "Placas & Totem",
     description: "Totem vertical com base e letras iluminadas.",
     parts: ["placa", "poste", "frente", "canal-led", "furos"],
-    preset: { bodyMode: "totem", plateThickness: 20, poleHeight: 500, led: true },
+    preset: { bodyMode: "totem", plateThickness: 20, poleHeight: 500 },
     thumb: { face: "#e6edf7", body: "#3b4757", plate: true, glow: "front" },
   },
   {
