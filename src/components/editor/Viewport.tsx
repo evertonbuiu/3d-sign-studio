@@ -116,27 +116,33 @@ function PartMesh({
   wireframe: boolean;
 }) {
   const offset = (EXPLODE_ORDER[part.kind] ?? 0) * explode;
-  // Usamos EdgesGeometry para mostrar apenas as arestas reais (ângulo > 25 graus)
-  // ocultando as diagonais da triangulação que poluem o wireframe.
-  const edges = useMemo(() => new EdgesGeometry(part.geometry, 25), [part.geometry]);
+  // Reduzimos o threshold para 1 grau para mostrar as curvas das letras 
+  // mas ainda ocultar as diagonais internas de superfícies planas.
+  const edges = useMemo(() => new EdgesGeometry(part.geometry, 1), [part.geometry]);
 
   return (
     <group position={[0, 0, offset]}>
-      <mesh geometry={part.geometry} castShadow receiveShadow>
+      <mesh geometry={part.geometry} castShadow receiveShadow visible={!wireframe}>
         <meshStandardMaterial
           color={part.color}
-          transparent={part.opacity < 1 || wireframe}
-          opacity={wireframe ? 0.15 : part.opacity}
+          transparent={part.opacity < 1}
+          opacity={part.opacity}
           roughness={part.emissive ? 0.35 : 0.55}
           metalness={0.05}
-          emissive={part.emissive && !wireframe ? part.color : "#000000"}
-          emissiveIntensity={part.emissive && !wireframe ? 0.85 : 0}
+          emissive={part.emissive ? part.color : "#000000"}
+          emissiveIntensity={part.emissive ? 0.85 : 0}
         />
       </mesh>
       {wireframe && (
-        <lineSegments geometry={edges}>
-          <lineBasicMaterial color={part.color} transparent opacity={0.8} />
-        </lineSegments>
+        <>
+          {/* Mesh semi-transparente sutil para dar volume no wireframe sem poluir */}
+          <mesh geometry={part.geometry}>
+            <meshBasicMaterial color={part.color} transparent opacity={0.05} depthWrite={false} />
+          </mesh>
+          <lineSegments geometry={edges}>
+            <lineBasicMaterial color={part.color} transparent opacity={0.8} />
+          </lineSegments>
+        </>
       )}
     </group>
   );
