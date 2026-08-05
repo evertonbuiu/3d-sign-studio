@@ -305,20 +305,30 @@ export function buildSign(
     const frontGeos: BufferGeometry[] = [];
 
     for (const shape of shapes) {
-      // metade do fundo: chapa + parede contínua (o lábio é a própria parede interna,
-      // extrudada de baixo até o topo, sem anel empilhado)
+      // Metade inferior: Fundo + paredes unificados em uma única geometria contínua.
+      // O lábio interno de encaixe é fundido à parede.
       const bs: BufferGeometry[] = [];
-      bs.push(extrude(cloneShape(shape), params.backThickness + overlap));
-      for (const ring of ringShape(shape, lipW, half)) {
-        const inner = extrude(ring, backH + lipH + overlap);
-        inner.translate(0, 0, params.backThickness - overlap);
-        bs.push(inner);
-      }
+      const backShape = cloneShape(shape);
+      
+      // 1. O fundo (base)
+      bs.push(extrude(backShape, params.backThickness + overlap));
+      
+      // 2. A parede principal (externa da metade inferior)
+      // Ela sobe até backH.
       for (const ring of ringShape(shape, half, 0)) {
-        const outer = extrude(ring, backH + overlap * 2);
-        outer.translate(0, 0, params.backThickness - overlap);
-        bs.push(outer);
+        const wall = extrude(ring, backH + overlap);
+        wall.translate(0, 0, params.backThickness - overlap);
+        bs.push(wall);
       }
+      
+      // 3. O lábio de encaixe (parede interna)
+      // Ele sobe até backH + lipH. Unificado na mesma peça.
+      for (const ring of ringShape(shape, lipW, half)) {
+        const lip = extrude(ring, backH + lipH + overlap);
+        lip.translate(0, 0, params.backThickness - overlap);
+        bs.push(lip);
+      }
+      
       const backSolid = combine(bs);
       if (backSolid) backGeos.push(backSolid);
 
