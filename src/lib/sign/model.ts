@@ -189,9 +189,10 @@ export const STYLES: SignStyle[] = [
     id: "fundo-impresso-frente-impressa",
     name: "Fundo Impresso + Frente Impressa",
     group: "Acrílico & Impresso",
-    description: "Peça totalmente impressa: fundo, laterais e frente unificados.",
+    description: "Frente impressa e paredes unificadas, com fundo impresso independente.",
     parts: boxParts,
     printedFace: true,
+    acrylicBack: false, // Fundo é impresso, mas não fundido
     preset: { depth: 40, faceThickness: 3, backThickness: 3 },
     thumb: { face: "#7f8da0", body: "#39424f", glow: "none" },
   },
