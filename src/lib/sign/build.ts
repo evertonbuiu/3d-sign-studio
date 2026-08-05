@@ -51,10 +51,10 @@ const EXTRUDE = { bevelEnabled: false, curveSegments: 32, steps: 1 };
 function extrude(shape: Shape | Shape[], depth: number): BufferGeometry {
   const baseGeo = new ExtrudeGeometry(shape, { ...EXTRUDE, depth: Math.max(depth, 0.2) });
   // Aggressively merge vertices with slightly higher tolerance to close micro-gaps
-  let geo = BufferGeometryUtils.mergeVertices(baseGeo, 0.005);
+  let geo = BufferGeometryUtils.mergeVertices(baseGeo, 0.01);
   // Ensure we are working with indexed geometry to facilitate vertex sharing
   if (!geo.index) {
-    geo = BufferGeometryUtils.mergeVertices(geo.toNonIndexed(), 0.005);
+    geo = BufferGeometryUtils.mergeVertices(geo.toNonIndexed(), 0.01);
   }
   geo.computeVertexNormals();
   return geo;
@@ -509,7 +509,7 @@ function unionSolid(geos: BufferGeometry[]): BufferGeometry | null {
     geometry.clearGroups();
 
     // Crucial: merge vertices after boolean operations to close gaps
-    geometry = BufferGeometryUtils.mergeVertices(geometry, 0.005);
+    geometry = BufferGeometryUtils.mergeVertices(geometry, 0.01);
 
     // Ensure all faces are strictly oriented outwards to prevent slicer errors
     geometry.computeVertexNormals();
@@ -541,7 +541,7 @@ function prepareForCsg(source: BufferGeometry): BufferGeometry {
 
 function mergePositions(geos: BufferGeometry[]): BufferGeometry {
   const merged = BufferGeometryUtils.mergeGeometries(geos, false);
-  return BufferGeometryUtils.mergeVertices(merged, 0.001);
+  return BufferGeometryUtils.mergeVertices(merged, 0.005);
 }
 
 function shadeColor(hex: string, amount: number): string {
