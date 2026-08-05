@@ -96,9 +96,12 @@ export function useEditorState(): EditorState {
       console.error("Falha ao gerar geometria", error);
       return null;
     }
-  }, [font, svg, params, style]);
+  }, [font, svg, scaledParams, style]);
 
-  const cost = useMemo(() => (build ? computeCost(build, params) : null), [build, params]);
+  const cost = useMemo(
+    () => (build ? computeCost(build, scaledParams) : null),
+    [build, scaledParams],
+  );
 
   return {
     params,
