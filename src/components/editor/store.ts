@@ -97,50 +97,60 @@ export function useEditorState(): EditorState {
 
   const cost = useMemo(() => (build ? computeCost(build, params) : null), [build, params]);
 
-  return {
-    params,
-    style,
-    build,
-    cost,
-    ready: Boolean(font) || Boolean(svg),
-    explode,
-    hidden,
-    wireframe,
-    showOutlines,
-    svgName: svg?.name ?? null,
-    setSvg: (name, content) => setSvgState({ name, content }),
-    clearSvg: () => setSvgState(null),
-    setWireframe,
-    setShowOutlines,
-    projectId,
-    projectName,
-    setParam: (key, value) => setParamsState((prev) => ({ ...prev, [key]: value })),
-    setParams: (patch) => setParamsState((prev) => ({ ...prev, ...patch })),
-    selectStyle: (id) => {
-      setStyleId(id);
-      setParamsState((prev) => paramsForStyle(getStyle(id), prev));
-      setHidden(new Set());
-    },
-    setExplode,
-    togglePart: (id) =>
-      setHidden((prev) => {
-        const next = new Set(prev);
-        if (next.has(id)) next.delete(id);
-        else next.add(id);
-        return next;
-      }),
-    loadProject: (p) => {
-      setStyleId(p.styleId);
-      setParamsState({ ...DEFAULT_PARAMS, ...p.params });
-      setProjectId(p.id);
-      setProjectName(p.name);
-      setHidden(new Set());
-    },
-    setProject: (id, name) => {
-      setProjectId(id);
-      setProjectName(name);
-    },
-  };
+  const state = useMemo(
+    () => ({
+      params,
+      style,
+      build,
+      cost,
+      ready: Boolean(font) || Boolean(svg),
+      explode,
+      hidden,
+      wireframe,
+      showOutlines,
+      svgName: svg?.name ?? null,
+      setSvg: (name: string, content: string) => setSvgState({ name, content }),
+      clearSvg: () => setSvgState(null),
+      setWireframe,
+      setShowOutlines,
+      projectId,
+      projectName,
+      setParam: <K extends keyof SignParams>(key: K, value: SignParams[K]) =>
+        setParamsState((prev) => ({ ...prev, [key]: value })),
+      setParams: (patch: Partial<SignParams>) => setParamsState((prev) => ({ ...prev, ...patch })),
+      selectStyle: (id: string) => {
+        setStyleId(id);
+        setParamsState((prev) => paramsForStyle(getStyle(id), prev));
+        setHidden(new Set());
+      },
+      setExplode,
+      togglePart: (id: string) =>
+        setHidden((prev) => {
+          const next = new Set(prev);
+          if (next.has(id)) next.delete(id);
+          else next.add(id);
+          return next;
+        }),
+      loadProject: (p: { id: string; name: string; styleId: string; params: Partial<SignParams> }) => {
+        setStyleId(p.styleId);
+        setParamsState({ ...DEFAULT_PARAMS, ...p.params });
+        setProjectId(p.id);
+        setProjectName(p.name);
+        setHidden(new Set());
+      },
+      setProject: (id: string | null, name: string) => {
+        setProjectId(id);
+        setProjectName(name);
+      },
+    }),
+    [params, style, build, cost, font, svg, explode, hidden, wireframe, showOutlines, projectId, projectName],
+  );
+
+  useEffect(() => {
+    (window as any).editorStore = state;
+  }, [state]);
+
+  return state;
 }
 
 export const EditorProvider = EditorContext.Provider;
