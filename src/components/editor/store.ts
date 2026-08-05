@@ -143,11 +143,14 @@ export function useEditorState(): EditorState {
   const build = useMemo(() => {
     try {
       const p = scaledParams;
-      const shapes = svg
+      const s = axisScale(params);
+      const base = svg
         ? svgToShapes(svg.content, p.letterHeight)
         : font
           ? textToShapes(font, p.text.toUpperCase(), p.letterHeight, p.tracking)
           : [];
+      const shapes = s.y === 0 ? base : scaleShapes(base, s.x / s.y, 1);
+
       if (!shapes.length) return null;
       return buildSign(shapes, p, style);
     } catch (error) {
