@@ -3,6 +3,7 @@ import type { Font } from "opentype.js";
 
 import { loadFont, textToShapes } from "@/lib/sign/fonts";
 import { svgToShapes } from "@/lib/sign/svg";
+import { scaleShapes } from "@/lib/sign/transform";
 import { buildSign, type SignBuild } from "@/lib/sign/build";
 import { computeCost, type CostBreakdown } from "@/lib/sign/cost";
 import {
@@ -44,36 +45,63 @@ export interface EditorState {
   setProject: (id: string | null, name: string) => void;
 }
 
-const SCALED_KEYS = [
-  "letterHeight",
-  "tracking",
-  "depth",
+/** Medidas do plano XY (largura/altura) e do eixo Z (profundidade). */
+const X_KEYS = ["tracking"] as const;
+const Y_KEYS = ["letterHeight", "poleHeight"] as const;
+const XY_KEYS = [
   "wall",
-  "faceThickness",
-  "backThickness",
   "clearance",
   "recessLip",
   "ledChannelWidth",
-  "ledChannelHeight",
   "ledOffset",
-  "layerThickness",
   "layerShrink",
   "holeDiameter",
   "plateMargin",
+] as const;
+const Z_KEYS = [
+  "depth",
+  "faceThickness",
+  "backThickness",
   "plateThickness",
-  "poleHeight",
-] as const satisfies readonly (keyof SignParams)[];
+  "layerThickness",
+  "ledChannelHeight",
+] as const;
 
-/** Aplica a escala global (%) a todas as medidas em mm. */
+export interface AxisScale {
+  x: number;
+  y: number;
+  z: number;
+}
+
+export function axisScale(params: SignParams): AxisScale {
+  const g = (params.scale || 100) / 100;
+  return {
+    x: (g * (params.scaleX || 100)) / 100,
+    y: (g * (params.scaleY || 100)) / 100,
+    z: (g * (params.scaleZ || 100)) / 100,
+  };
+}
+
+const round = (n: number) => Number(n.toFixed(4));
+
+/**
+ * Aplica escala por eixo às medidas em mm.
+ * Os contornos são gerados na altura escalada em Y; o estiramento horizontal
+ * extra (x/y) é aplicado depois, direto nos contornos.
+ */
 export function scaleParams(params: SignParams): SignParams {
-  const k = (params.scale || 100) / 100;
-  if (k === 1) return params;
+  const s = axisScale(params);
+  if (s.x === 1 && s.y === 1 && s.z === 1) return params;
   const out: SignParams = { ...params };
-  for (const key of SCALED_KEYS) {
-    out[key] = Number(((params[key] as number) * k).toFixed(4));
-  }
+  const xy = (s.x + s.y) / 2;
+  for (const key of Y_KEYS) out[key] = round(params[key] * s.y);
+  // tracking entra na geração do texto antes do estiramento x/y
+  for (const key of X_KEYS) out[key] = round(params[key] * s.y);
+  for (const key of XY_KEYS) out[key] = round(params[key] * xy);
+  for (const key of Z_KEYS) out[key] = round(params[key] * s.z);
   return out;
 }
+
 
 const EditorContext = createContext<EditorState | null>(null);
 
@@ -116,18 +144,21 @@ export function useEditorState(): EditorState {
   const build = useMemo(() => {
     try {
       const p = scaledParams;
-      const shapes = svg
+      const s = axisScale(params);
+      const base = svg
         ? svgToShapes(svg.content, p.letterHeight)
         : font
           ? textToShapes(font, p.text.toUpperCase(), p.letterHeight, p.tracking)
           : [];
+      const shapes = s.y === 0 ? base : scaleShapes(base, s.x / s.y, 1);
+
       if (!shapes.length) return null;
       return buildSign(shapes, p, style);
     } catch (error) {
       console.error("Falha ao gerar geometria", error);
       return null;
     }
-  }, [font, svg, scaledParams, style]);
+  }, [font, svg, params, scaledParams, style]);
 
   const cost = useMemo(
     () => (build ? computeCost(build, scaledParams) : null),

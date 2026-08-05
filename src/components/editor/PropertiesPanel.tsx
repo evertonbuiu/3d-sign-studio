@@ -223,7 +223,10 @@ export default function PropertiesPanel() {
           <AccordionItem value="construcao">
             <AccordionTrigger className="text-sm">Construção</AccordionTrigger>
             <AccordionContent className="space-y-3 pb-4">
-              <NumberSlider label="Escala do modelo" keyName="scale" min={10} max={400} step={1} unit="%" />
+              <NumberSlider label="Escala geral" keyName="scale" min={10} max={400} step={1} unit="%" />
+              <NumberSlider label="Escala X (largura)" keyName="scaleX" min={10} max={400} step={1} unit="%" />
+              <NumberSlider label="Escala Y (altura)" keyName="scaleY" min={10} max={400} step={1} unit="%" />
+              <NumberSlider label="Escala Z (profundidade)" keyName="scaleZ" min={10} max={400} step={1} unit="%" />
               <NumberSlider label="Profundidade" keyName="depth" min={5} max={200} step={1} />
               <NumberSlider label="Parede" keyName="wall" min={0.5} max={12} step={0.1} />
               <NumberSlider label="Frente" keyName="faceThickness" min={0.5} max={60} step={0.2} />
