@@ -119,7 +119,10 @@ export interface SignStyle {
   description: string;
   /** peças ativas neste estilo */
   parts: PartKind[];
+  /** fundo é uma chapa de acrílico cortada, encaixada nas paredes impressas */
+  acrylicBack?: boolean;
   preset: Partial<SignParams>;
+
   /** dica visual da miniatura */
   thumb: {
     face: string;
@@ -164,6 +167,7 @@ export const STYLES: SignStyle[] = [
     group: "Acrílico & Impresso",
     description: "Fundo e frente em acrílico com laterais impressas.",
     parts: boxParts,
+    acrylicBack: true,
     preset: { depth: 45, backThickness: 3, faceThickness: 3 },
     thumb: { face: "#e6f0fb", body: "#5b6a7d", glow: "both" },
   },
@@ -173,6 +177,7 @@ export const STYLES: SignStyle[] = [
     group: "Acrílico & Impresso",
     description: "Frente impressa opaca sobre fundo translúcido.",
     parts: boxParts,
+    acrylicBack: true,
     preset: { depth: 45, faceThickness: 2.4, led: true },
     thumb: { face: "#8f9db0", body: "#39424f", glow: "halo" },
   },
