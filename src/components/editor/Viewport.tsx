@@ -1,10 +1,18 @@
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, type ThreeEvent } from "@react-three/fiber";
 import { ContactShadows, Grid, OrbitControls } from "@react-three/drei";
-import { Box3, BufferGeometry, Float32BufferAttribute, Vector3, type Group } from "three";
+import {
+  Box3,
+  BufferGeometry,
+  EdgesGeometry,
+  Float32BufferAttribute,
+  Vector3,
+  type Group,
+} from "three";
 
 import { useEditor } from "./store";
 import type { SignOutline, SignPart } from "@/lib/sign/build";
@@ -20,6 +28,84 @@ const EXPLODE_ORDER: Record<string, number> = {
   "camada-2": 5,
   "camada-3": 6,
 };
+
+export interface PickedEdge {
+  key: string;
+  partId: string;
+  partLabel: string;
+  a: [number, number, number];
+  b: [number, number, number];
+  offset: number;
+  length: number;
+}
+
+function EdgePicker({
+  part,
+  offset,
+  onHover,
+  onPick,
+}: {
+  part: SignPart;
+  offset: number;
+  onHover: (edge: PickedEdge | null) => void;
+  onPick: (edge: PickedEdge, additive: boolean) => void;
+}) {
+  const edges = useMemo(() => new EdgesGeometry(part.geometry, 20), [part.geometry]);
+
+  const edgeAt = (index: number): PickedEdge | null => {
+    const pos = edges.getAttribute("position");
+    const i = index - (index % 2);
+    if (!pos || i + 1 >= pos.count) return null;
+    const a: [number, number, number] = [pos.getX(i), pos.getY(i), pos.getZ(i)];
+    const b: [number, number, number] = [pos.getX(i + 1), pos.getY(i + 1), pos.getZ(i + 1)];
+    const length = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+    return {
+      key: `${part.id}:${i}`,
+      partId: part.id,
+      partLabel: part.name,
+      a,
+      b,
+      offset,
+      length,
+    };
+  };
+
+  const handle = (event: ThreeEvent<PointerEvent>, pick: boolean) => {
+    const index = event.index;
+    if (index == null) return;
+    const edge = edgeAt(index);
+    if (!edge) return;
+    event.stopPropagation();
+    if (pick) onPick(edge, event.nativeEvent.shiftKey);
+    else onHover(edge);
+  };
+
+  return (
+    <lineSegments
+      geometry={edges}
+      position={[0, 0, offset]}
+      raycast-params-Line-threshold={0.02}
+      onPointerMove={(e) => handle(e, false)}
+      onPointerOut={() => onHover(null)}
+      onClick={(e) => handle(e as unknown as ThreeEvent<PointerEvent>, true)}
+    >
+      <lineBasicMaterial color="#64748b" transparent opacity={0.55} />
+    </lineSegments>
+  );
+}
+
+function EdgeHighlight({ edge, color }: { edge: PickedEdge; color: string }) {
+  const geometry = useMemo(() => {
+    const geo = new BufferGeometry();
+    geo.setAttribute("position", new Float32BufferAttribute([...edge.a, ...edge.b], 3));
+    return geo;
+  }, [edge]);
+  return (
+    <lineSegments geometry={geometry} position={[0, 0, edge.offset]} renderOrder={1000}>
+      <lineBasicMaterial color={color} depthTest={false} transparent opacity={1} />
+    </lineSegments>
+  );
+}
 
 function PartMesh({
   part,
@@ -47,6 +133,7 @@ function PartMesh({
   );
 }
 
+
 function OutlineLine({ outline }: { outline: SignOutline }) {
   const geometry = useMemo(() => {
     const pts = outline.points;
@@ -68,7 +155,19 @@ function OutlineLine({ outline }: { outline: SignOutline }) {
   );
 }
 
-function Model() {
+function Model({
+  edgeSelect,
+  hover,
+  selected,
+  onHover,
+  onPick,
+}: {
+  edgeSelect: boolean;
+  hover: PickedEdge | null;
+  selected: PickedEdge[];
+  onHover: (edge: PickedEdge | null) => void;
+  onPick: (edge: PickedEdge, additive: boolean) => void;
+}) {
   const { build, explode, hidden, wireframe, showOutlines } = useEditor();
   const groupRef = useRef<Group>(null);
 
@@ -93,13 +192,28 @@ function Model() {
 
   if (!build) return null;
 
+  const visible = build.parts.filter((part) => !hidden.has(part.id));
+
   return (
     <group ref={groupRef} scale={scale} rotation={[-0.05, 0, 0]}>
       <group position={[-center.x, -center.y, -center.z]}>
-        {build.parts
-          .filter((part) => !hidden.has(part.id))
-          .map((part) => (
-            <PartMesh key={part.id} part={part} explode={explode} wireframe={wireframe} />
+        {visible.map((part) => (
+          <PartMesh key={part.id} part={part} explode={explode} wireframe={wireframe} />
+        ))}
+        {edgeSelect &&
+          visible.map((part) => (
+            <EdgePicker
+              key={`edges-${part.id}`}
+              part={part}
+              offset={(EXPLODE_ORDER[part.kind] ?? 0) * explode}
+              onHover={onHover}
+              onPick={onPick}
+            />
+          ))}
+        {edgeSelect && hover && <EdgeHighlight edge={hover} color="#38bdf8" />}
+        {edgeSelect &&
+          selected.map((edge) => (
+            <EdgeHighlight key={edge.key} edge={edge} color="#f97316" />
           ))}
         {showOutlines &&
           build.outlines.map((outline) => <OutlineLine key={outline.id} outline={outline} />)}
@@ -107,6 +221,7 @@ function Model() {
     </group>
   );
 }
+
 
 export default function Viewport() {
   const {
@@ -120,6 +235,22 @@ export default function Viewport() {
     setShowOutlines,
   } = useEditor();
 
+  const [edgeSelect, setEdgeSelect] = useState(false);
+  const [hover, setHover] = useState<PickedEdge | null>(null);
+  const [selected, setSelected] = useState<PickedEdge[]>([]);
+
+  const totalLength = selected.reduce((sum, e) => sum + e.length, 0);
+
+  const handlePick = (edge: PickedEdge, additive: boolean) => {
+    setSelected((prev) => {
+      const exists = prev.some((e) => e.key === edge.key);
+      if (additive) {
+        return exists ? prev.filter((e) => e.key !== edge.key) : [...prev, edge];
+      }
+      return exists && prev.length === 1 ? [] : [edge];
+    });
+  };
+
   return (
     <div className="absolute inset-0 bg-viewport">
       <Canvas shadows camera={{ position: [0, 1.1, 4.6], fov: 42 }} dpr={[1, 2]}>
@@ -127,7 +258,13 @@ export default function Viewport() {
         <hemisphereLight args={["#ffffff", "#c7d0dc", 1.1]} />
         <directionalLight position={[4, 6, 6]} intensity={1.5} castShadow />
         <directionalLight position={[-5, 2, -4]} intensity={0.5} />
-        <Model />
+        <Model
+          edgeSelect={edgeSelect}
+          hover={hover}
+          selected={selected}
+          onHover={setHover}
+          onPick={handlePick}
+        />
         <ContactShadows position={[0, -1.6, 0]} opacity={0.35} blur={2.4} scale={9} far={4} />
         <Grid
           position={[0, -1.6, 0]}
@@ -151,6 +288,47 @@ export default function Viewport() {
           <Label className="text-sm font-medium">Contornos</Label>
           <Switch checked={showOutlines} onCheckedChange={setShowOutlines} />
         </div>
+        <div className="flex items-center justify-between">
+          <Label className="text-sm font-medium">Selecionar aresta</Label>
+          <Switch
+            checked={edgeSelect}
+            onCheckedChange={(v) => {
+              setEdgeSelect(v);
+              setHover(null);
+              if (!v) setSelected([]);
+            }}
+          />
+        </div>
+        {edgeSelect && (
+          <div className="space-y-1 rounded-md border border-border bg-background/60 p-2">
+            <p className="text-xs text-muted-foreground">
+              Clique para selecionar, Shift+clique para somar arestas.
+            </p>
+            <div className="flex items-center justify-between text-sm">
+              <span>Selecionadas</span>
+              <span className="tabular-nums">{selected.length}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span>Comprimento</span>
+              <span className="tabular-nums">{totalLength.toFixed(1)} mm</span>
+            </div>
+            {hover && (
+              <p className="text-xs text-muted-foreground">
+                {hover.partLabel} • {hover.length.toFixed(1)} mm
+              </p>
+            )}
+            {selected.length > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full"
+                onClick={() => setSelected([])}
+              >
+                Limpar seleção
+              </Button>
+            )}
+          </div>
+        )}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <Label className="text-sm font-medium">Vista explodida</Label>
@@ -165,6 +343,7 @@ export default function Viewport() {
           />
         </div>
       </div>
+
 
       {!ready && (
         <div className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-muted-foreground">
