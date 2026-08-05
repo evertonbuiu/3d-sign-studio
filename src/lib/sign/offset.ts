@@ -67,10 +67,14 @@ function offsetPaths(paths: CPath[], delta: number): CPath[] {
   // even for "zero" offsets, which helps closing tiny gaps in fonts.
   const effectiveDelta = delta === 0 ? 0.001 : delta;
   const co = new ClipperLib.ClipperOffset(MITER_LIMIT, ARC_TOLERANCE);
+  // Ensure winding order is consistent for manifold solids
   co.AddPaths(paths, ClipperLib.JoinType.jtMiter, ClipperLib.EndType.etClosedPolygon);
   const solution: CPath[] = [];
   co.Execute(solution, effectiveDelta * SCALE);
-  return normalize(solution);
+  
+  // Clean polygons again after offset to remove duplicate points
+  const cleaned = ClipperLib.Clipper.CleanPolygons(solution, SCALE * 0.001);
+  return normalize(cleaned);
 }
 
 function differencePaths(subject: CPath[], clip: CPath[]): CPath[] {
