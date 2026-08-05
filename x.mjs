@@ -1,6 +1,4 @@
 import fs from "fs";
-import M from "dxf-parser";
-const P = M.default || M;
-const t = fs.readFileSync("/tmp/t.dxf","utf8").replace(/\r\n?/g,"\n").replace(/\s+$/,"");
-const d = new P().parseSync(t);
-fs.writeFileSync("/tmp/out.json", JSON.stringify(d?.entities ?? null, null, 1));
+import { dxfToShapes } from "./src/lib/sign/dxf.ts";
+const s = dxfToShapes(fs.readFileSync("/tmp/t.dxf","utf8"), 100);
+console.error("SHAPES", s.length, s.map(x => [x.getPoints(1).length, x.holes.length]));
