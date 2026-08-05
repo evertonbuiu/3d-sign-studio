@@ -1,13 +1,27 @@
 import type { BufferGeometry } from "three";
 
-/** Arredonda para 1e-4 mm para soldar vértices praticamente coincidentes. */
+/** Tolerância de solda de vértices (mm). Vértices dentro dessa grade viram o mesmo ponto. */
+const WELD = 1e-3;
+
+/** Arredonda para a grade de solda, evitando -0. */
 function snap(value: number): number {
-  return Math.round(value * 10000) / 10000;
+  const v = Math.round(value / WELD) * WELD;
+  return Object.is(v, -0) ? 0 : Number(v.toFixed(4));
+}
+
+/** Chave canônica de um triângulo (independente da ordem dos vértices). */
+function faceKey(t: number[]): string {
+  const verts = [
+    `${t[0]},${t[1]},${t[2]}`,
+    `${t[3]},${t[4]},${t[5]}`,
+    `${t[6]},${t[7]},${t[8]}`,
+  ].sort();
+  return verts.join("|");
 }
 
 /** Gera um STL binário (mm) a partir de geometrias em coordenadas de mundo. */
 export function geometriesToStl(geometries: BufferGeometry[]): ArrayBuffer {
-  const triangles: number[][] = [];
+  const collected: number[][] = [];
 
   for (const geometry of geometries) {
     const source = geometry.index ? geometry.toNonIndexed() : geometry;
@@ -41,9 +55,32 @@ export function geometriesToStl(geometries: BufferGeometry[]): ArrayBuffer {
       const ny = uz * vx - ux * vz;
       const nz = ux * vy - uy * vx;
       if (Math.hypot(nx, ny, nz) / 2 < 1e-7) continue;
-      triangles.push(t);
+      collected.push(t);
     }
   }
+
+  // Remove faces internas: pares de triângulos coincidentes com orientação oposta
+  // (resultado típico de uniões booleanas) e duplicatas exatas.
+  const buckets = new Map<string, number[]>();
+  collected.forEach((t, index) => {
+    const key = faceKey(t);
+    const list = buckets.get(key);
+    if (list) list.push(index);
+    else buckets.set(key, [index]);
+  });
+
+  const drop = new Set<number>();
+  for (const list of buckets.values()) {
+    if (list.length < 2) continue;
+    // mantém apenas uma face por posição; pares opostos são descartados por completo
+    const keep = list.length % 2 === 1 ? list[list.length - 1]! : -1;
+    for (const index of list) {
+      if (index !== keep) drop.add(index);
+    }
+  }
+
+  const triangles = collected.filter((_, index) => !drop.has(index));
+
 
   const buffer = new ArrayBuffer(84 + triangles.length * 50);
   const view = new DataView(buffer);
