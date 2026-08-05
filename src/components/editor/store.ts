@@ -3,6 +3,7 @@ import type { Font } from "opentype.js";
 
 import { loadFont, textToShapes } from "@/lib/sign/fonts";
 import { svgToShapes } from "@/lib/sign/svg";
+import { dxfToShapes } from "@/lib/sign/dxf";
 import { buildSign, type SignBuild } from "@/lib/sign/build";
 import { computeCost, type CostBreakdown } from "@/lib/sign/cost";
 import {
@@ -24,7 +25,9 @@ export interface EditorState {
   wireframe: boolean;
   showOutlines: boolean;
   svgName: string | null;
+  vectorKind: "svg" | "dxf" | null;
   setSvg: (name: string, content: string) => void;
+  setDxf: (name: string, content: string) => void;
   clearSvg: () => void;
   projectId: string | null;
   projectName: string;
@@ -62,7 +65,11 @@ export function useEditorState(): EditorState {
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [wireframe, setWireframe] = useState(false);
   const [showOutlines, setShowOutlines] = useState(false);
-  const [svg, setSvgState] = useState<{ name: string; content: string } | null>(null);
+  const [svg, setSvgState] = useState<{
+    name: string;
+    content: string;
+    kind: "svg" | "dxf";
+  } | null>(null);
   const [projectId, setProjectId] = useState<string | null>(null);
   const [projectName, setProjectName] = useState("Novo projeto");
 
@@ -83,7 +90,9 @@ export function useEditorState(): EditorState {
   const build = useMemo(() => {
     try {
       const shapes = svg
-        ? svgToShapes(svg.content, params.letterHeight)
+        ? svg.kind === "dxf"
+          ? dxfToShapes(svg.content, params.letterHeight)
+          : svgToShapes(svg.content, params.letterHeight)
         : font
           ? textToShapes(font, params.text.toUpperCase(), params.letterHeight, params.tracking)
           : [];
@@ -108,7 +117,9 @@ export function useEditorState(): EditorState {
     wireframe,
     showOutlines,
     svgName: svg?.name ?? null,
-    setSvg: (name, content) => setSvgState({ name, content }),
+    vectorKind: svg?.kind ?? null,
+    setSvg: (name, content) => setSvgState({ name, content, kind: "svg" }),
+    setDxf: (name, content) => setSvgState({ name, content, kind: "dxf" }),
     clearSvg: () => setSvgState(null),
     setWireframe,
     setShowOutlines,
