@@ -133,6 +133,8 @@ export interface SignStyle {
   acrylicBack?: boolean;
   /** frente impressa como tampa separada, com pino de encaixe nas paredes */
   printedFace?: boolean;
+  /** duas metades impressas (fundo+paredes e frente+paredes) que se encaixam */
+  splitShell?: boolean;
   preset: Partial<SignParams>;
 
   /** dica visual da miniatura */
@@ -189,9 +191,10 @@ export const STYLES: SignStyle[] = [
     id: "fundo-impresso-frente-impressa",
     name: "Fundo Impresso + Frente Impressa",
     group: "Acrílico & Impresso",
-    description: "Peça totalmente impressa: fundo, laterais e frente unificados.",
+    description: "Duas metades impressas: fundo com paredes e frente com paredes que encaixam.",
     parts: boxParts,
     printedFace: true,
+    splitShell: true,
     preset: { depth: 40, faceThickness: 3, backThickness: 3 },
     thumb: { face: "#7f8da0", body: "#39424f", glow: "none" },
   },
