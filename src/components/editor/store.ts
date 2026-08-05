@@ -3,6 +3,7 @@ import type { Font } from "opentype.js";
 
 import { loadFont, textToShapes } from "@/lib/sign/fonts";
 import { svgToShapes } from "@/lib/sign/svg";
+import { dxfToShapes } from "@/lib/sign/dxf";
 import { buildSign, type SignBuild } from "@/lib/sign/build";
 import { computeCost, type CostBreakdown } from "@/lib/sign/cost";
 import {
