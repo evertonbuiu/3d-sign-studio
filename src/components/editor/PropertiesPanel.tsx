@@ -1,3 +1,4 @@
+import { toast } from "sonner";
 import { Eye, EyeOff, Upload, X } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -186,8 +187,16 @@ export default function PropertiesPanel() {
                         onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (!file) return;
-                          setDxf(file.name, await file.text());
+                          const content = await file.text();
                           e.target.value = "";
+                          const { dxfToShapes } = await import("@/lib/sign/dxf");
+                          if (!dxfToShapes(content, 100).length) {
+                            toast.error(
+                              "Nenhum contorno fechado encontrado no DXF. Use polilinhas/círculos fechados (sem textos ou hachuras).",
+                            );
+                            return;
+                          }
+                          setDxf(file.name, content);
                         }}
                       />
                     </label>
