@@ -205,6 +205,23 @@ export default function Toolbar() {
               </DialogContent>
             </Dialog>
 
+            {editor.projectId && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 gap-1.5 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                onClick={async () => {
+                  if (confirm("Deseja realmente deletar este projeto?")) {
+                    await remove({ data: { id: editor.projectId! } });
+                    editor.setProject(null, "Novo projeto");
+                    queryClient.invalidateQueries({ queryKey: ["sign-projects"] });
+                    toast.success("Projeto deletado");
+                  }
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Deletar
+              </Button>
+            )}
             <Button
               size="sm"
               className="h-8 gap-1.5 text-xs"
