@@ -9,7 +9,7 @@ import {
   Vector2,
   Vector3,
 } from "three";
-import { ADDITION, SUBTRACTION, Brush, Evaluator } from "three-bvh-csg";
+import { SUBTRACTION, Brush, Evaluator } from "three-bvh-csg";
 
 import { cloneShape, insetShape, offsetShape, ringShape, shapePoints } from "./offset";
 import type { PartKind, SignParams, SignStyle } from "./model";
@@ -509,33 +509,6 @@ function combine(geos: BufferGeometry[]): BufferGeometry | null {
   if (!valid.length) return null;
   if (valid.length === 1) return valid[0]!;
   return mergePositions(valid);
-}
-
-function unionSolid(geos: BufferGeometry[]): BufferGeometry | null {
-  const valid = geos.filter((geometry) => geometry.getAttribute("position")?.count);
-  if (!valid.length) return null;
-  if (valid.length === 1) return valid[0] ?? null;
-
-  try {
-    const evaluator = new Evaluator();
-    evaluator.useGroups = false;
-    let result = new Brush(prepareForCsg(valid[0]!));
-    result.updateMatrixWorld();
-
-    for (const geometry of valid.slice(1)) {
-      const next = new Brush(prepareForCsg(geometry));
-      next.updateMatrixWorld();
-      result = evaluator.evaluate(result, next, ADDITION);
-      result.updateMatrixWorld();
-    }
-
-    const geometry = result.geometry.clone();
-    geometry.clearGroups();
-    return geometry;
-  } catch (error) {
-    console.warn("Falha na união booleana, usando mesclagem simples", error);
-    return combine(valid);
-  }
 }
 
 function subtractSolid(base: BufferGeometry, cutters: BufferGeometry[]): BufferGeometry | null {
