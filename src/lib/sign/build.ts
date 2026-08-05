@@ -294,7 +294,6 @@ export function buildSign(
 
   // ---------- duas metades impressas que se encaixam ----------
   if (splitShell) {
-    const overlap = 0.05;
     const half = Math.max(params.wall / 2, 0.6);
     const lipW = Math.max(half - params.clearance, 0.5);
     const lipH = Math.max(Math.min(params.fitDepth, bodyHeight * 0.6), 0.5);
@@ -305,27 +304,19 @@ export function buildSign(
     const frontGeos: BufferGeometry[] = [];
 
     for (const shape of shapes) {
-      // Metade inferior: Fundo + paredes + encaixe interno unificados em UMA ÚNICA EXTRUSÃO quando possível
-      const overlap = 0.1;
+      const overlap = 0.15;
       const bs: BufferGeometry[] = [];
       
       // 1. O fundo (base sólida)
       bs.push(extrude(cloneShape(shape), params.backThickness + overlap));
       
-      // 2. PAREDE ÚNICA E CONTÍNUA
-      // Criamos uma única forma de anel que representa a parede completa (externa + lábio)
-      // A espessura total dessa parede unificada é 'half + lipW'
+      // 2. PAREDE ÚNICA E CONTÍNUA (base + lábio)
       const fullWallThickness = half + lipW;
-      
-      // Primeiro extrudamos a parte mais grossa (parede + base do lábio) até backH
       for (const ring of ringShape(shape, fullWallThickness, 0)) {
         const wallBase = extrude(ring, backH + params.backThickness + overlap);
         wallBase.translate(0, 0, 0);
         bs.push(wallBase);
       }
-      
-      // Depois o topo do lábio (apenas a parte interna 'lipW') sobe o restante 'lipH'
-      // Usamos um offset de 'half' para que ele nasça exatamente alinhado com a face interna da base
       for (const ring of ringShape(shape, lipW, half)) {
         const lipTop = extrude(ring, backH + lipH + params.backThickness + overlap);
         lipTop.translate(0, 0, 0);
@@ -337,42 +328,38 @@ export function buildSign(
 
       // Metade superior: Frente + saia externa + parede interna
       const fs: BufferGeometry[] = [];
-      // A parede externa (saia) desce até abraçar o lábio inferior
       for (const ring of ringShape(shape, half, 0)) {
         const outer = extrude(ring, lipH + frontH + params.faceThickness + overlap);
         fs.push(outer);
       }
-      // Parede interna
       for (const ring of ringShape(shape, lipW, half)) {
         const inner = extrude(ring, frontH + params.faceThickness + overlap);
         inner.translate(0, 0, lipH);
         fs.push(inner);
       }
-      // Chapa frontal (tampa)
       const cap = extrude(cloneShape(shape), params.faceThickness + overlap);
-      cap.translate(0, 0, lipH + frontH - 0.01);
+      cap.translate(0, 0, lipH + frontH - 0.05);
       fs.push(cap);
       
       const frontSolid = combine(fs);
       if (frontSolid) frontGeos.push(frontSolid);
     }
 
-
-    const backGeo = combine(backGeos);
-    if (backGeo) {
-      backGeo.translate(0, 0, baseZ);
+    const finalBackGeo = combine(backGeos);
+    if (finalBackGeo) {
+      finalBackGeo.translate(0, 0, baseZ);
       parts.push(
-        makePart("laterais", "laterais", "Fundo + paredes", params.backColor, backGeo, {
-          count: shapes.length,
+        makePart("laterais", "laterais", "Fundo + paredes", params.backColor, finalBackGeo, {
+          count: 1,
         }),
       );
     }
-    const frontGeo = combine(frontGeos);
-    if (frontGeo) {
-      frontGeo.translate(0, 0, baseZ + params.backThickness + backH);
+    const finalFrontGeo = combine(frontGeos);
+    if (finalFrontGeo) {
+      finalFrontGeo.translate(0, 0, baseZ + params.backThickness + backH);
       parts.push(
-        makePart("frente", "frente", "Frente + paredes", params.faceColor, frontGeo, {
-          count: shapes.length,
+        makePart("frente", "frente", "Frente + paredes", params.faceColor, finalFrontGeo, {
+          count: 1,
         }),
       );
     }
