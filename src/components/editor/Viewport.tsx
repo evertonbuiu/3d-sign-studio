@@ -62,7 +62,7 @@ function EdgePicker({
     return {
       key: `${part.id}:${i}`,
       partId: part.id,
-      partLabel: part.label ?? part.kind,
+      partLabel: part.name,
       a,
       b,
       offset,
