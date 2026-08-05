@@ -376,47 +376,28 @@ export default function PropertiesPanel() {
               </div>
               <div className="space-y-1">
                 {build?.parts.map((part) => (
-                  <div key={part.id} className="group relative">
-                    <button
-                      type="button"
-                      onClick={() => togglePart(part.id)}
-                      className="flex w-full items-center justify-between rounded border border-border bg-card px-2 py-1.5 text-left text-sm hover:border-primary/50"
-                    >
-                      <span className="flex items-center gap-2">
-                        <span
-                          className="h-3 w-3 rounded-sm border border-border"
-                          style={{ background: part.color }}
-                        />
-                        {part.name}
-                      </span>
-                      <span className="flex items-center gap-2 text-muted-foreground">
-                        {part.volumeCm3.toFixed(1)} cm³
-                        {hidden.has(part.id) ? (
-                          <EyeOff className="h-3.5 w-3.5" />
-                        ) : (
-                          <Eye className="h-3.5 w-3.5" />
-                        )}
-                      </span>
-                    </button>
-                    {hidden.has(part.id) && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          // A lógica de deletar aqui seria remover do build ou marcar como removida permanentemente
-                          // Para simplificar e manter consistência com o que o usuário provavelmente quer:
-                          // Vamos adicionar uma função no store para deletar permanentemente se necessário,
-                          // mas por enquanto o botão de "olho" já oculta.
-                          // Adicionando um botão de lixeira para "deletar" (remover da visualização permanentemente nesta sessão)
-                          togglePart(part.id); // Re-exibe ou oculta conforme necessário, ou removemos do array de peças visíveis
-                        }}
-                        className="absolute -right-2 -top-2 hidden h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-sm group-hover:flex"
-                        title="Deletar peça"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    )}
-                  </div>
+                  <button
+                    key={part.id}
+                    type="button"
+                    onClick={() => togglePart(part.id)}
+                    className="flex w-full items-center justify-between rounded border border-border bg-card px-2 py-1.5 text-left text-sm hover:border-primary/50"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span
+                        className="h-3 w-3 rounded-sm border border-border"
+                        style={{ background: part.color }}
+                      />
+                      {part.name}
+                    </span>
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                      {part.volumeCm3.toFixed(1)} cm³
+                      {hidden.has(part.id) ? (
+                        <EyeOff className="h-3.5 w-3.5" />
+                      ) : (
+                        <Eye className="h-3.5 w-3.5" />
+                      )}
+                    </span>
+                  </button>
                 ))}
               </div>
             </AccordionContent>
