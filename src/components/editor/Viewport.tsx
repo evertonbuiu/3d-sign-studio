@@ -183,7 +183,7 @@ function Model({
   onHover: (edge: PickedEdge | null) => void;
   onPick: (edge: PickedEdge, additive: boolean) => void;
 }) {
-  const { build, explode, hidden, wireframe, showOutlines } = useEditor();
+  const { build, explode, hidden, wireframe, showOutlines, weldedEdges } = useEditor();
   const groupRef = useRef<Group>(null);
 
   const { scale, center } = useMemo(() => {
@@ -230,6 +230,22 @@ function Model({
           selected.map((edge) => (
             <EdgeHighlight key={edge.key} edge={edge} color="#f97316" />
           ))}
+        {edgeSelect &&
+          weldedEdges.map((edge, i) => (
+            <EdgeHighlight
+              key={`welded-${i}`}
+              edge={{
+                key: `w-${i}`,
+                partId: "welded",
+                partLabel: "Soldada",
+                a: edge.a,
+                b: edge.b,
+                offset: 0,
+                length: 0,
+              }}
+              color="#10b981"
+            />
+          ))}
         {showOutlines &&
           build.outlines.map((outline) => <OutlineLine key={outline.id} outline={outline} />)}
       </group>
@@ -248,6 +264,8 @@ export default function Viewport() {
     setWireframe,
     showOutlines,
     setShowOutlines,
+    addWeldedEdge,
+    clearWeldedEdges,
   } = useEditor();
 
   const [edgeSelect, setEdgeSelect] = useState(false);
@@ -260,6 +278,7 @@ export default function Viewport() {
     // Para realmente "deletar" de forma permanente no modelo, precisaríamos de uma lógica de máscara no build.ts.
     // Como estamos em um editor paramétrico, por agora vamos limpar a seleção para atender o requisito visual de UI.
     setSelected([]);
+    clearWeldedEdges();
   };
 
 
@@ -303,17 +322,11 @@ export default function Viewport() {
     }
 
     const first = selected[0]!;
-    const weldedEdge: PickedEdge = {
-      key: `welded-${Date.now()}`,
-      partId: "welded",
-      partLabel: "Aresta Soldada",
+    addWeldedEdge({
       a: [p1.x, p1.y, p1.z],
       b: [p2.x, p2.y, p2.z],
-      offset: first.offset,
-      length: maxDist
-    };
-
-    setSelected([weldedEdge]);
+    });
+    setSelected([]);
   };
 
   return (
