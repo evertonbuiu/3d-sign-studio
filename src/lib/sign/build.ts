@@ -244,7 +244,8 @@ export function buildSign(
   );
 
   // ---------- fundo ----------
-  if (active.has("fundo")) {
+  const isUnifiedBody = style.id === "fundo-impresso-frente-acrilica";
+  if (active.has("fundo") && !isUnifiedBody) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
       geos.push(extrude(cloneShape(shape), params.backThickness));
@@ -272,6 +273,13 @@ export function buildSign(
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
       const wallGeos = ringShape(shape, params.wall).map((ring) => extrude(ring, bodyHeight));
+      
+      if (isUnifiedBody) {
+        // No estilo unido, o fundo é a base da peça
+        const base = extrude(cloneShape(shape), params.backThickness);
+        wallGeos.push(base);
+      }
+
       if (recessOn) {
         const overlap = Math.min(0.1, bodyHeight / 4);
         for (const outer of ringShape(shape, recessLip)) {
