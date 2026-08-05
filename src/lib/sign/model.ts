@@ -186,17 +186,6 @@ export const STYLES: SignStyle[] = [
     thumb: { face: "#8f9db0", body: "#39424f", glow: "halo" },
   },
   {
-    id: "fundo-impresso-frente-impressa",
-    name: "Fundo Impresso + Frente Impressa",
-    group: "Acrílico & Impresso",
-    description: "Frente impressa e paredes unificadas, com fundo impresso independente.",
-    parts: boxParts,
-    printedFace: true,
-    acrylicBack: false, // Fundo é impresso, mas não fundido
-    preset: { depth: 40, faceThickness: 3, backThickness: 3 },
-    thumb: { face: "#7f8da0", body: "#39424f", glow: "none" },
-  },
-  {
     id: "face-lit",
     name: "Face Lit",
     group: "Iluminação",

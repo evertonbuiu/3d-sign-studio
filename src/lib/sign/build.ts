@@ -250,10 +250,9 @@ export function buildSign(
     recessLip < params.wall;
   const faceInset = recessOn ? recessLip + params.clearance : 0;
 
-  // fundo é uma chapa à parte (acrílico ou impresso independente)
-  const separateBack = backOn && (Boolean(style.acrylicBack) || style.id === "fundo-impresso-frente-impressa");
-  const acrylicBack = Boolean(style.acrylicBack) && separateBack;
-  const fused = backOn && wallsOn && !separateBack;
+  // fundo em acrílico é uma chapa cortada à parte, encaixada num rebaixo das paredes
+  const acrylicBack = Boolean(style.acrylicBack) && backOn && wallsOn;
+  const fused = backOn && wallsOn && !acrylicBack;
   const backLip = Math.min(Math.max(params.recessLip, 0.4), Math.max(params.wall - 0.4, 0.4));
   const backCut: Shape[] = [];
 
@@ -261,7 +260,7 @@ export function buildSign(
   if (backOn && !fused) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
-      if (separateBack) {
+      if (acrylicBack) {
         // chapa recuada para assentar no degrau interno das paredes
         for (const inner of insetShape(shape, backLip + params.clearance)) {
           backCut.push(inner);
@@ -292,7 +291,7 @@ export function buildSign(
   // ---------- corpo: fundo + laterais + rebaixo em uma peça só ----------
   if (wallsOn) {
     const geos: BufferGeometry[] = [];
-    const zWall = fused || separateBack ? params.backThickness : 0;
+    const zWall = fused || acrylicBack ? params.backThickness : 0;
     for (const shape of shapes) {
       // Cada seção é uma casca fechada e há uma pequena interseção entre elas.
       // Assim o STL permanece manifold sem depender da triangulação instável
@@ -301,12 +300,10 @@ export function buildSign(
       const sections: BufferGeometry[] = [];
       if (fused) sections.push(extrude(cloneShape(shape), params.backThickness + overlap));
 
-      if (separateBack) {
-        // Aumentamos o degrau interno (backLip) e o overlap para garantir fusão física no fatiador
-        const robustLip = backLip + 0.2;
-        for (const lipShape of ringShape(shape, robustLip)) {
-          const lip = extrude(lipShape, params.backThickness + overlap * 3);
-          lip.translate(0, 0, zWall - overlap * 1.5);
+      if (acrylicBack) {
+        // aba inferior que segura a chapa de acrílico
+        for (const lipShape of ringShape(shape, backLip)) {
+          const lip = extrude(lipShape, params.backThickness + overlap);
           sections.push(lip);
         }
       }
@@ -478,7 +475,7 @@ export function buildSign(
     : params.depth;
 
   const printedVolumeCm3 = parts
-    .filter((p) => p.kind !== "canal-led" && !acrylicBack)
+    .filter((p) => p.kind !== "canal-led" && !(acrylicBack && p.kind === "fundo"))
     .reduce((sum, p) => sum + p.volumeCm3, 0);
 
 
