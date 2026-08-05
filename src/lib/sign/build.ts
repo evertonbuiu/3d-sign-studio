@@ -49,9 +49,9 @@ export interface SignBuild {
 const EXTRUDE = { bevelEnabled: false, curveSegments: 32, steps: 1 };
 
 function extrude(shape: Shape | Shape[], depth: number): BufferGeometry {
-  let geo = new ExtrudeGeometry(shape, { ...EXTRUDE, depth: Math.max(depth, 0.2) });
+  const baseGeo = new ExtrudeGeometry(shape, { ...EXTRUDE, depth: Math.max(depth, 0.2) });
   // Aggressively merge vertices immediately after extrusion
-  geo = BufferGeometryUtils.mergeVertices(geo, 0.001);
+  const geo = BufferGeometryUtils.mergeVertices(baseGeo, 0.001);
   geo.computeVertexNormals();
   return geo;
 }
