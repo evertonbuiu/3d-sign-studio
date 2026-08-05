@@ -49,6 +49,58 @@ function bulgeArc(a: Pt, b: Pt, bulge: number): Pt[] {
   return pts;
 }
 
+type Xf = { x: number; y: number; sx: number; sy: number; rot: number };
+
+const ID: Xf = { x: 0, y: 0, sx: 1, sy: 1, rot: 0 };
+
+function applyXf(p: Pt, t: Xf): Pt {
+  const x = p.x * t.sx;
+  const y = p.y * t.sy;
+  const c = Math.cos(t.rot);
+  const s = Math.sin(t.rot);
+  return { x: t.x + x * c - y * s, y: t.y + x * s + y * c };
+}
+
+/** Expande entidades INSERT usando as definições de BLOCKS. */
+function flatten(entities: any[], blocks: any, t: Xf, depth = 0): any[] {
+  const out: any[] = [];
+  for (const e of entities ?? []) {
+    if (e.type === "INSERT" && depth < 8) {
+      const block = blocks?.[e.name];
+      if (!block?.entities) continue;
+      const pos = e.position ?? { x: 0, y: 0 };
+      const base = block.position ?? { x: 0, y: 0 };
+      const local: Xf = {
+        sx: t.sx * (e.xScale ?? 1),
+        sy: t.sy * (e.yScale ?? 1),
+        rot: t.rot + ((e.rotation ?? 0) * Math.PI) / 180,
+        x: 0,
+        y: 0,
+      };
+      const origin = applyXf({ x: pos.x - base.x * (e.xScale ?? 1), y: pos.y - base.y * (e.yScale ?? 1) }, t);
+      local.x = origin.x;
+      local.y = origin.y;
+      out.push(...flatten(block.entities, blocks, local, depth + 1));
+      continue;
+    }
+    out.push(transformEntity(e, t));
+  }
+  return out;
+}
+
+function transformEntity(e: any, t: Xf): any {
+  if (t === ID) return e;
+  const clone: any = { ...e };
+  if (e.vertices) clone.vertices = e.vertices.map((v: any) => ({ ...v, ...applyXf(v, t) }));
+  if (e.controlPoints) clone.controlPoints = e.controlPoints.map((v: any) => applyXf(v, t));
+  if (e.fitPoints) clone.fitPoints = e.fitPoints.map((v: any) => applyXf(v, t));
+  if (e.center) {
+    clone.center = applyXf(e.center, t);
+    clone.radius = (e.radius ?? 0) * Math.abs(t.sx);
+  }
+  return clone;
+}
+
 /** Extrai polilinhas (abertas ou fechadas) das entidades do DXF. */
 function entitiesToPolylines(entities: any[]): { pts: Pt[]; closed: boolean }[] {
   const out: { pts: Pt[]; closed: boolean }[] = [];
@@ -172,8 +224,38 @@ export function dxfToShapes(dxfText: string, targetHeight: number): Shape[] {
   const dxf: any = parser.parseSync(dxfText);
   if (!dxf) return [];
 
-  const loops = stitch(entitiesToPolylines(dxf.entities ?? []), TOL);
-  if (!loops.length) return [];
+  const flat = flatten(dxf.entities ?? [], dxf.blocks ?? {}, ID);
+  const polys = entitiesToPolylines(flat);
+  if (!polys.length) {
+    console.warn("DXF sem entidades de contorno reconhecidas", dxf.entities?.length);
+    return [];
+  }
+
+  // tolerância proporcional ao tamanho do desenho (arquivos em m, cm ou mm)
+  let dx = 0;
+  let dy = 0;
+  {
+    let a = Infinity;
+    let b = Infinity;
+    let c = -Infinity;
+    let d = -Infinity;
+    for (const poly of polys)
+      for (const p of poly.pts) {
+        a = Math.min(a, p.x);
+        c = Math.max(c, p.x);
+        b = Math.min(b, p.y);
+        d = Math.max(d, p.y);
+      }
+    dx = c - a;
+    dy = d - b;
+  }
+  const tol = Math.max(Math.hypot(dx, dy) * 0.001, 1e-9);
+
+  const loops = stitch(polys, tol);
+  if (!loops.length) {
+    console.warn("DXF: nenhum contorno fechado encontrado");
+    return [];
+  }
 
   let minX = Infinity;
   let minY = Infinity;
