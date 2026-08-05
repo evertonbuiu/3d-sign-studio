@@ -9,36 +9,6 @@ function snap(value: number): number {
   return Object.is(v, -0) ? 0 : Number(v.toFixed(5));
 }
 
-interface FaceIdentity {
-  key: string;
-  orientation: 1 | -1;
-}
-
-/**
- * Identifica faces coincidentes e preserva o sentido da normal.
- * Duplicatas no mesmo sentido devem virar uma face; somente pares com
- * sentidos opostos representam uma parede interna que pode ser cancelada.
- */
-function faceIdentity(t: number[]): FaceIdentity {
-  const vertices = [
-    `${t[0]},${t[1]},${t[2]}`,
-    `${t[3]},${t[4]},${t[5]}`,
-    `${t[6]},${t[7]},${t[8]}`,
-  ];
-  const sorted = [...vertices].sort();
-  const permutation = vertices.map((vertex) => sorted.indexOf(vertex));
-  let inversions = 0;
-  for (let i = 0; i < permutation.length; i++) {
-    for (let j = i + 1; j < permutation.length; j++) {
-      if (permutation[i]! > permutation[j]!) inversions++;
-    }
-  }
-  return {
-    key: sorted.join("|"),
-    orientation: inversions % 2 === 0 ? 1 : -1,
-  };
-}
-
 /** Gera um STL binário (mm) a partir de geometrias em coordenadas de mundo. */
 export function geometriesToStl(geometries: BufferGeometry[]): ArrayBuffer {
   const collected: number[][] = [];
@@ -79,32 +49,10 @@ export function geometriesToStl(geometries: BufferGeometry[]): ArrayBuffer {
     }
   }
 
-  // Consolida duplicatas e cancela apenas pares realmente opostos. A lógica
-  // anterior removia qualquer quantidade par de faces coincidentes, inclusive
-  // duas faces externas com a mesma orientação, criando arestas abertas.
-  const buckets = new Map<string, { positive: number[]; negative: number[] }>();
-  collected.forEach((t, index) => {
-    const identity = faceIdentity(t);
-    const bucket = buckets.get(identity.key) ?? { positive: [], negative: [] };
-    if (identity.orientation === 1) bucket.positive.push(index);
-    else bucket.negative.push(index);
-    buckets.set(identity.key, bucket);
-  });
-
-  const drop = new Set<number>();
-  for (const { positive, negative } of buckets.values()) {
-    const cancelled = Math.min(positive.length, negative.length);
-    for (let i = 0; i < cancelled; i++) {
-      drop.add(positive[i]!);
-      drop.add(negative[i]!);
-    }
-    // Depois do cancelamento, faces repetidas no mesmo sentido são uma só.
-    for (const list of [positive.slice(cancelled), negative.slice(cancelled)]) {
-      for (let i = 1; i < list.length; i++) drop.add(list[i]!);
-    }
-  }
-
-  const triangles = collected.filter((_, index) => !drop.has(index));
+  // Não remova faces pela posição. Peças fechadas que se interceptam podem
+  // compartilhar triângulos válidos; apagá-los abre a casca e cria exatamente
+  // as arestas não-manifold que o reparo tentava evitar.
+  const triangles = collected;
 
 
   const buffer = new ArrayBuffer(84 + triangles.length * 50);
