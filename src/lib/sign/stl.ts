@@ -1,45 +1,4 @@
-import { BufferGeometry, Float32BufferAttribute } from "three";
-import * as BufferGeometryUtils from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { ADDITION, Brush, Evaluator } from "three-bvh-csg";
-
-function prepareForUnion(source: BufferGeometry): BufferGeometry {
-  let geometry = source.clone();
-  geometry.clearGroups();
-  if (geometry.index) geometry = geometry.toNonIndexed();
-  geometry = BufferGeometryUtils.mergeVertices(geometry, 0.01);
-  geometry.computeVertexNormals();
-
-  if (!geometry.getAttribute("uv")) {
-    const count = geometry.getAttribute("position")?.count ?? 0;
-    geometry.setAttribute("uv", new Float32BufferAttribute(new Float32Array(count * 2), 2));
-  }
-  return geometry;
-}
-
-/** Une por operação booleana todas as peças que se tocam antes de gerar o STL. */
-export function unionGeometriesForStl(geometries: BufferGeometry[]): BufferGeometry | null {
-  const valid = geometries.filter((geometry) => geometry.getAttribute("position")?.count);
-  if (!valid.length) return null;
-  if (valid.length === 1) return prepareForUnion(valid[0]!);
-
-  const evaluator = new Evaluator();
-  evaluator.useGroups = false;
-  let result = new Brush(prepareForUnion(valid[0]!));
-  result.updateMatrixWorld(true);
-
-  for (const geometry of valid.slice(1)) {
-    const next = new Brush(prepareForUnion(geometry));
-    next.updateMatrixWorld(true);
-    result = evaluator.evaluate(result, next, ADDITION);
-    result.updateMatrixWorld(true);
-  }
-
-  let united = result.geometry.clone();
-  united.clearGroups();
-  united = BufferGeometryUtils.mergeVertices(united, 0.01);
-  united.computeVertexNormals();
-  return united;
-}
+import type { BufferGeometry } from "three";
 
 /** Gera um STL binário (mm) a partir de geometrias em coordenadas de mundo. */
 export function geometriesToStl(geometries: BufferGeometry[]): ArrayBuffer {
@@ -75,15 +34,7 @@ export function geometriesToStl(geometries: BufferGeometry[]): ArrayBuffer {
   let offset = 84;
   for (const t of triangles) {
     const [ax, ay, az, bx, by, bz, cx, cy, cz] = t as [
-      number,
-      number,
-      number,
-      number,
-      number,
-      number,
-      number,
-      number,
-      number,
+      number, number, number, number, number, number, number, number, number,
     ];
     const ux = bx - ax;
     const uy = by - ay;

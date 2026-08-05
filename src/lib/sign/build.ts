@@ -9,7 +9,6 @@ import {
   Vector2,
   Vector3,
 } from "three";
-import * as BufferGeometryUtils from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { ADDITION, Brush, Evaluator } from "three-bvh-csg";
 
 import { cloneShape, insetShape, offsetShape, ringShape, shapePoints } from "./offset";
@@ -46,18 +45,10 @@ export interface SignBuild {
   printedVolumeCm3: number;
 }
 
-const EXTRUDE = { bevelEnabled: false, curveSegments: 32, steps: 1 };
+const EXTRUDE = { bevelEnabled: false, curveSegments: 24, steps: 1 };
 
-function extrude(shape: Shape | Shape[], depth: number): BufferGeometry {
-  const baseGeo = new ExtrudeGeometry(shape, { ...EXTRUDE, depth: Math.max(depth, 0.2) });
-  // Aggressively merge vertices with slightly higher tolerance to close micro-gaps
-  let geo = BufferGeometryUtils.mergeVertices(baseGeo, 0.01);
-  // Ensure we are working with indexed geometry to facilitate vertex sharing
-  if (!geo.index) {
-    geo = BufferGeometryUtils.mergeVertices(geo.toNonIndexed(), 0.01);
-  }
-  geo.computeVertexNormals();
-  return geo;
+function extrude(shape: Shape | Shape[], depth: number): ExtrudeGeometry {
+  return new ExtrudeGeometry(shape, { ...EXTRUDE, depth: Math.max(depth, 0.2) });
 }
 
 function geometryVolumeCm3(geometry: BufferGeometry): number {
@@ -244,10 +235,7 @@ export function buildSign(
   );
 
   // ---------- fundo ----------
-  // Unificamos o fundo à parede se ambos forem impressos e o estilo for de "caixa"
-  const isUnifiedBody = active.has("fundo") && active.has("laterais");
-  
-  if (active.has("fundo") && !isUnifiedBody) {
+  if (active.has("fundo")) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
       geos.push(extrude(cloneShape(shape), params.backThickness));
@@ -275,21 +263,11 @@ export function buildSign(
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
       const wallGeos = ringShape(shape, params.wall).map((ring) => extrude(ring, bodyHeight));
-      
-      if (isUnifiedBody) {
-        // No estilo unido, o fundo é a base da peça e as paredes crescem a partir dele
-        const base = extrude(cloneShape(shape), params.backThickness);
-        // O fundo fica em z=0 (relativo ao grupo da lateral) e a parede é movida para cima dele
-        for (const w of wallGeos) w.translate(0, 0, params.backThickness);
-        wallGeos.push(base);
-      }
-
       if (recessOn) {
-        const wallTop = isUnifiedBody ? bodyHeight + params.backThickness : bodyHeight;
         const overlap = Math.min(0.1, bodyHeight / 4);
         for (const outer of ringShape(shape, recessLip)) {
           const lip = extrude(outer, params.faceThickness + overlap);
-          lip.translate(0, 0, wallTop - overlap);
+          lip.translate(0, 0, bodyHeight - overlap);
           wallGeos.push(lip);
         }
       }
@@ -299,9 +277,7 @@ export function buildSign(
 
     const geo = combine(geos);
     if (geo) {
-      // Se estiver unido, começamos direto do baseZ. Se não, a lateral começa acima do fundo separado.
-      const z = isUnifiedBody ? baseZ : baseZ + params.backThickness;
-      geo.translate(0, 0, z);
+      geo.translate(0, 0, baseZ + (active.has("fundo") ? params.backThickness : 0));
       parts.push(
         makePart("laterais", "laterais", "Laterais", params.bodyColor, geo, {
           count: shapes.length,
@@ -520,12 +496,8 @@ function unionSolid(geos: BufferGeometry[]): BufferGeometry | null {
       result.updateMatrixWorld();
     }
 
-    let geometry = result.geometry.clone();
+    const geometry = result.geometry.clone();
     geometry.clearGroups();
-
-    // Crucial: merge vertices after boolean operations to close gaps
-    geometry = BufferGeometryUtils.mergeVertices(geometry, 0.01);
-
     // Ensure all faces are strictly oriented outwards to prevent slicer errors
     geometry.computeVertexNormals();
     return geometry;
@@ -536,15 +508,8 @@ function unionSolid(geos: BufferGeometry[]): BufferGeometry | null {
 }
 
 function prepareForCsg(source: BufferGeometry): BufferGeometry {
-  let geometry = source.clone();
+  const geometry = source.clone();
   geometry.clearGroups();
-
-  // Pre-process geometry to be as clean as possible for CSG
-  if (geometry.index) {
-    geometry = geometry.toNonIndexed();
-  }
-  geometry = BufferGeometryUtils.mergeVertices(geometry, 0.001);
-
   if (!geometry.getAttribute("normal")) geometry.computeVertexNormals();
   const count = geometry.getAttribute("position").count;
   if (!geometry.getAttribute("uv")) {
@@ -555,8 +520,22 @@ function prepareForCsg(source: BufferGeometry): BufferGeometry {
 
 
 function mergePositions(geos: BufferGeometry[]): BufferGeometry {
-  const merged = BufferGeometryUtils.mergeGeometries(geos, false);
-  return BufferGeometryUtils.mergeVertices(merged, 0.005);
+  let total = 0;
+  const nonIndexed = geos.map((g) => (g.index ? g.toNonIndexed() : g));
+  for (const g of nonIndexed) total += g.getAttribute("position").count;
+  const array = new Float32Array(total * 3);
+  let offset = 0;
+  for (const g of nonIndexed) {
+    const pos = g.getAttribute("position");
+    for (let i = 0; i < pos.count; i++) {
+      array[offset++] = pos.getX(i);
+      array[offset++] = pos.getY(i);
+      array[offset++] = pos.getZ(i);
+    }
+  }
+  const merged = new BufferGeometry();
+  merged.setAttribute("position", new Float32BufferAttribute(array, 3));
+  return merged;
 }
 
 function shadeColor(hex: string, amount: number): string {

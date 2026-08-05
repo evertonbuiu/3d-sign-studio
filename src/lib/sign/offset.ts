@@ -2,8 +2,8 @@ import ClipperLib from "clipper-lib";
 import { Path, Shape, Vector2 } from "three";
 
 const SCALE = 1000; // mm -> unidades inteiras do clipper
-const CURVE_DIVISIONS = 32;
-const ARC_TOLERANCE = 0.005 * SCALE;
+const CURVE_DIVISIONS = 24;
+const ARC_TOLERANCE = 0.05 * SCALE;
 const MITER_LIMIT = 2;
 
 type CPoint = { X: number; Y: number };
@@ -55,26 +55,22 @@ function normalize(paths: CPath[]): CPath[] {
   clipper.Execute(
     ClipperLib.ClipType.ctUnion,
     solution,
-    ClipperLib.PolyFillType.pftNonZero,
-    ClipperLib.PolyFillType.pftNonZero,
+    ClipperLib.PolyFillType.pftEvenOdd,
+    ClipperLib.PolyFillType.pftEvenOdd,
   );
-  return ClipperLib.Clipper.CleanPolygons(solution, SCALE * 0.001) as CPath[];
+  return ClipperLib.Clipper.CleanPolygons(solution, SCALE * 0.005) as CPath[];
 }
 
 function offsetPaths(paths: CPath[], delta: number): CPath[] {
   if (!paths.length) return [];
   // Use a very small epsilon to ensure Clipper always creates a valid manifold polygon 
   // even for "zero" offsets, which helps closing tiny gaps in fonts.
-  const effectiveDelta = delta === 0 ? 0.002 : delta;
+  const effectiveDelta = delta === 0 ? 0.001 : delta;
   const co = new ClipperLib.ClipperOffset(MITER_LIMIT, ARC_TOLERANCE);
-  // Ensure winding order is consistent for manifold solids
   co.AddPaths(paths, ClipperLib.JoinType.jtMiter, ClipperLib.EndType.etClosedPolygon);
   const solution: CPath[] = [];
   co.Execute(solution, effectiveDelta * SCALE);
-  
-  // Clean polygons again after offset to remove duplicate points
-  const cleaned = ClipperLib.Clipper.CleanPolygons(solution, SCALE * 0.001);
-  return normalize(cleaned);
+  return normalize(solution);
 }
 
 function differencePaths(subject: CPath[], clip: CPath[]): CPath[] {
