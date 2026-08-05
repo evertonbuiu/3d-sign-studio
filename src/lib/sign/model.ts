@@ -133,6 +133,8 @@ export interface SignStyle {
   acrylicBack?: boolean;
   /** frente impressa como tampa separada, com pino de encaixe nas paredes */
   printedFace?: boolean;
+  /** duas metades impressas (fundo+paredes e frente+paredes) que se encaixam */
+  splitShell?: boolean;
   preset: Partial<SignParams>;
 
   /** dica visual da miniatura */
