@@ -61,6 +61,8 @@ export interface SignParams {
   energyPrice: number; // R$/kWh
   printerPower: number; // W
   margin: number; // %
+  /** escala global do modelo em % (100 = tamanho real) */
+  scale: number;
 }
 
 export const DEFAULT_PARAMS: SignParams = {
@@ -103,6 +105,7 @@ export const DEFAULT_PARAMS: SignParams = {
   energyPrice: 0.92,
   printerPower: 180,
   margin: 45,
+  scale: 100,
 };
 
 export type StyleGroup =
