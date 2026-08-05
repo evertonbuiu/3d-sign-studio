@@ -234,6 +234,16 @@ export function buildSign(
     params.wall,
   );
 
+  // rebaixo (degrau) na parede interna para assentar a frente
+  const recessLip = Math.min(Math.max(params.recessLip, 0.4), Math.max(params.wall - 0.4, 0.4));
+  const recessOn =
+    params.faceRecess &&
+    active.has("frente") &&
+    active.has("laterais") &&
+    recessLip < params.wall;
+  const faceInset = recessOn ? recessLip + params.clearance : 0;
+
+
   // ---------- laterais (parede + rebaixo em uma peça só) ----------
   if (active.has("laterais")) {
     const geos: BufferGeometry[] = [];
