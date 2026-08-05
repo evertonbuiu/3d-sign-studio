@@ -292,8 +292,75 @@ export function buildSign(
     }
   }
 
+  // ---------- duas metades impressas que se encaixam ----------
+  if (splitShell) {
+    const overlap = 0.05;
+    const half = Math.max(params.wall / 2, 0.6);
+    const lipW = Math.max(half - params.clearance, 0.5);
+    const lipH = Math.max(Math.min(6, bodyHeight * 0.35), 1.5);
+    const backH = Math.max(bodyHeight * 0.5, params.wall);
+    const frontH = Math.max(bodyHeight - backH - lipH, params.wall);
+
+    const backGeos: BufferGeometry[] = [];
+    const frontGeos: BufferGeometry[] = [];
+
+    for (const shape of shapes) {
+      // metade do fundo: chapa + paredes + lábio interno
+      const bs: BufferGeometry[] = [];
+      bs.push(extrude(cloneShape(shape), params.backThickness + overlap));
+      for (const ring of ringShape(shape, params.wall)) {
+        const wall = extrude(ring, backH + overlap * 2);
+        wall.translate(0, 0, params.backThickness - overlap);
+        bs.push(wall);
+      }
+      for (const ring of ringShape(shape, lipW, half)) {
+        const lip = extrude(ring, lipH + overlap);
+        lip.translate(0, 0, params.backThickness + backH - overlap);
+        bs.push(lip);
+      }
+      const backSolid = combine(bs);
+      if (backSolid) backGeos.push(backSolid);
+
+      // metade da frente: saia externa (recebe o lábio) + paredes + chapa frontal
+      const fs: BufferGeometry[] = [];
+      for (const ring of ringShape(shape, half, 0)) {
+        const skirt = extrude(ring, lipH + overlap);
+        fs.push(skirt);
+      }
+      for (const ring of ringShape(shape, params.wall)) {
+        const wall = extrude(ring, frontH + overlap * 2);
+        wall.translate(0, 0, lipH - overlap);
+        fs.push(wall);
+      }
+      const cap = extrude(cloneShape(shape), params.faceThickness + overlap);
+      cap.translate(0, 0, lipH + frontH - overlap);
+      fs.push(cap);
+      const frontSolid = combine(fs);
+      if (frontSolid) frontGeos.push(frontSolid);
+    }
+
+    const backGeo = combine(backGeos);
+    if (backGeo) {
+      backGeo.translate(0, 0, baseZ);
+      parts.push(
+        makePart("laterais", "laterais", "Fundo + paredes", params.backColor, backGeo, {
+          count: shapes.length,
+        }),
+      );
+    }
+    const frontGeo = combine(frontGeos);
+    if (frontGeo) {
+      frontGeo.translate(0, 0, baseZ + params.backThickness + backH);
+      parts.push(
+        makePart("frente", "frente", "Frente + paredes", params.faceColor, frontGeo, {
+          count: shapes.length,
+        }),
+      );
+    }
+  }
+
   // ---------- corpo: fundo + laterais + rebaixo em uma peça só ----------
-  if (wallsOn) {
+  if (wallsOn && !splitShell) {
     const geos: BufferGeometry[] = [];
     const zWall = fused || acrylicBack ? params.backThickness : 0;
     for (const shape of shapes) {
