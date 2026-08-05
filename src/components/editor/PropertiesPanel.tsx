@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Eye, EyeOff, Upload, X } from "lucide-react";
+import { Eye, EyeOff, Lock, Unlock, Upload, X } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -139,6 +139,8 @@ export default function PropertiesPanel() {
     setWireframe,
     showOutlines,
     setShowOutlines,
+    lockXY,
+    setLockXY,
     svgName,
     setSvg,
     clearSvg,
@@ -224,8 +226,24 @@ export default function PropertiesPanel() {
             <AccordionTrigger className="text-sm">Construção</AccordionTrigger>
             <AccordionContent className="space-y-3 pb-4">
               <NumberSlider label="Escala geral" keyName="scale" min={10} max={400} step={1} unit="%" />
-              <NumberSlider label="Escala X (largura)" keyName="scaleX" min={10} max={400} step={1} unit="%" />
-              <NumberSlider label="Escala Y (altura)" keyName="scaleY" min={10} max={400} step={1} unit="%" />
+              <div className="flex items-center justify-between">
+                <Label className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+                  {lockXY ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+                  Travar proporção X/Y
+                </Label>
+                <Switch checked={lockXY} onCheckedChange={setLockXY} />
+              </div>
+              <NumberSlider
+                label={lockXY ? "Escala X/Y (largura e altura)" : "Escala X (largura)"}
+                keyName="scaleX"
+                min={10}
+                max={400}
+                step={1}
+                unit="%"
+              />
+              {!lockXY && (
+                <NumberSlider label="Escala Y (altura)" keyName="scaleY" min={10} max={400} step={1} unit="%" />
+              )}
               <NumberSlider label="Escala Z (profundidade)" keyName="scaleZ" min={10} max={400} step={1} unit="%" />
               <NumberSlider label="Profundidade" keyName="depth" min={5} max={200} step={1} />
               <NumberSlider label="Parede" keyName="wall" min={0.5} max={12} step={0.1} />
