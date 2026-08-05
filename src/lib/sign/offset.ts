@@ -2,8 +2,8 @@ import ClipperLib from "clipper-lib";
 import { Path, Shape, Vector2 } from "three";
 
 const SCALE = 1000; // mm -> unidades inteiras do clipper
-const CURVE_DIVISIONS = 32;
-const ARC_TOLERANCE = 0.02 * SCALE;
+const CURVE_DIVISIONS = 24;
+const ARC_TOLERANCE = 0.05 * SCALE;
 const MITER_LIMIT = 2;
 
 type CPoint = { X: number; Y: number };
@@ -134,9 +134,7 @@ function pathsToShapes(paths: CPath[]): Shape[] {
 export function offsetShape(shape: Shape, delta: number): Shape[] {
   const base = normalize(shapeToCPaths(shape));
   if (!base.length) return [];
-  // Use a slight cleaning for zero or near-zero offsets
-  const cleanDelta = Math.abs(delta) < 0.001 ? 0.001 : delta;
-  const result = offsetPaths(base, cleanDelta);
+  const result = delta === 0 ? base : offsetPaths(base, delta);
   return pathsToShapes(result);
 }
 

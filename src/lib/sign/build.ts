@@ -45,25 +45,10 @@ export interface SignBuild {
   printedVolumeCm3: number;
 }
 
-const EXTRUDE = { 
-  bevelEnabled: true, 
-  bevelThickness: 0.4, 
-  bevelSize: 0.4, 
-  bevelOffset: 0, 
-  bevelSegments: 3,
-  curveSegments: 32, 
-  steps: 1 
-};
+const EXTRUDE = { bevelEnabled: false, curveSegments: 24, steps: 1 };
 
 function extrude(shape: Shape | Shape[], depth: number): ExtrudeGeometry {
-  const d = Math.max(depth, 0.2);
-  // Se o depth for muito pequeno, desabilitamos o bevel para evitar artefatos
-  const useBevel = d > 1.2;
-  return new ExtrudeGeometry(shape, { 
-    ...EXTRUDE, 
-    bevelEnabled: useBevel,
-    depth: useBevel ? d - EXTRUDE.bevelThickness * 2 : d 
-  });
+  return new ExtrudeGeometry(shape, { ...EXTRUDE, depth: Math.max(depth, 0.2) });
 }
 
 function geometryVolumeCm3(geometry: BufferGeometry): number {
@@ -181,12 +166,10 @@ export function buildSign(
   const rawBounds = shapesBounds(letterShapes);
   const size = rawBounds.getSize(new Vector2());
   const center = rawBounds.getCenter(new Vector2());
-  // Clean font contours by applying a small offset and insetting back
-  // This removes self-intersections and tiny artifacts common in fonts/SVGs
-  const cleanedShapes = translateShapes(letterShapes, -center.x, -center.y).flatMap((s) =>
-    offsetShape(s, 0.05),
+  // Apply a tiny offset (0.01) to "heal" precision errors in font contours before main operations
+  const shapes = translateShapes(letterShapes, -center.x, -center.y).flatMap((s) =>
+    offsetShape(s, 0.01),
   );
-  const shapes = cleanedShapes.flatMap((s) => insetShape(s, 0.05));
   const bounds = shapesBounds(shapes);
 
   const plateOn = active.has("placa");
@@ -251,61 +234,8 @@ export function buildSign(
     params.wall,
   );
 
-  // rebaixo (degrau) na parede interna para assentar a frente
-  const recessLip = Math.min(Math.max(params.recessLip, 0.4), Math.max(params.wall - 0.4, 0.4));
-  const recessOn =
-    params.faceRecess &&
-    active.has("frente") &&
-    active.has("laterais") &&
-    recessLip < params.wall;
-  const faceInset = recessOn ? recessLip + params.clearance : 0;
-
-
-  // ---------- laterais (parede + rebaixo em uma peça só) ----------
-  if (active.has("laterais")) {
-    const geos: BufferGeometry[] = [];
-    const mergeWithBack = style.id === "fundo-impresso-frente-acrilica";
-
-    for (const shape of shapes) {
-      const wallGeos: BufferGeometry[] = ringShape(shape, params.wall).map((ring) => extrude(ring, bodyHeight));
-      
-      if (recessOn) {
-        const overlap = Math.min(0.1, bodyHeight / 4);
-        for (const outer of ringShape(shape, recessLip)) {
-          const lip = extrude(outer, params.faceThickness + overlap);
-          lip.translate(0, 0, bodyHeight - overlap);
-          wallGeos.push(lip);
-        }
-      }
-
-      // Se for o estilo específico, une com o fundo para exportar peça única
-      if (mergeWithBack && active.has("fundo")) {
-        const back = extrude(cloneShape(shape), params.backThickness + 0.01);
-        back.translate(0, 0, -params.backThickness);
-        wallGeos.push(back);
-      }
-
-      const wall = unionSolid(wallGeos);
-      if (wall) geos.push(wall);
-    }
-
-    const geo = combine(geos);
-    if (geo) {
-      const zOffset = mergeWithBack ? baseZ + params.backThickness : baseZ + (active.has("fundo") ? params.backThickness : 0);
-      geo.translate(0, 0, zOffset);
-      
-      parts.push(
-        makePart("laterais", "laterais", mergeWithBack ? "Corpo + Fundo" : "Laterais", params.bodyColor, geo, {
-          count: shapes.length,
-        }),
-      );
-    }
-  }
-
   // ---------- fundo ----------
-  // Se estiver mesclado com as laterais, não criamos a peça separada
-  const showBack = active.has("fundo") && style.id !== "fundo-impresso-frente-acrilica";
-  if (showBack) {
+  if (active.has("fundo")) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
       geos.push(extrude(cloneShape(shape), params.backThickness));
@@ -315,6 +245,43 @@ export function buildSign(
       geo.translate(0, 0, baseZ);
       parts.push(
         makePart("fundo", "fundo", "Fundo", params.backColor, geo, { count: shapes.length }),
+      );
+    }
+  }
+
+  // rebaixo (degrau) na parede interna para assentar a frente
+  const recessLip = Math.min(Math.max(params.recessLip, 0.4), Math.max(params.wall - 0.4, 0.4));
+  const recessOn =
+    params.faceRecess &&
+    active.has("frente") &&
+    active.has("laterais") &&
+    recessLip < params.wall;
+  const faceInset = recessOn ? recessLip + params.clearance : 0;
+
+  // ---------- laterais (parede + rebaixo em uma peça só) ----------
+  if (active.has("laterais")) {
+    const geos: BufferGeometry[] = [];
+    for (const shape of shapes) {
+      const wallGeos = ringShape(shape, params.wall).map((ring) => extrude(ring, bodyHeight));
+      if (recessOn) {
+        const overlap = Math.min(0.1, bodyHeight / 4);
+        for (const outer of ringShape(shape, recessLip)) {
+          const lip = extrude(outer, params.faceThickness + overlap);
+          lip.translate(0, 0, bodyHeight - overlap);
+          wallGeos.push(lip);
+        }
+      }
+      const wall = unionSolid(wallGeos);
+      if (wall) geos.push(wall);
+    }
+
+    const geo = combine(geos);
+    if (geo) {
+      geo.translate(0, 0, baseZ + (active.has("fundo") ? params.backThickness : 0));
+      parts.push(
+        makePart("laterais", "laterais", "Laterais", params.bodyColor, geo, {
+          count: shapes.length,
+        }),
       );
     }
   }
@@ -533,8 +500,6 @@ function unionSolid(geos: BufferGeometry[]): BufferGeometry | null {
     geometry.clearGroups();
     // Ensure all faces are strictly oriented outwards to prevent slicer errors
     geometry.computeVertexNormals();
-    geometry.computeBoundingBox();
-    geometry.computeBoundingSphere();
     return geometry;
   } catch (error) {
     console.warn("Falha na união booleana, usando mesclagem simples", error);
