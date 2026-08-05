@@ -387,23 +387,9 @@ export function buildSign(
 
   // ---------- frente ----------
   const faceCut: Shape[] = [];
-  if (active.has("frente")) {
+  if (active.has("frente") && !fusedFace) {
     const geos: BufferGeometry[] = [];
-    const overlap = 0.05;
-    const plugWall = Math.min(Math.max(params.wall * 0.8, 0.8), 2.4);
-    const plugDepth = Math.min(Math.max(bodyHeight * 0.35, 2), 6);
     for (const shape of shapes) {
-      if (printedCap) {
-        // tampa: chapa cheia + pino interno que entra na caixa das paredes
-        const clone = cloneShape(shape);
-        geos.push(extrude(clone, params.faceThickness + overlap));
-        for (const plug of ringShape(shape, plugWall, params.wall + params.clearance)) {
-          const pin = extrude(plug, plugDepth + overlap);
-          pin.translate(0, 0, -plugDepth);
-          geos.push(pin);
-        }
-        continue;
-      }
       if (faceInset > 0) {
         for (const inner of insetShape(shape, faceInset)) {
           faceCut.push(inner);
@@ -422,8 +408,8 @@ export function buildSign(
       const z = plateOn && !active.has("laterais") ? baseZ : baseZ + params.depth - params.faceThickness;
       geo.translate(0, 0, Math.max(z, baseZ));
       parts.push(
-        makePart("frente", "frente", printedCap ? "Frente (tampa encaixável)" : "Frente", params.faceColor, geo, {
-          emissive: params.led && !printedCap,
+        makePart("frente", "frente", "Frente", params.faceColor, geo, {
+          emissive: params.led,
           count: shapes.length,
         }),
       );
