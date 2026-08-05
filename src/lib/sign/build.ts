@@ -9,6 +9,7 @@ import {
   Vector2,
   Vector3,
 } from "three";
+import * as BufferGeometryUtils from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { ADDITION, Brush, Evaluator } from "three-bvh-csg";
 
 import { cloneShape, insetShape, offsetShape, ringShape, shapePoints } from "./offset";
