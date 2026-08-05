@@ -24,12 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  geometriesToStl,
-  downloadBlob,
-  slugify,
-  unionGeometriesForStl,
-} from "@/lib/sign/stl";
+import { geometriesToStl, downloadBlob, slugify, unionGeometriesForStl } from "@/lib/sign/stl";
 import {
   deleteSignProject,
   getSignProject,
