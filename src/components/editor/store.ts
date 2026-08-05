@@ -80,15 +80,18 @@ export function useEditorState(): EditorState {
 
   const style = useMemo(() => getStyle(styleId), [styleId]);
 
+  const scaledParams = useMemo(() => scaleParams(params), [params]);
+
   const build = useMemo(() => {
     try {
+      const p = scaledParams;
       const shapes = svg
-        ? svgToShapes(svg.content, params.letterHeight)
+        ? svgToShapes(svg.content, p.letterHeight)
         : font
-          ? textToShapes(font, params.text.toUpperCase(), params.letterHeight, params.tracking)
+          ? textToShapes(font, p.text.toUpperCase(), p.letterHeight, p.tracking)
           : [];
       if (!shapes.length) return null;
-      return buildSign(shapes, params, style);
+      return buildSign(shapes, p, style);
     } catch (error) {
       console.error("Falha ao gerar geometria", error);
       return null;
