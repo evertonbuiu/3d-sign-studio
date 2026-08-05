@@ -25,6 +25,7 @@ export interface SignParams {
   faceThickness: number; // espessura da frente (mm)
   backThickness: number; // espessura do fundo (mm)
   clearance: number; // folga de encaixe (mm)
+  fitDepth: number; // profundidade do encaixe entre metades (mm)
   faceRecess: boolean; // parede interna com rebaixo para a frente
   recessLip: number; // largura da aba externa que segura a frente (mm)
   /** iluminação */
@@ -79,6 +80,7 @@ export const DEFAULT_PARAMS: SignParams = {
   faceThickness: 3,
   backThickness: 3,
   clearance: 0.3,
+  fitDepth: 6,
   faceRecess: true,
   recessLip: 1.2,
   led: false,
