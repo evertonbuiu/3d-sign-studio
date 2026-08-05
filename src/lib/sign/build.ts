@@ -302,9 +302,11 @@ export function buildSign(
       if (fused) sections.push(extrude(cloneShape(shape), params.backThickness + overlap));
 
       if (separateBack) {
-        // aba inferior que segura a chapa de acrílico
-        for (const lipShape of ringShape(shape, backLip)) {
-          const lip = extrude(lipShape, params.backThickness + overlap);
+        // Aumentamos o degrau interno (backLip) e o overlap para garantir fusão física no fatiador
+        const robustLip = backLip + 0.2;
+        for (const lipShape of ringShape(shape, robustLip)) {
+          const lip = extrude(lipShape, params.backThickness + overlap * 3);
+          lip.translate(0, 0, zWall - overlap * 1.5);
           sections.push(lip);
         }
       }
