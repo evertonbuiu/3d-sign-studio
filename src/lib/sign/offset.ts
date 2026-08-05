@@ -63,11 +63,13 @@ function normalize(paths: CPath[]): CPath[] {
 
 function offsetPaths(paths: CPath[], delta: number): CPath[] {
   if (!paths.length) return [];
-  if (delta === 0) return paths;
+  // Use a very small epsilon to ensure Clipper always creates a valid manifold polygon 
+  // even for "zero" offsets, which helps closing tiny gaps in fonts.
+  const effectiveDelta = delta === 0 ? 0.001 : delta;
   const co = new ClipperLib.ClipperOffset(MITER_LIMIT, ARC_TOLERANCE);
   co.AddPaths(paths, ClipperLib.JoinType.jtMiter, ClipperLib.EndType.etClosedPolygon);
   const solution: CPath[] = [];
-  co.Execute(solution, delta * SCALE);
+  co.Execute(solution, effectiveDelta * SCALE);
   return normalize(solution);
 }
 
