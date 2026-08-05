@@ -3,6 +3,7 @@ import type { Font } from "opentype.js";
 
 import { loadFont, textToShapes } from "@/lib/sign/fonts";
 import { svgToShapes } from "@/lib/sign/svg";
+import { scaleShapes } from "@/lib/sign/transform";
 import { buildSign, type SignBuild } from "@/lib/sign/build";
 import { computeCost, type CostBreakdown } from "@/lib/sign/cost";
 import {
@@ -157,7 +158,7 @@ export function useEditorState(): EditorState {
       console.error("Falha ao gerar geometria", error);
       return null;
     }
-  }, [font, svg, scaledParams, style]);
+  }, [font, svg, params, scaledParams, style]);
 
   const cost = useMemo(
     () => (build ? computeCost(build, scaledParams) : null),
