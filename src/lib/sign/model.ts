@@ -154,15 +154,6 @@ const boxParts: PartKind[] = [
 
 export const STYLES: SignStyle[] = [
   {
-    id: "fundo-impresso-tampa-acrilica",
-    name: "Fundo Impresso + Tampa Acrílica",
-    group: "Acrílico & Impresso",
-    description: "Caixa impressa em 3D com tampa de acrílico sobreposta.",
-    parts: boxParts,
-    preset: { depth: 55, faceThickness: 3, led: true },
-    thumb: { face: "#dbe7f5", body: "#3f4a5a", glow: "front" },
-  },
-  {
     id: "fundo-impresso-frente-acrilica",
     name: "Fundo Impresso + Frente Acrílica",
     group: "Acrílico & Impresso",
