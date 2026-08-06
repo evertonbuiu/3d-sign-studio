@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-import { FONTS } from "./fonts";
 import { STYLES } from "./model";
 
 const color = z.string().regex(/^#[0-9a-f]{6}$/i, "Cor inválida");
@@ -8,7 +7,7 @@ const finite = (min: number, max: number) => z.number().finite().min(min).max(ma
 
 export const signParamsSchema = z.object({
   text: z.string().max(120),
-  fontId: z.enum(FONTS.map((font) => font.id) as [string, ...string[]]),
+  fontId: z.string().min(1).max(120),
   letterHeight: finite(30, 800),
   tracking: finite(-10, 40),
   depth: finite(5, 200),
