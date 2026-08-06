@@ -158,6 +158,15 @@ export const STYLES: SignStyle[] = [
     thumb: { face: "#e6f0fb", body: "#5b6a7d", glow: "both" },
   },
   {
+    id: "fundo-acrilico-frente-acrilica-aba",
+    name: "Fundo Acrílico + Frente Acrílica com Aba",
+    group: "Acrílico & Impresso",
+    description: "Frente acrílica em rebaixo e fundo acrílico apoiado por aba interna.",
+    parts: boxParts,
+    preset: { depth: 45, backThickness: 3, faceThickness: 3, faceRecess: true },
+    thumb: { face: "#dceafb", body: "#526176", glow: "both" },
+  },
+  {
     id: "fundo-acrilico-frente-impressa",
     name: "Fundo Acrílico + Frente Impressa",
     group: "Acrílico & Impresso",
