@@ -1,6 +1,5 @@
 import { toast } from "sonner";
- import { Eye, EyeOff, Upload, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Eye, EyeOff, Upload, X } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -242,29 +241,6 @@ export default function PropertiesPanel() {
                     ))}
                   </SelectContent>
                 </Select>
-                <div className="mt-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full text-xs font-medium h-8"
-                    onClick={() => {
-                      const input = document.createElement("input");
-                      input.type = "file";
-                      input.accept = ".ttf,.otf";
-                      input.onchange = async (e) => {
-                        const file = (e.target as HTMLInputElement).files?.[0];
-                        if (file) {
-                          // Aqui você pode implementar a lógica para "adicionar a fonte viola"
-                          // Por enquanto, apenas exibimos um alerta ou preparamos o estado.
-                          console.log("Fonte selecionada:", file.name);
-                        }
-                      };
-                      input.click();
-                    }}
-                  >
-                    adicionar a fonte viola
-                  </Button>
-                </div>
               </Field>
               <NumberSlider
                 label="Altura da letra"
@@ -597,3 +573,4 @@ export default function PropertiesPanel() {
     </div>
   );
 }
+
