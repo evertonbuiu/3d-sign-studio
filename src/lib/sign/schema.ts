@@ -20,6 +20,7 @@ export const signParamsSchema = z.object({
   recessLip: finite(0.4, 12),
   backFlangeWidth: finite(0.6, 30),
   backFlangeThickness: finite(0.6, 20),
+  neonFlexThickness: finite(4, 30),
   led: z.boolean(),
   ledChannelWidth: finite(3, 40),
   ledChannelHeight: finite(2, 30),
