@@ -1,5 +1,3 @@
-import type { FontId } from "./fonts";
-
 export type PartKind =
   | "fundo"
   | "laterais"
@@ -16,7 +14,7 @@ export type BodyMode = "letras" | "placa" | "totem";
 export interface SignParams {
   /** conteúdo */
   text: string;
-  fontId: FontId;
+  fontId: string;
   letterHeight: number; // mm (altura de caixa alta)
   tracking: number; // mm entre letras
   /** construção */
