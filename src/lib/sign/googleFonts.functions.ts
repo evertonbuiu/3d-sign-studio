@@ -27,12 +27,13 @@ export const fetchGoogleFont = createServerFn({ method: "POST" })
       throw new Error(`Nenhum arquivo de fonte encontrado para ${data.family}`);
     }
 
-    const fontFile = entries.sort((a, b) => {
+    entries.sort((a, b) => {
       const weightA = extractWeight(a.name);
       const weightB = extractWeight(b.name);
       if (weightA !== weightB) return weightB - weightA;
       return a.name.localeCompare(b.name);
-    })[0];
+    });
+    const fontFile = entries[0]!;
 
     const base64 = await fontFile.async("base64");
     return { family: data.family, base64, filename: fontFile.name };
