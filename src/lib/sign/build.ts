@@ -137,6 +137,66 @@ function steppedRingGeometry(
   return geometry;
 }
 
+function doubleRecessRingGeometry(
+  thick: Shape,
+  lip: Shape,
+  bodyHeight: number,
+  backHeight: number,
+  faceHeight: number,
+): BufferGeometry | null {
+  if (thick.holes.length !== lip.holes.length) return null;
+  const outer = cleanContour(thick.getPoints(24));
+  const thickHoles = thick.holes.map((hole) => cleanContour(hole.getPoints(24)));
+  const lipHoles = lip.holes.map((hole) => cleanContour(hole.getPoints(24)));
+  if (outer.length < 3 || thickHoles.some((hole) => hole.length < 3)) return null;
+
+  const values: number[] = [];
+  const triangle = (a: Vector2, za: number, b: Vector2, zb: number, c: Vector2, zc: number) =>
+    values.push(a.x, a.y, za, b.x, b.y, zb, c.x, c.y, zc);
+  const wallStrip = (contour: Vector2[], z0: number, z1: number, reverse = false) => {
+    for (let i = 0; i < contour.length; i++) {
+      const a = contour[i]!;
+      const b = contour[(i + 1) % contour.length]!;
+      if (reverse) {
+        triangle(a, z0, b, z1, b, z0);
+        triangle(a, z0, a, z1, b, z1);
+      } else {
+        triangle(a, z0, b, z0, b, z1);
+        triangle(a, z0, b, z1, a, z1);
+      }
+    }
+  };
+  const cap = (contour: Vector2[], holes: Vector2[][], z: number, reverse = false) => {
+    const points = [...contour, ...holes.flat()];
+    for (const face of ShapeUtils.triangulateShape(contour, holes)) {
+      const ia = reverse ? face[2]! : face[0]!;
+      const ib = face[1]!;
+      const ic = reverse ? face[0]! : face[2]!;
+      triangle(points[ia]!, z, points[ib]!, z, points[ic]!, z);
+    }
+  };
+
+  const middleStart = backHeight;
+  const middleEnd = backHeight + bodyHeight;
+  const totalHeight = middleEnd + faceHeight;
+  cap(outer, lipHoles, 0, true);
+  wallStrip(outer, 0, totalHeight);
+  for (let i = 0; i < thickHoles.length; i++) {
+    const thickHole = thickHoles[i]!;
+    const lipHole = lipHoles[i]!;
+    wallStrip(lipHole, 0, middleStart, true);
+    cap(lipHole, [thickHole], middleStart);
+    wallStrip(thickHole, middleStart, middleEnd, true);
+    cap(lipHole, [thickHole], middleEnd, true);
+    wallStrip(lipHole, middleEnd, totalHeight, true);
+  }
+  cap(outer, lipHoles, totalHeight);
+
+  const geometry = new BufferGeometry();
+  geometry.setAttribute("position", new Float32BufferAttribute(values, 3));
+  return geometry;
+}
+
 function geometryVolumeCm3(geometry: BufferGeometry): number {
   const pos = geometry.getAttribute("position");
   if (!pos) return 0;
@@ -300,6 +360,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
   const active = new Set<PartKind>(style.parts);
   const unifiedPrintedCup = style.id === "fundo-impresso-frente-acrilica";
   const unifiedPrintedFace = style.id === "fundo-acrilico-frente-impressa";
+  const doubleAcrylicRecess = style.id === "fundo-acrilico-frente-acrilica";
   const parts: SignPart[] = [];
 
   const rawBounds = shapesBounds(letterShapes);
@@ -385,17 +446,21 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
   if (active.has("fundo") && !unifiedPrintedCup) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
-      const back = cloneShape(shape);
-      if (!plateOn && params.mountHoles) {
-        const mountPoint = findInteriorMountPoint(
-          shape,
-          params.holeDiameter / 2 + Math.max(params.wall, 2),
-        );
-        if (mountPoint) {
-          back.holes.push(circle(mountPoint.x, mountPoint.y, params.holeDiameter / 2));
+      const backs = doubleAcrylicRecess
+        ? insetShape(shape, params.recessLip + params.clearance)
+        : [cloneShape(shape)];
+      for (const back of backs) {
+        if (!plateOn && params.mountHoles) {
+          const mountPoint = findInteriorMountPoint(
+            back,
+            params.holeDiameter / 2 + Math.max(params.wall, 2),
+          );
+          if (mountPoint) {
+            back.holes.push(circle(mountPoint.x, mountPoint.y, params.holeDiameter / 2));
+          }
         }
+        geos.push(extrude(back, params.backThickness));
       }
-      geos.push(extrude(back, params.backThickness));
     }
     const geo = combine(geos);
     if (geo) {
@@ -409,7 +474,11 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
   // rebaixo (degrau) na parede interna para assentar a frente
   const recessLip = Math.max(params.recessLip, 0.5);
   const recessOn =
-    params.faceRecess && active.has("frente") && active.has("laterais") && recessLip < params.wall;
+    doubleAcrylicRecess ||
+    (params.faceRecess &&
+      active.has("frente") &&
+      active.has("laterais") &&
+      recessLip < params.wall);
   const faceInset = recessOn ? recessLip + params.clearance : 0;
 
   // ---------- laterais (parede + rebaixo em uma peça só) ----------
@@ -421,22 +490,32 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
         const upperRings = ringShape(shape, recessLip);
         if (lowerRings.length === upperRings.length) {
           for (let i = 0; i < lowerRings.length; i++) {
-            const wall = steppedRingGeometry(
-              lowerRings[i]!,
-              upperRings[i]!,
-              bodyHeight,
-              unifiedPrintedFace ? params.backThickness : params.faceThickness,
-              unifiedPrintedCup
-                ? params.backThickness
-                : unifiedPrintedFace
-                  ? params.faceThickness
-                  : 0,
-              unifiedPrintedCup && params.mountHoles
-                ? letterHolePoints
-                    .filter((point) => pointInPolygon(point, lowerRings[i]!.getPoints(24)))
-                    .map((point) => circle(point.x, point.y, params.holeDiameter / 2).getPoints(24))
-                : [],
-            );
+            const wall = doubleAcrylicRecess
+              ? doubleRecessRingGeometry(
+                  lowerRings[i]!,
+                  upperRings[i]!,
+                  bodyHeight,
+                  params.backThickness,
+                  params.faceThickness,
+                )
+              : steppedRingGeometry(
+                  lowerRings[i]!,
+                  upperRings[i]!,
+                  bodyHeight,
+                  unifiedPrintedFace ? params.backThickness : params.faceThickness,
+                  unifiedPrintedCup
+                    ? params.backThickness
+                    : unifiedPrintedFace
+                      ? params.faceThickness
+                      : 0,
+                  unifiedPrintedCup && params.mountHoles
+                    ? letterHolePoints
+                        .filter((point) => pointInPolygon(point, lowerRings[i]!.getPoints(24)))
+                        .map((point) =>
+                          circle(point.x, point.y, params.holeDiameter / 2).getPoints(24),
+                        )
+                    : [],
+                );
             if (wall) {
               if (unifiedPrintedFace) {
                 wall.scale(1, 1, -1);
@@ -457,7 +536,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
       geo.translate(
         0,
         0,
-        unifiedPrintedCup || unifiedPrintedFace
+        unifiedPrintedCup || unifiedPrintedFace || doubleAcrylicRecess
           ? baseZ
           : baseZ + (active.has("fundo") ? params.backThickness : 0),
       );

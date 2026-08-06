@@ -130,3 +130,31 @@ test("frente impressa e laterais formam uma unica peca com fundo separado", () =
   assert.equal(build.parts.filter((part) => part.kind === "frente").length, 0);
   assert.equal(build.parts.filter((part) => part.kind === "fundo").length, 1);
 });
+
+test("frente e fundo acrilicos ficam separados com rebaixo duplo", () => {
+  const style = getStyle("fundo-acrilico-frente-acrilica");
+  const params = {
+    ...DEFAULT_PARAMS,
+    ...style.preset,
+    text: "G",
+    mountHoles: false,
+    faceRecess: false,
+  };
+  const build = buildSign(glyphShapes(archivo, "G", params.letterHeight), params, style);
+  const back = build.parts.find((part) => part.kind === "fundo");
+  const walls = build.parts.find((part) => part.kind === "laterais");
+  const front = build.parts.find((part) => part.kind === "frente");
+  assert.ok(back && walls && front);
+  assert.deepEqual(topology(walls.geometry), {
+    boundary: 0,
+    nonManifold: 0,
+    components: 1,
+  });
+  walls.geometry.computeBoundingBox();
+  back.geometry.computeBoundingBox();
+  front.geometry.computeBoundingBox();
+  assert.equal(walls.geometry.boundingBox?.min.z, 0);
+  assert.equal(walls.geometry.boundingBox?.max.z, params.depth);
+  assert.equal(back.geometry.boundingBox?.max.z, params.backThickness);
+  assert.equal(front.geometry.boundingBox?.min.z, params.depth - params.faceThickness);
+});
