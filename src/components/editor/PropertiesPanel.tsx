@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/accordion";
 import { FONTS, type FontId } from "@/lib/sign/fonts";
 import type { SignParams } from "@/lib/sign/model";
+import { PRINTER_PROFILES } from "@/lib/sign/printers";
 import { useEditor } from "./store";
 
 const MAX_VECTOR_FILE_BYTES = 2_000_000;
@@ -136,6 +137,7 @@ export default function PropertiesPanel() {
     customFontName,
     setCustomFont,
     clearCustomFont,
+    selectPrinter,
   } = useEditor();
 
   return (
@@ -537,6 +539,37 @@ export default function PropertiesPanel() {
           <AccordionItem value="custos">
             <AccordionTrigger className="text-sm">Custos e produção</AccordionTrigger>
             <AccordionContent className="space-y-3 pb-4">
+              <Field label="Modelo da impressora 3D">
+                <Select value={params.printerId} onValueChange={selectPrinter}>
+                  <SelectTrigger className="h-9 bg-card text-sm">
+                    <SelectValue placeholder="Selecione a impressora" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PRINTER_PROFILES.map((printer) => (
+                      <SelectItem key={printer.id} value={printer.id}>
+                        {printer.manufacturer} — {printer.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <div className="rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+                Volume útil: {params.buildWidth} × {params.buildDepth} × {params.buildHeight} mm
+                <br />
+                Bico: {params.nozzleDiameter} mm · Filamento: {params.filamentDiameter} mm
+                <br />
+                Velocidade máxima: {params.maxPrintSpeed} mm/s
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <MoneyField label="Mesa X (mm)" keyName="buildWidth" />
+                <MoneyField label="Mesa Y (mm)" keyName="buildDepth" />
+                <MoneyField label="Altura Z (mm)" keyName="buildHeight" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <MoneyField label="Bico (mm)" keyName="nozzleDiameter" step={0.1} />
+                <MoneyField label="Filamento (mm)" keyName="filamentDiameter" step={0.05} />
+              </div>
+              <MoneyField label="Velocidade máxima (mm/s)" keyName="maxPrintSpeed" />
               <MoneyField label="Filamento (R$/kg)" keyName="filamentPrice" />
               <MoneyField label="Densidade (g/cm³)" keyName="density" step={0.01} />
               <MoneyField label="Velocidade (cm³/h)" keyName="printSpeed" />
@@ -628,4 +661,3 @@ export default function PropertiesPanel() {
     </div>
   );
 }
-
