@@ -338,14 +338,29 @@ export default function Viewport() {
               </p>
             )}
             {selected.length > 0 && (
-              <div>
+              <div className="flex gap-2 pt-1">
                 <Button
                   size="sm"
                   variant="outline"
-                  className="w-full"
+                  className="h-7 flex-1 text-xs"
+                  onClick={() => {
+                    const total = selected.reduce((s, e) => s + e.length, 0);
+                    const name =
+                      selected.length > 1 ? `${selected.length} arestas` : "Aresta única";
+                    useEditor.getState().weldSelectedEdges(selected, total, name);
+                    setSelected([]);
+                    toast.success("Arestas soldadas para conferência");
+                  }}
+                >
+                  Soldar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 flex-1 text-xs"
                   onClick={() => setSelected([])}
                 >
-                  Limpar medição
+                  Limpar
                 </Button>
               </div>
             )}
