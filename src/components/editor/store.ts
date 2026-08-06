@@ -1,7 +1,7 @@
 import { createContext, useContext, useDeferredValue, useEffect, useMemo, useState } from "react";
 import type { Font } from "opentype.js";
 
-import { loadFont, textToShapes } from "@/lib/sign/fonts";
+import { loadFont, parseCustomFont, textToShapes } from "@/lib/sign/fonts";
 import { svgToShapes } from "@/lib/sign/svg";
 import { dxfToShapes } from "@/lib/sign/dxf";
 import { buildSign, type SignBuild } from "@/lib/sign/build";
@@ -21,6 +21,9 @@ export interface EditorState {
   cost: CostBreakdown | null;
   ready: boolean;
   loadError: string | null;
+  customFontName: string | null;
+  setCustomFont: (name: string, buffer: ArrayBuffer) => void;
+  clearCustomFont: () => void;
   explode: number;
   hidden: Set<string>;
   wireframe: boolean;
@@ -64,6 +67,8 @@ export function useEditorState(): EditorState {
     paramsForStyle(getStyle("caixa-iluminada")),
   );
   const [font, setFont] = useState<Font | null>(null);
+  const [customFont, setCustomFontState] = useState<Font | null>(null);
+  const [customFontName, setCustomFontName] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [explode, setExplode] = useState(0);
   const [hidden, setHidden] = useState<Set<string>>(new Set());
@@ -106,9 +111,9 @@ export function useEditorState(): EditorState {
         ? svg.kind === "dxf"
           ? dxfToShapes(svg.content, deferredParams.letterHeight)
           : svgToShapes(svg.content, deferredParams.letterHeight)
-        : font
+        : (customFont ?? font)
           ? textToShapes(
-              font,
+              (customFont ?? font)!,
               deferredParams.text.toUpperCase(),
               deferredParams.letterHeight,
               deferredParams.tracking,
@@ -120,7 +125,7 @@ export function useEditorState(): EditorState {
       console.error("Falha ao gerar geometria", error);
       return null;
     }
-  }, [font, svg, deferredParams, style]);
+  }, [font, customFont, svg, deferredParams, style]);
 
   const cost = useMemo(
     () => (build ? computeCost(build, deferredParams) : null),
@@ -132,8 +137,19 @@ export function useEditorState(): EditorState {
     style,
     build,
     cost,
-    ready: Boolean(font) || Boolean(svg),
+    ready: Boolean(customFont ?? font) || Boolean(svg),
     loadError,
+    customFontName,
+    setCustomFont: (name, buffer) => {
+      const parsed = parseCustomFont(buffer);
+      setCustomFontState(parsed);
+      setCustomFontName(name);
+      setLoadError(null);
+    },
+    clearCustomFont: () => {
+      setCustomFontState(null);
+      setCustomFontName(null);
+    },
     explode,
     hidden,
     wireframe,
@@ -179,3 +195,4 @@ export function useEditorState(): EditorState {
 }
 
 export const EditorProvider = EditorContext.Provider;
+
