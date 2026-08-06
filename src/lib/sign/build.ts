@@ -241,21 +241,23 @@ function backFlangeRingGeometry(
     }
   };
 
-  const flangeStart = backHeight;
+  // A aba nasce exatamente na extremidade traseira da parede. O fundo
+  // acrílico fica logo à frente dela, apoiado no ombro interno.
+  const flangeStart = 0;
   const flangeEnd = Math.min(
-    backHeight + Math.max(flangeThickness, 0.5),
-    backHeight + bodyHeight / 2,
+    Math.max(flangeThickness, 0.5),
+    Math.max(backHeight + bodyHeight / 2, 0.2),
   );
   const frontStart = backHeight + bodyHeight;
   const totalHeight = frontStart + faceHeight;
-  cap(outer, thickHoles, 0, true);
+  // A tampa traseira acompanha o vazio menor criado pela aba. Assim parede e
+  // aba compartilham uma única borda, sem faces coplanares sobrepostas.
+  cap(outer, flangeHoles, 0, true);
   wallStrip(outer, 0, totalHeight);
   for (let i = 0; i < thickHoles.length; i++) {
     const thickHole = thickHoles[i]!;
     const frontHole = frontHoles[i]!;
     const flangeHole = flangeHoles[i]!;
-    wallStrip(thickHole, 0, flangeStart, true);
-    cap(thickHole, [flangeHole], flangeStart);
     wallStrip(flangeHole, flangeStart, flangeEnd, true);
     cap(thickHole, [flangeHole], flangeEnd, true);
     wallStrip(thickHole, flangeEnd, frontStart, true);
@@ -539,7 +541,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
     }
     const geo = combine(geos);
     if (geo) {
-      geo.translate(0, 0, baseZ);
+      geo.translate(0, 0, baseZ + (acrylicBackFlange ? params.backFlangeThickness : 0));
       parts.push(
         makePart("fundo", "fundo", "Fundo", params.backColor, geo, { count: shapes.length }),
       );
@@ -551,10 +553,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
   const recessOn =
     doubleAcrylicRecess ||
     acrylicBackFlange ||
-    (params.faceRecess &&
-      active.has("frente") &&
-      active.has("laterais") &&
-      recessLip < params.wall);
+    (params.faceRecess && active.has("frente") && active.has("laterais"));
   const faceInset = recessOn ? recessLip + params.clearance : 0;
 
   // ---------- laterais (parede + rebaixo em uma peça só) ----------

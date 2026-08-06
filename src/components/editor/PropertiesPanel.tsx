@@ -263,7 +263,7 @@ export default function PropertiesPanel() {
               <NumberSlider
                 label="Folga de encaixe"
                 keyName="clearance"
-                min={0.5}
+                min={0}
                 max={1.5}
                 step={0.05}
               />

@@ -24,8 +24,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
-
-const isSupabaseConfigured = Boolean(import.meta.env["VITE_SUPABASE_URL"]);
 import { geometriesToStl, downloadBlob, slugify } from "@/lib/sign/stl";
 import {
   deleteSignProject,
@@ -34,6 +32,10 @@ import {
   saveSignProject,
 } from "@/lib/signProjects.functions";
 import { useEditor } from "./store";
+
+const isSupabaseConfigured = Boolean(import.meta.env["VITE_SUPABASE_URL"]);
+
+
 
 export default function Toolbar() {
   const editor = useEditor();
