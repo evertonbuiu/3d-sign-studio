@@ -285,6 +285,27 @@ export default function PropertiesPanel() {
                   step={0.1}
                 />
               ) : null}
+              {style.id === "fundo-acrilico-frente-acrilica-aba" ? (
+                <div className="space-y-3 rounded-md border border-border bg-background/40 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Aba traseira
+                  </p>
+                  <NumberSlider
+                    label="Largura da aba"
+                    keyName="backFlangeWidth"
+                    min={0.5}
+                    max={30}
+                    step={0.1}
+                  />
+                  <NumberSlider
+                    label="Espessura da aba"
+                    keyName="backFlangeThickness"
+                    min={0.5}
+                    max={20}
+                    step={0.2}
+                  />
+                </div>
+              ) : null}
             </AccordionContent>
           </AccordionItem>
 
@@ -298,14 +319,14 @@ export default function PropertiesPanel() {
               <NumberSlider
                 label="Largura do canal"
                 keyName="ledChannelWidth"
-                min={0.5}
+                min={3}
                 max={40}
                 step={0.5}
               />
               <NumberSlider
                 label="Altura do canal"
                 keyName="ledChannelHeight"
-                min={0.5}
+                min={2}
                 max={30}
                 step={0.5}
               />
@@ -409,7 +430,7 @@ export default function PropertiesPanel() {
               <NumberSlider
                 label="Diâmetro do furo"
                 keyName="holeDiameter"
-                min={0.5}
+                min={2}
                 max={20}
                 step={0.5}
               />

@@ -204,6 +204,7 @@ function backFlangeRingGeometry(
   bodyHeight: number,
   backHeight: number,
   faceHeight: number,
+  flangeThickness: number,
 ): BufferGeometry | null {
   if (thick.holes.length !== frontLip.holes.length || thick.holes.length !== flange.holes.length) {
     return null;
@@ -241,7 +242,10 @@ function backFlangeRingGeometry(
   };
 
   const flangeStart = backHeight;
-  const flangeEnd = Math.min(backHeight + Math.max(backHeight, 1.2), backHeight + bodyHeight / 2);
+  const flangeEnd = Math.min(
+    backHeight + Math.max(flangeThickness, 0.5),
+    backHeight + bodyHeight / 2,
+  );
   const frontStart = backHeight + bodyHeight;
   const totalHeight = frontStart + faceHeight;
   cap(outer, thickHoles, 0, true);
@@ -560,7 +564,9 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
       if (recessOn) {
         const lowerRings = ringShape(shape, params.wall);
         const upperRings = ringShape(shape, recessLip);
-        const flangeRings = acrylicBackFlange ? ringShape(shape, params.wall + recessLip) : [];
+        const flangeRings = acrylicBackFlange
+          ? ringShape(shape, params.wall + params.backFlangeWidth)
+          : [];
         if (
           lowerRings.length === upperRings.length &&
           (!acrylicBackFlange || lowerRings.length === flangeRings.length)
@@ -574,6 +580,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
                   bodyHeight,
                   params.backThickness,
                   params.faceThickness,
+                  params.backFlangeThickness,
                 )
               : doubleAcrylicRecess
                 ? doubleRecessRingGeometry(

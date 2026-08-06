@@ -27,6 +27,8 @@ export interface SignParams {
   clearance: number; // folga de encaixe (mm)
   faceRecess: boolean; // parede interna com rebaixo para a frente
   recessLip: number; // largura da aba externa que segura a frente (mm)
+  backFlangeWidth: number; // avanço da aba traseira para dentro (mm)
+  backFlangeThickness: number; // espessura da aba traseira no eixo Z (mm)
   /** iluminação */
   led: boolean;
   ledChannelWidth: number;
@@ -75,6 +77,8 @@ export const DEFAULT_PARAMS: SignParams = {
   clearance: 0.5,
   faceRecess: true,
   recessLip: 1.2,
+  backFlangeWidth: 4,
+  backFlangeThickness: 2.4,
   led: true,
   ledChannelWidth: 12,
   ledChannelHeight: 6,
@@ -163,7 +167,14 @@ export const STYLES: SignStyle[] = [
     group: "Acrílico & Impresso",
     description: "Frente acrílica em rebaixo e fundo acrílico apoiado por aba interna.",
     parts: boxParts,
-    preset: { depth: 45, backThickness: 3, faceThickness: 3, faceRecess: true },
+    preset: {
+      depth: 45,
+      backThickness: 3,
+      faceThickness: 3,
+      faceRecess: true,
+      backFlangeWidth: 4,
+      backFlangeThickness: 2.4,
+    },
     thumb: { face: "#dceafb", body: "#526176", glow: "both" },
   },
   {
