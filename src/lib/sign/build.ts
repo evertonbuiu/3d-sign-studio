@@ -10,7 +10,14 @@ import {
   Vector2,
   Vector3,
 } from "three";
-import { cloneShape, insetShape, offsetShape, ringShape, shapePoints } from "./offset.ts";
+import {
+  cloneShape,
+  insetShape,
+  insetWithRing,
+  offsetShape,
+  ringShape,
+  shapePoints,
+} from "./offset.ts";
 import type { PartKind, SignParams, SignStyle } from "./model";
 
 export interface SignPart {
@@ -198,6 +205,73 @@ function openContourCupGeometry(
 
   const geometry = new BufferGeometry();
   geometry.setAttribute("position", new Float32BufferAttribute(values, 3));
+  return geometry;
+}
+
+/** Fundo impresso com uma aba elevada que entra por dentro das paredes. */
+function rearInsertGeometry(
+  shape: Shape,
+  startInset: number,
+  flangeWidth: number,
+  baseThickness: number,
+  flangeHeight: number,
+): BufferGeometry | null {
+  const baseSplit = insetWithRing(shape, startInset);
+  const outerShelf = baseSplit.ring;
+  const innerShelf: Shape[] = [];
+  const flangeRings: Shape[] = [];
+  for (const flangeBase of baseSplit.inner) {
+    const flangeSplit = insetWithRing(flangeBase, flangeWidth);
+    flangeRings.push(...flangeSplit.ring);
+    innerShelf.push(...flangeSplit.inner);
+  }
+  if (!flangeRings.length) return null;
+
+  const values: number[] = [];
+  const triangle = (a: Vector2, za: number, b: Vector2, zb: number, c: Vector2, zc: number) =>
+    values.push(a.x, a.y, za, b.x, b.y, zb, c.x, c.y, zc);
+  const wallStrip = (contour: Vector2[], z0: number, z1: number, reverse = false) => {
+    const points = cleanContour(contour);
+    for (let i = 0; i < points.length; i++) {
+      const a = points[i]!;
+      const b = points[(i + 1) % points.length]!;
+      if (reverse) {
+        triangle(a, z0, b, z1, b, z0);
+        triangle(a, z0, a, z1, b, z1);
+      } else {
+        triangle(a, z0, b, z0, b, z1);
+        triangle(a, z0, b, z1, a, z1);
+      }
+    }
+  };
+  const capShape = (item: Shape, z: number, reverse = false) => {
+    const contour = cleanContour(item.getPoints(24));
+    const holes = item.holes.map((hole) => cleanContour(hole.getPoints(24)));
+    const points = [...contour, ...holes.flat()];
+    for (const face of ShapeUtils.triangulateShape(contour, holes)) {
+      const ia = reverse ? face[2]! : face[0]!;
+      const ib = face[1]!;
+      const ic = reverse ? face[0]! : face[2]!;
+      triangle(points[ia]!, z, points[ib]!, z, points[ic]!, z);
+    }
+  };
+  const boundaryWalls = (item: Shape, z0: number, z1: number) => {
+    wallStrip(item.getPoints(24), z0, z1);
+    for (const hole of item.holes) wallStrip(hole.getPoints(24), z0, z1, true);
+  };
+
+  const flangeTop = baseThickness + flangeHeight;
+  capShape(shape, 0, true);
+  boundaryWalls(shape, 0, baseThickness);
+  for (const shelf of [...outerShelf, ...innerShelf]) capShape(shelf, baseThickness);
+  for (const flange of flangeRings) {
+    boundaryWalls(flange, baseThickness, flangeTop);
+    capShape(flange, flangeTop);
+  }
+
+  const geometry = new BufferGeometry();
+  const weldedValues = values.map((value) => Math.round(value * 10_000) / 10_000);
+  geometry.setAttribute("position", new Float32BufferAttribute(weldedValues, 3));
   return geometry;
 }
 
@@ -498,7 +572,9 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
   const active = new Set<PartKind>(style.parts);
   const neonFlexOpenCup = style.id === "neon-flex-fundo-impresso";
   const unifiedPrintedCup = style.id === "fundo-impresso-frente-acrilica" || neonFlexOpenCup;
-  const unifiedPrintedFace = style.id === "fundo-acrilico-frente-impressa";
+  const printedFrontRearInsert = style.id === "fundo-impresso-frente-impressa-aba";
+  const unifiedPrintedFace =
+    style.id === "fundo-acrilico-frente-impressa" || printedFrontRearInsert;
   const doubleAcrylicRecess = style.id === "fundo-acrilico-frente-acrilica";
   const acrylicBackFlange = style.id === "fundo-acrilico-frente-acrilica-aba";
   const parts: SignPart[] = [];
@@ -585,6 +661,17 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
   if (active.has("fundo") && !unifiedPrintedCup) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
+      if (printedFrontRearInsert) {
+        const back = rearInsertGeometry(
+          shape,
+          params.wall + params.clearance,
+          params.backFlangeWidth,
+          params.backThickness,
+          params.backFlangeThickness,
+        );
+        if (back) geos.push(back);
+        continue;
+      }
       const backs = doubleAcrylicRecess
         ? insetShape(shape, params.recessLip + params.clearance)
         : acrylicBackFlange
@@ -621,7 +708,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
     (params.faceRecess &&
       active.has("frente") &&
       active.has("laterais") &&
-      recessLip < params.wall);
+      recessLip > 0);
   const faceInset = recessOn ? recessLip + params.clearance : 0;
 
   // ---------- laterais (parede + rebaixo em uma peça só) ----------

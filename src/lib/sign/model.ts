@@ -189,6 +189,27 @@ export const STYLES: SignStyle[] = [
     thumb: { face: "#8f9db0", body: "#39424f", glow: "halo" },
   },
   {
+    id: "fundo-impresso-frente-impressa-aba",
+    name: "Fundo Impresso + Frente Impressa com Aba",
+    group: "Acrílico & Impresso",
+    description:
+      "Frente e paredes impressas em uma peça, com fundo impresso separado e aba interna de encaixe.",
+    parts: ["fundo", "laterais", "frente"],
+    preset: {
+      depth: 45,
+      wall: 2.4,
+      faceThickness: 2.4,
+      backThickness: 2.4,
+      faceRecess: true,
+      backFlangeWidth: 4,
+      backFlangeThickness: 5,
+      clearance: 0.5,
+      led: false,
+      mountHoles: false,
+    },
+    thumb: { face: "#e7e9ee", body: "#424b59", glow: "none" },
+  },
+  {
     id: "neon-flex-fundo-impresso",
     name: "Neon Flex — Fundo Impresso sem Tampa",
     group: "Neon Flex",

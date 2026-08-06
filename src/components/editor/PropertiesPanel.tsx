@@ -321,10 +321,13 @@ export default function PropertiesPanel() {
                   ) : null}
                 </>
               ) : null}
-              {style.id === "fundo-acrilico-frente-acrilica-aba" ? (
+              {style.id === "fundo-acrilico-frente-acrilica-aba" ||
+              style.id === "fundo-impresso-frente-impressa-aba" ? (
                 <div className="space-y-3 rounded-md border border-border bg-background/40 p-3">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Aba traseira
+                    {style.id === "fundo-impresso-frente-impressa-aba"
+                      ? "Aba de encaixe do fundo"
+                      : "Aba traseira"}
                   </p>
                   <NumberSlider
                     label="Largura da aba"

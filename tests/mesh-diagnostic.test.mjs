@@ -199,6 +199,44 @@ test("frente impressa e laterais formam uma unica peca com fundo separado", () =
   assert.equal(build.parts.filter((part) => part.kind === "fundo").length, 1);
 });
 
+test("frente impressa com paredes encaixa no fundo impresso com aba", () => {
+  const style = getStyle("fundo-impresso-frente-impressa-aba");
+  assert.equal(style.name, "Fundo Impresso + Frente Impressa com Aba");
+  const params = {
+    ...DEFAULT_PARAMS,
+    ...style.preset,
+    text: "G",
+    backThickness: 2.8,
+    backFlangeWidth: 4.5,
+    backFlangeThickness: 6,
+    clearance: 0.35,
+  };
+  const build = buildSign(glyphShapes(archivo, "G", params.letterHeight), params, style);
+  const frontWalls = build.parts.find((part) => part.id === "frente-laterais");
+  const backInsert = build.parts.find((part) => part.id === "fundo");
+  assert.ok(frontWalls && backInsert);
+  assert.equal(build.parts.filter((part) => part.kind === "frente").length, 0);
+  assert.deepEqual(topology(frontWalls.geometry), {
+    boundary: 0,
+    nonManifold: 0,
+    components: 1,
+  });
+  assert.deepEqual(topology(backInsert.geometry), {
+    boundary: 0,
+    nonManifold: 0,
+    components: 1,
+  });
+  frontWalls.geometry.computeBoundingBox();
+  backInsert.geometry.computeBoundingBox();
+  assert.equal(frontWalls.geometry.boundingBox?.max.z, params.depth);
+  assert.ok(
+    Math.abs(
+      (backInsert.geometry.boundingBox?.max.z ?? 0) -
+        (params.backThickness + params.backFlangeThickness),
+    ) < 1e-5,
+  );
+});
+
 test("frente e fundo acrilicos ficam separados com rebaixo duplo", () => {
   const style = getStyle("fundo-acrilico-frente-acrilica");
   const params = {
