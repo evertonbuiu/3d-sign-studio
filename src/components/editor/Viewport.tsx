@@ -349,7 +349,7 @@ export default function Viewport() {
                     const total = selected.reduce((s, e) => s + e.length, 0);
                     const name =
                       selected.length > 1 ? `${selected.length} arestas` : "Aresta única";
-                    useEditor.getState().weldSelectedEdges(selected, total, name);
+                    weldSelectedEdges(selected, total, name);
                     setSelected([]);
                     toast.success("Arestas soldadas para conferência");
                   }}
