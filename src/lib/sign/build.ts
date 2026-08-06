@@ -562,8 +562,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
     acrylicBackFlange ||
     (params.faceRecess &&
       active.has("frente") &&
-      active.has("laterais") &&
-      recessLip < params.wall);
+      active.has("laterais"));
   const faceInset = recessOn ? recessLip + params.clearance : 0;
 
   // ---------- laterais (parede + rebaixo em uma peça só) ----------
