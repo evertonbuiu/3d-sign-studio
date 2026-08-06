@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import { Trash2 } from "lucide-react";
 import { Canvas, type ThreeEvent } from "@react-three/fiber";
 import { ContactShadows, Grid, OrbitControls } from "@react-three/drei";
 import {
