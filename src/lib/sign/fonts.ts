@@ -43,6 +43,12 @@ export type FontId = (typeof FONTS)[number]["id"];
 const cache = new Map<string, opentype.Font>();
 const transforms = new WeakMap<opentype.Font, { width: number; slant: number }>();
 
+export function parseCustomFont(buffer: ArrayBuffer): opentype.Font {
+  const font = opentype.parse(buffer);
+  transforms.set(font, { width: 1, slant: 0 });
+  return font;
+}
+
 export async function loadFont(id: FontId): Promise<opentype.Font> {
   const cached = cache.get(id);
   if (cached) return cached;
@@ -126,3 +132,4 @@ export function textToShapes(
 
   return path.toShapes();
 }
+
