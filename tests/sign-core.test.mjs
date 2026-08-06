@@ -5,6 +5,7 @@ import { BufferGeometry, Float32BufferAttribute } from "three";
 
 import { computeCost } from "../src/lib/sign/cost.ts";
 import { DEFAULT_PARAMS } from "../src/lib/sign/model.ts";
+import { getPrinterProfile, paramsForPrinter, PRINTER_PROFILES } from "../src/lib/sign/printers.ts";
 import { geometriesToStl, slugify } from "../src/lib/sign/stl.ts";
 
 const build = {
@@ -36,4 +37,29 @@ test("gera STL binário com a contagem correta", () => {
 test("normaliza nomes de arquivo", () => {
   assert.equal(slugify("Letra São João!"), "letra-sao-joao");
   assert.equal(slugify("***"), "projeto");
+});
+
+test("selecionar impressora carrega todos os parâmetros do perfil", () => {
+  const selected = getPrinterProfile("bambu-x1c");
+  const params = paramsForPrinter("bambu-x1c", {
+    ...DEFAULT_PARAMS,
+    buildWidth: 1,
+    printSpeed: 1,
+    printerPower: 1,
+  });
+  assert.equal(PRINTER_PROFILES.at(-1)?.id, "custom");
+  assert.deepEqual(
+    {
+      printerId: params.printerId,
+      buildWidth: params.buildWidth,
+      buildDepth: params.buildDepth,
+      buildHeight: params.buildHeight,
+      nozzleDiameter: params.nozzleDiameter,
+      filamentDiameter: params.filamentDiameter,
+      maxPrintSpeed: params.maxPrintSpeed,
+      printSpeed: params.printSpeed,
+      printerPower: params.printerPower,
+    },
+    selected.params,
+  );
 });
