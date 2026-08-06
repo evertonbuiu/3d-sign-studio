@@ -1,8 +1,9 @@
+
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 import opentype from "opentype.js";
-import { ShapePath } from "three";
+import { Box2, ShapePath, Vector2 } from "three";
 
 import { buildSign } from "../src/lib/sign/build.ts";
 import { DEFAULT_PARAMS, getStyle } from "../src/lib/sign/model.ts";
@@ -77,6 +78,45 @@ function outwardFrontTriangles(geometry) {
     if (abx * acy - aby * acx > 0) outward++;
   }
   return outward;
+}
+
+function frontCoversPoint(geometry, point) {
+  const source = geometry.index ? geometry.toNonIndexed() : geometry;
+  const position = source.getAttribute("position");
+  let maxZ = -Infinity;
+  for (let i = 0; i < position.count; i++) maxZ = Math.max(maxZ, position.getZ(i));
+  const side = (px, py, ax, ay, bx, by) => (px - bx) * (ay - by) - (ax - bx) * (py - by);
+  for (let i = 0; i < position.count; i += 3) {
+    if ([0, 1, 2].some((offset) => Math.abs(position.getZ(i + offset) - maxZ) > 1e-5)) {
+      continue;
+    }
+    const d1 = side(
+      point.x,
+      point.y,
+      position.getX(i),
+      position.getY(i),
+      position.getX(i + 1),
+      position.getY(i + 1),
+    );
+    const d2 = side(
+      point.x,
+      point.y,
+      position.getX(i + 1),
+      position.getY(i + 1),
+      position.getX(i + 2),
+      position.getY(i + 2),
+    );
+    const d3 = side(
+      point.x,
+      point.y,
+      position.getX(i + 2),
+      position.getY(i + 2),
+      position.getX(i),
+      position.getY(i),
+    );
+    if (!((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0))) return true;
+  }
+  return false;
 }
 
 const archivo = opentype.parse(
@@ -199,6 +239,32 @@ test("frente impressa e laterais formam uma unica peca com fundo separado", () =
   assert.equal(build.parts.filter((part) => part.kind === "fundo").length, 1);
 });
 
+test("frentes impressas preservam os vazados internos das letras", () => {
+  const shapes = glyphShapes(archivo, "D", DEFAULT_PARAMS.letterHeight);
+  const bounds = new Box2();
+  for (const shape of shapes) bounds.union(new Box2().setFromPoints(shape.getPoints(24)));
+  const center = bounds.getCenter(new Vector2());
+  const holePoints = shapes[0].holes[0].getPoints(24);
+  const holeCenter = holePoints
+    .reduce((sum, point) => sum.add(point), new Vector2())
+    .multiplyScalar(1 / holePoints.length)
+    .sub(center);
+
+  for (const styleId of ["fundo-acrilico-frente-impressa", "fundo-impresso-frente-impressa-aba"]) {
+    const style = getStyle(styleId);
+    const params = { ...DEFAULT_PARAMS, ...style.preset, text: "D", mountHoles: false };
+    const build = buildSign(shapes, params, style);
+    const printedFront = build.parts.find((part) => part.id === "frente-laterais");
+    assert.ok(printedFront);
+    assert.equal(frontCoversPoint(printedFront.geometry, holeCenter), false, styleId);
+    assert.deepEqual(topology(printedFront.geometry), {
+      boundary: 0,
+      nonManifold: 0,
+      components: 1,
+    });
+  }
+});
+
 test("frente impressa com paredes encaixa no fundo impresso com aba", () => {
   const style = getStyle("fundo-impresso-frente-impressa-aba");
   assert.equal(style.name, "Fundo Impresso + Frente Impressa com Aba");
@@ -304,3 +370,4 @@ test("novo estilo usa fundo acrilico apoiado por aba interna", () => {
   );
   assert.equal(front.geometry.boundingBox?.min.z, params.depth - params.faceThickness);
 });
+
