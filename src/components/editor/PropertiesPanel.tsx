@@ -257,9 +257,9 @@ export default function PropertiesPanel() {
             <AccordionTrigger className="text-sm">Construção</AccordionTrigger>
             <AccordionContent className="space-y-3 pb-4">
               <NumberSlider label="Profundidade" keyName="depth" min={5} max={200} step={1} />
-              <NumberSlider label="Parede" keyName="wall" min={0.8} max={12} step={0.1} />
-              <NumberSlider label="Frente" keyName="faceThickness" min={0.6} max={60} step={0.2} />
-              <NumberSlider label="Fundo" keyName="backThickness" min={0.6} max={20} step={0.2} />
+              <NumberSlider label="Parede" keyName="wall" min={0.5} max={12} step={0.1} />
+              <NumberSlider label="Frente" keyName="faceThickness" min={0.5} max={60} step={0.1} />
+              <NumberSlider label="Fundo" keyName="backThickness" min={0.5} max={20} step={0.1} />
               <NumberSlider
                 label="Folga de encaixe"
                 keyName="clearance"
@@ -280,8 +280,8 @@ export default function PropertiesPanel() {
                 <NumberSlider
                   label="Aba do rebaixo"
                   keyName="recessLip"
-                  min={0.4}
-                  max={Math.max(params.wall - 0.4, 0.6)}
+                  min={0.5}
+                  max={Math.max(params.wall - 0.5, 0.5)}
                   step={0.1}
                 />
               ) : null}
@@ -298,14 +298,14 @@ export default function PropertiesPanel() {
               <NumberSlider
                 label="Largura do canal"
                 keyName="ledChannelWidth"
-                min={3}
+                min={0.5}
                 max={40}
                 step={0.5}
               />
               <NumberSlider
                 label="Altura do canal"
                 keyName="ledChannelHeight"
-                min={2}
+                min={0.5}
                 max={30}
                 step={0.5}
               />
