@@ -1,3 +1,5 @@
+import type { FontId } from "./fonts";
+
 export type PartKind =
   | "fundo"
   | "laterais"
@@ -14,7 +16,7 @@ export type BodyMode = "letras" | "placa" | "totem";
 export interface SignParams {
   /** conteúdo */
   text: string;
-  fontId: string;
+  fontId: FontId;
   letterHeight: number; // mm (altura de caixa alta)
   tracking: number; // mm entre letras
   /** construção */
@@ -73,7 +75,7 @@ export const DEFAULT_PARAMS: SignParams = {
   wall: 2.4,
   faceThickness: 3,
   backThickness: 3,
-  clearance: 0.5,
+  clearance: 0.3,
   faceRecess: true,
   recessLip: 1.2,
   backFlangeWidth: 4,
@@ -192,7 +194,7 @@ export const STYLES: SignStyle[] = [
       faceRecess: true,
       backFlangeWidth: 4,
       backFlangeThickness: 5,
-      clearance: 0.5,
+      clearance: 0.3,
       led: false,
       mountHoles: false,
     },

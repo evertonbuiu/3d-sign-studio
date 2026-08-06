@@ -7,9 +7,7 @@ import montserrat from "@/assets/fonts/montserrat.ttf?url";
 import poppins from "@/assets/fonts/poppins.ttf?url";
 import roboto from "@/assets/fonts/roboto.ttf?url";
 
-import { findGoogleFontById, GOOGLE_FONT_PACKAGES, loadGoogleFont } from "./googleFonts";
-
-const LOCAL_FONTS = [
+export const FONTS = [
   { id: "archivo", label: "Archivo Black", url: archivo },
   { id: "montserrat", label: "Montserrat Bold", url: montserrat },
   { id: "bebas", label: "Bebas Neue", url: bebas },
@@ -17,49 +15,20 @@ const LOCAL_FONTS = [
   { id: "poppins", label: "Poppins SemiBold", url: poppins },
 ] as const;
 
-export type FontId = string;
-
-export interface FontEntry {
-  id: string;
-  label: string;
-  source: "local" | "google";
-}
-
-export function getLocalFonts(): FontEntry[] {
-  return LOCAL_FONTS.map((f) => ({ id: f.id, label: f.label, source: "local" }));
-}
-
-export function getAvailableFonts(installedPackageIds: string[]): FontEntry[] {
-  const installed = new Set(installedPackageIds);
-  const googleFonts = GOOGLE_FONT_PACKAGES.filter((p) => installed.has(p.id)).flatMap((p) =>
-    p.fonts.map((f) => ({ id: f.id, label: f.label, source: "google" as const })),
-  );
-  return [...getLocalFonts(), ...googleFonts];
-}
+export type FontId = (typeof FONTS)[number]["id"];
 
 const cache = new Map<string, opentype.Font>();
 
 export async function loadFont(id: FontId): Promise<opentype.Font> {
   const cached = cache.get(id);
   if (cached) return cached;
-
-  const local = LOCAL_FONTS.find((f) => f.id === id);
-  if (local) {
-    const response = await fetch(local.url);
-    if (!response.ok) throw new Error(`Não foi possível carregar a fonte (${response.status}).`);
-    const buffer = await response.arrayBuffer();
-    const font = opentype.parse(buffer);
-    cache.set(id, font);
-    return font;
-  }
-
-  if (findGoogleFontById(id)) {
-    const font = await loadGoogleFont(id);
-    cache.set(id, font);
-    return font;
-  }
-
-  throw new Error(`Fonte não encontrada: ${id}`);
+  const entry = FONTS.find((f) => f.id === id) ?? FONTS[0];
+  const response = await fetch(entry.url);
+  if (!response.ok) throw new Error(`Não foi possível carregar a fonte (${response.status}).`);
+  const buffer = await response.arrayBuffer();
+  const font = opentype.parse(buffer);
+  cache.set(id, font);
+  return font;
 }
 
 /**
