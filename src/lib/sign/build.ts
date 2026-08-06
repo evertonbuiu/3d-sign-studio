@@ -581,7 +581,6 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
   const active = new Set<PartKind>(style.parts);
   const neonFlexOpenCup = style.id === "neon-flex-fundo-impresso";
   const unifiedPrintedCup = style.id === "fundo-impresso-frente-acrilica" || neonFlexOpenCup;
-  const solidAcrylicFace = style.id === "fundo-impresso-frente-acrilica";
   const printedFrontRearInsert = style.id === "fundo-impresso-frente-impressa-aba";
   const unifiedPrintedFace =
     style.id === "fundo-acrilico-frente-impressa" || printedFrontRearInsert;
@@ -760,6 +759,12 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
             .filter((_, index) => index !== outerRingIndex)
             .map((ring) => cleanContour(ring.getPoints(24)));
           for (let i = 0; i < lowerRings.length; i++) {
+            const mountThroughHoles =
+              unifiedPrintedCup && params.mountHoles
+                ? letterHolePoints
+                    .filter((point) => pointInPolygon(point, lowerRings[i]!.getPoints(24)))
+                    .map((point) => circle(point.x, point.y, params.holeDiameter / 2).getPoints(24))
+                : [];
             const wall = acrylicBackFlange
               ? backFlangeRingGeometry(
                   lowerRings[i]!,
@@ -792,14 +797,14 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
                       : unifiedPrintedFace
                         ? params.faceThickness
                         : 0,
-                    unifiedPrintedCup && params.mountHoles
-                      ? letterHolePoints
-                          .filter((point) => pointInPolygon(point, lowerRings[i]!.getPoints(24)))
-                          .map((point) =>
-                            circle(point.x, point.y, params.holeDiameter / 2).getPoints(24),
-                          )
-                      : [],
-                    unifiedPrintedFace && i === outerRingIndex ? printedFaceHoles : null,
+                    mountThroughHoles,
+                    unifiedPrintedFace && i === outerRingIndex
+                      ? printedFaceHoles
+                      : unifiedPrintedCup && i === outerRingIndex
+                        ? [...printedFaceHoles, ...mountThroughHoles]
+                        : unifiedPrintedCup
+                          ? lowerRings[i]!.holes.map((hole) => cleanContour(hole.getPoints(24)))
+                          : null,
                     unifiedPrintedFace && i !== outerRingIndex,
                     unifiedPrintedFace && i === outerRingIndex ? printedBackShelfHoles : null,
                   );
@@ -878,7 +883,6 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
       const faceShape = cloneShape(shape);
-      if (solidAcrylicFace) faceShape.holes = [];
       if (faceInset > 0) {
         for (const inner of insetShape(faceShape, faceInset)) {
           geos.push(extrude(inner, params.faceThickness));
