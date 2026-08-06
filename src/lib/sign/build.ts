@@ -9,8 +9,6 @@ import {
   Vector2,
   Vector3,
 } from "three";
-import { ADDITION, Brush, Evaluator } from "three-bvh-csg";
-
 import { cloneShape, insetShape, offsetShape, ringShape, shapePoints } from "./offset";
 import type { PartKind, SignParams, SignStyle } from "./model";
 
@@ -337,7 +335,11 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
           wallGeos.push(lip);
         }
       }
-      const wall = unionSolid(wallGeos);
+      // Cada extrusão já é uma casca fechada. A união CSG entre a parede e
+      // o pequeno rebaixo gerava milhares de T-junctions em curvas de fontes,
+      // deixando o STL aberto. Mantê-las como cascas fechadas com 0,1 mm de
+      // sobreposição é robusto para visualização e fatiamento.
+      const wall = combine(wallGeos);
       if (wall) geos.push(wall);
     }
 
@@ -544,46 +546,6 @@ function combine(geos: BufferGeometry[]): BufferGeometry | null {
   if (!valid.length) return null;
   if (valid.length === 1) return valid[0]!;
   return mergePositions(valid);
-}
-
-function unionSolid(geos: BufferGeometry[]): BufferGeometry | null {
-  const valid = geos.filter((geometry) => geometry.getAttribute("position")?.count);
-  if (!valid.length) return null;
-  if (valid.length === 1) return valid[0] ?? null;
-
-  try {
-    const evaluator = new Evaluator();
-    evaluator.useGroups = false;
-    let result = new Brush(prepareForCsg(valid[0]!));
-    result.updateMatrixWorld();
-
-    for (const geometry of valid.slice(1)) {
-      const next = new Brush(prepareForCsg(geometry));
-      next.updateMatrixWorld();
-      result = evaluator.evaluate(result, next, ADDITION);
-      result.updateMatrixWorld();
-    }
-
-    const geometry = result.geometry.clone();
-    geometry.clearGroups();
-    // Ensure all faces are strictly oriented outwards to prevent slicer errors
-    geometry.computeVertexNormals();
-    return geometry;
-  } catch (error) {
-    console.warn("Falha na união booleana, usando mesclagem simples", error);
-    return combine(valid);
-  }
-}
-
-function prepareForCsg(source: BufferGeometry): BufferGeometry {
-  const geometry = source.clone();
-  geometry.clearGroups();
-  if (!geometry.getAttribute("normal")) geometry.computeVertexNormals();
-  const count = geometry.getAttribute("position").count;
-  if (!geometry.getAttribute("uv")) {
-    geometry.setAttribute("uv", new Float32BufferAttribute(new Float32Array(count * 2), 2));
-  }
-  return geometry;
 }
 
 function mergePositions(geos: BufferGeometry[]): BufferGeometry {
