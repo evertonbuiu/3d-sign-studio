@@ -281,7 +281,7 @@ export default function PropertiesPanel() {
                   label="Aba do rebaixo"
                   keyName="recessLip"
                   min={0.5}
-                  max={Math.max(params.wall - 0.4, 0.6)}
+                  max={20}
                   step={0.1}
                 />
               ) : null}
