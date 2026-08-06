@@ -59,13 +59,14 @@ function topology(geometry, precision = 1e5) {
   };
 }
 
+const archivo = opentype.parse(
+  fs.readFileSync(new URL("../src/assets/fonts/archivo-black.ttf", import.meta.url)).buffer,
+);
+
 test("a letra G gera componentes fechados e manifold", () => {
-  const font = opentype.parse(
-    fs.readFileSync(new URL("../src/assets/fonts/archivo-black.ttf", import.meta.url)).buffer,
-  );
   const params = { ...DEFAULT_PARAMS, text: "G", mountHoles: false };
   const build = buildSign(
-    glyphShapes(font, "G", params.letterHeight),
+    glyphShapes(archivo, "G", params.letterHeight),
     params,
     getStyle("caixa-iluminada"),
   );
@@ -76,4 +77,16 @@ test("a letra G gera componentes fechados e manifold", () => {
     failures,
     failures.map((item) => ({ ...item, boundary: 0, nonManifold: 0, components: 1 })),
   );
+});
+
+test("fundo impresso e laterais formam uma unica peca", () => {
+  const style = getStyle("fundo-impresso-frente-acrilica");
+  const params = { ...DEFAULT_PARAMS, ...style.preset, text: "G", mountHoles: false };
+  const build = buildSign(glyphShapes(archivo, "G", params.letterHeight), params, style);
+  const body = build.parts.filter((part) =>
+    ["fundo", "laterais", "fundo-laterais"].includes(part.id),
+  );
+  assert.equal(body.length, 1);
+  assert.equal(body[0]?.id, "fundo-laterais");
+  assert.equal(topology(body[0].geometry).components, 1);
 });

@@ -529,6 +529,35 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
     }
   }
 
+  // Neste sistema construtivo, o fundo impresso e as paredes formam a mesma
+  // caixa. Mantém a frente acrílica separada para encaixe no rebaixo.
+  if (style.id === "fundo-impresso-frente-acrilica") {
+    const backIndex = parts.findIndex((part) => part.kind === "fundo");
+    const wallIndex = parts.findIndex((part) => part.kind === "laterais");
+    const back = parts[backIndex];
+    const walls = parts[wallIndex];
+    if (backIndex >= 0 && wallIndex >= 0 && back && walls) {
+      const geometry = combine([back.geometry, walls.geometry]);
+      if (geometry) {
+        const first = Math.min(backIndex, wallIndex);
+        const last = Math.max(backIndex, wallIndex);
+        parts.splice(last, 1);
+        parts.splice(
+          first,
+          1,
+          makePart(
+            "fundo-laterais",
+            "laterais",
+            "Fundo + laterais (peça única)",
+            params.bodyColor,
+            geometry,
+            { count: Math.max(back.count, walls.count) },
+          ),
+        );
+      }
+    }
+  }
+
   const totalWidth = plateOn ? plateMax.x - plateMin.x : bounds.max.x - bounds.min.x;
   const totalHeight =
     (plateOn ? plateMax.y - plateMin.y : bounds.max.y - bounds.min.y) +
