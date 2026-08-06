@@ -47,7 +47,7 @@ export interface SignBuild {
 const EXTRUDE = { bevelEnabled: false, curveSegments: 24, steps: 1 };
 
 function extrude(shape: Shape | Shape[], depth: number): ExtrudeGeometry {
-  return new ExtrudeGeometry(shape, { ...EXTRUDE, depth: Math.max(depth, 0.5) });
+  return new ExtrudeGeometry(shape, { ...EXTRUDE, depth: Math.max(depth, 0.2) });
 }
 
 function cleanContour(points: Vector2[]): Vector2[] {
@@ -56,6 +56,20 @@ function cleanContour(points: Vector2[]): Vector2[] {
   const last = result[result.length - 1];
   if (first && last && first.distanceToSquared(last) < 1e-12) result.pop();
   return result;
+}
+
+function reverseTriangleWinding(geometry: BufferGeometry): void {
+  const source = geometry.index ? geometry.toNonIndexed() : geometry;
+  if (source !== geometry) geometry.copy(source);
+  const position = geometry.getAttribute("position");
+  for (let i = 0; i < position.count; i += 3) {
+    const bx = position.getX(i + 1);
+    const by = position.getY(i + 1);
+    const bz = position.getZ(i + 1);
+    position.setXYZ(i + 1, position.getX(i + 2), position.getY(i + 2), position.getZ(i + 2));
+    position.setXYZ(i + 2, bx, by, bz);
+  }
+  position.needsUpdate = true;
 }
 
 function steppedRingGeometry(
@@ -364,7 +378,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
 
   const bodyHeight = Math.max(
     params.depth - params.backThickness - params.faceThickness,
-    0.5,
+    params.wall,
   );
 
   // ---------- fundo ----------
@@ -393,7 +407,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
   }
 
   // rebaixo (degrau) na parede interna para assentar a frente
-  const recessLip = Math.min(Math.max(params.recessLip, 0.5), Math.max(params.wall - 0.5, 0.5));
+  const recessLip = Math.min(Math.max(params.recessLip, 0.4), Math.max(params.wall - 0.4, 0.4));
   const recessOn =
     params.faceRecess && active.has("frente") && active.has("laterais") && recessLip < params.wall;
   const faceInset = recessOn ? recessLip + params.clearance : 0;
@@ -427,6 +441,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
               if (unifiedPrintedFace) {
                 wall.scale(1, 1, -1);
                 wall.translate(0, 0, params.depth);
+                reverseTriangleWinding(wall);
               }
               geos.push(wall);
             }
@@ -512,7 +527,6 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
       geo.translate(0, 0, Math.max(z, baseZ));
       parts.push(
         makePart("frente", "frente", "Frente", params.faceColor, geo, {
-          opacity: 0.9,
           emissive:
             params.led &&
             (style.thumb.glow === "front" ||
