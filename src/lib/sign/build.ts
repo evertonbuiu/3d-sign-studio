@@ -6,10 +6,11 @@ import {
   Box3,
   Path,
   Shape,
+  ShapeUtils,
   Vector2,
   Vector3,
 } from "three";
-import { cloneShape, insetShape, offsetShape, ringShape, shapePoints } from "./offset";
+import { cloneShape, insetShape, offsetShape, ringShape, shapePoints } from "./offset.ts";
 import type { PartKind, SignParams, SignStyle } from "./model";
 
 export interface SignPart {
@@ -47,6 +48,68 @@ const EXTRUDE = { bevelEnabled: false, curveSegments: 24, steps: 1 };
 
 function extrude(shape: Shape | Shape[], depth: number): ExtrudeGeometry {
   return new ExtrudeGeometry(shape, { ...EXTRUDE, depth: Math.max(depth, 0.2) });
+}
+
+function cleanContour(points: Vector2[]): Vector2[] {
+  const result = points.map((point) => point.clone());
+  const first = result[0];
+  const last = result[result.length - 1];
+  if (first && last && first.distanceToSquared(last) < 1e-12) result.pop();
+  return result;
+}
+
+function steppedRingGeometry(
+  lower: Shape,
+  upper: Shape,
+  bodyHeight: number,
+  faceHeight: number,
+): BufferGeometry | null {
+  if (lower.holes.length !== upper.holes.length) return null;
+
+  const outer = cleanContour(lower.getPoints(24));
+  const lowerHoles = lower.holes.map((hole) => cleanContour(hole.getPoints(24)));
+  const upperHoles = upper.holes.map((hole) => cleanContour(hole.getPoints(24)));
+  if (outer.length < 3 || lowerHoles.some((hole) => hole.length < 3)) return null;
+
+  const values: number[] = [];
+  const triangle = (a: Vector2, za: number, b: Vector2, zb: number, c: Vector2, zc: number) => {
+    values.push(a.x, a.y, za, b.x, b.y, zb, c.x, c.y, zc);
+  };
+  const wallStrip = (contour: Vector2[], z0: number, z1: number, reverse = false) => {
+    for (let i = 0; i < contour.length; i++) {
+      const a = contour[i]!;
+      const b = contour[(i + 1) % contour.length]!;
+      if (reverse) {
+        triangle(a, z0, b, z1, b, z0);
+        triangle(a, z0, a, z1, b, z1);
+      } else {
+        triangle(a, z0, b, z0, b, z1);
+        triangle(a, z0, b, z1, a, z1);
+      }
+    }
+  };
+  const cap = (contour: Vector2[], holes: Vector2[][], z: number, reverse = false) => {
+    const points = [...contour, ...holes.flat()];
+    for (const face of ShapeUtils.triangulateShape(contour, holes)) {
+      const ia = reverse ? face[2]! : face[0]!;
+      const ib = face[1]!;
+      const ic = reverse ? face[0]! : face[2]!;
+      triangle(points[ia]!, z, points[ib]!, z, points[ic]!, z);
+    }
+  };
+
+  cap(outer, lowerHoles, 0, true);
+  wallStrip(outer, 0, bodyHeight + faceHeight);
+  lowerHoles.forEach((hole) => wallStrip(hole, 0, bodyHeight, true));
+  upperHoles.forEach((hole) => wallStrip(hole, bodyHeight, bodyHeight + faceHeight, true));
+  for (let i = 0; i < lowerHoles.length; i++) {
+    cap(upperHoles[i]!, [lowerHoles[i]!], bodyHeight);
+  }
+  cap(outer, upperHoles, bodyHeight + faceHeight);
+
+  const geometry = new BufferGeometry();
+  geometry.setAttribute("position", new Float32BufferAttribute(values, 3));
+  return geometry;
 }
 
 function geometryVolumeCm3(geometry: BufferGeometry): number {
@@ -326,21 +389,23 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
   if (active.has("laterais")) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
-      const wallGeos = ringShape(shape, params.wall).map((ring) => extrude(ring, bodyHeight));
       if (recessOn) {
-        const overlap = Math.min(0.5, bodyHeight / 4);
-        for (const outer of ringShape(shape, recessLip)) {
-          const lip = extrude(outer, params.faceThickness + overlap);
-          lip.translate(0, 0, bodyHeight - overlap);
-          wallGeos.push(lip);
+        const lowerRings = ringShape(shape, params.wall);
+        const upperRings = ringShape(shape, recessLip);
+        if (lowerRings.length === upperRings.length) {
+          for (let i = 0; i < lowerRings.length; i++) {
+            const wall = steppedRingGeometry(
+              lowerRings[i]!,
+              upperRings[i]!,
+              bodyHeight,
+              params.faceThickness,
+            );
+            if (wall) geos.push(wall);
+          }
+          continue;
         }
       }
-      // Cada extrusão já é uma casca fechada. A união CSG entre a parede e
-      // o pequeno rebaixo gerava milhares de T-junctions em curvas de fontes,
-      // deixando o STL aberto. Mantê-las como cascas fechadas com 0,1 mm de
-      // sobreposição é robusto para visualização e fatiamento.
-      const wall = combine(wallGeos);
-      if (wall) geos.push(wall);
+      geos.push(...ringShape(shape, params.wall).map((ring) => extrude(ring, bodyHeight)));
     }
 
     const geo = combine(geos);
