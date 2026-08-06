@@ -512,6 +512,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
       geo.translate(0, 0, Math.max(z, baseZ));
       parts.push(
         makePart("frente", "frente", "Frente", params.faceColor, geo, {
+          opacity: 0.9,
           emissive:
             params.led &&
             (style.thumb.glow === "front" ||
