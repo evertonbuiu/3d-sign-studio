@@ -258,8 +258,8 @@ export default function PropertiesPanel() {
             <AccordionContent className="space-y-3 pb-4">
               <NumberSlider label="Profundidade" keyName="depth" min={5} max={200} step={1} />
               <NumberSlider label="Parede" keyName="wall" min={0.5} max={12} step={0.1} />
-              <NumberSlider label="Frente" keyName="faceThickness" min={0.5} max={60} step={0.1} />
-              <NumberSlider label="Fundo" keyName="backThickness" min={0.5} max={20} step={0.1} />
+              <NumberSlider label="Frente" keyName="faceThickness" min={0.5} max={60} step={0.2} />
+              <NumberSlider label="Fundo" keyName="backThickness" min={0.5} max={20} step={0.2} />
               <NumberSlider
                 label="Folga de encaixe"
                 keyName="clearance"
@@ -409,7 +409,7 @@ export default function PropertiesPanel() {
               <NumberSlider
                 label="Diâmetro do furo"
                 keyName="holeDiameter"
-                min={2}
+                min={0.5}
                 max={20}
                 step={0.5}
               />

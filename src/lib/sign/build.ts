@@ -58,6 +58,20 @@ function cleanContour(points: Vector2[]): Vector2[] {
   return result;
 }
 
+function reverseTriangleWinding(geometry: BufferGeometry): void {
+  const source = geometry.index ? geometry.toNonIndexed() : geometry;
+  if (source !== geometry) geometry.copy(source);
+  const position = geometry.getAttribute("position");
+  for (let i = 0; i < position.count; i += 3) {
+    const bx = position.getX(i + 1);
+    const by = position.getY(i + 1);
+    const bz = position.getZ(i + 1);
+    position.setXYZ(i + 1, position.getX(i + 2), position.getY(i + 2), position.getZ(i + 2));
+    position.setXYZ(i + 2, bx, by, bz);
+  }
+  position.needsUpdate = true;
+}
+
 function steppedRingGeometry(
   lower: Shape,
   upper: Shape,
@@ -364,7 +378,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
 
   const bodyHeight = Math.max(
     params.depth - params.backThickness - params.faceThickness,
-    0.5,
+    params.wall,
   );
 
   // ---------- fundo ----------
@@ -427,6 +441,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
               if (unifiedPrintedFace) {
                 wall.scale(1, 1, -1);
                 wall.translate(0, 0, params.depth);
+                reverseTriangleWinding(wall);
               }
               geos.push(wall);
             }
@@ -512,7 +527,6 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
       geo.translate(0, 0, Math.max(z, baseZ));
       parts.push(
         makePart("frente", "frente", "Frente", params.faceColor, geo, {
-          opacity: 0.9,
           emissive:
             params.led &&
             (style.thumb.glow === "front" ||

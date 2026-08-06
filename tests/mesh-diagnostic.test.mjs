@@ -59,6 +59,26 @@ function topology(geometry, precision = 1e5) {
   };
 }
 
+function outwardFrontTriangles(geometry) {
+  const source = geometry.index ? geometry.toNonIndexed() : geometry;
+  const position = source.getAttribute("position");
+  let maxZ = -Infinity;
+  for (let i = 0; i < position.count; i++) maxZ = Math.max(maxZ, position.getZ(i));
+  let outward = 0;
+  for (let i = 0; i < position.count; i += 3) {
+    const z0 = position.getZ(i);
+    const z1 = position.getZ(i + 1);
+    const z2 = position.getZ(i + 2);
+    if ([z0, z1, z2].some((z) => Math.abs(z - maxZ) > 1e-5)) continue;
+    const abx = position.getX(i + 1) - position.getX(i);
+    const aby = position.getY(i + 1) - position.getY(i);
+    const acx = position.getX(i + 2) - position.getX(i);
+    const acy = position.getY(i + 2) - position.getY(i);
+    if (abx * acy - aby * acx > 0) outward++;
+  }
+  return outward;
+}
+
 const archivo = opentype.parse(
   fs.readFileSync(new URL("../src/assets/fonts/archivo-black.ttf", import.meta.url)).buffer,
 );
@@ -106,6 +126,7 @@ test("frente impressa e laterais formam uma unica peca com fundo separado", () =
     nonManifold: 0,
     components: 1,
   });
+  assert.ok(outwardFrontTriangles(printedBody.geometry) > 0);
   assert.equal(build.parts.filter((part) => part.kind === "frente").length, 0);
   assert.equal(build.parts.filter((part) => part.kind === "fundo").length, 1);
 });
