@@ -63,6 +63,8 @@ function steppedRingGeometry(
   upper: Shape,
   bodyHeight: number,
   faceHeight: number,
+  backThickness = 0,
+  throughHoles: Vector2[][] = [],
 ): BufferGeometry | null {
   if (lower.holes.length !== upper.holes.length) return null;
 
@@ -98,14 +100,23 @@ function steppedRingGeometry(
     }
   };
 
-  cap(outer, lowerHoles, 0, true);
-  wallStrip(outer, 0, bodyHeight + faceHeight);
-  lowerHoles.forEach((hole) => wallStrip(hole, 0, bodyHeight, true));
-  upperHoles.forEach((hole) => wallStrip(hole, bodyHeight, bodyHeight + faceHeight, true));
+  const stepZ = backThickness + bodyHeight;
+  const topZ = stepZ + faceHeight;
+  cap(outer, backThickness > 0 ? throughHoles : lowerHoles, 0, true);
+  wallStrip(outer, 0, topZ);
+  lowerHoles.forEach((hole) => {
+    if (backThickness > 0) {
+      const holes = throughHoles.filter((candidate) => pointInPolygon(candidate[0]!, hole));
+      cap(hole, holes, backThickness);
+    }
+    wallStrip(hole, backThickness, stepZ, true);
+  });
+  for (const hole of throughHoles) wallStrip(hole, 0, backThickness, true);
+  upperHoles.forEach((hole) => wallStrip(hole, stepZ, topZ, true));
   for (let i = 0; i < lowerHoles.length; i++) {
-    cap(upperHoles[i]!, [lowerHoles[i]!], bodyHeight);
+    cap(upperHoles[i]!, [lowerHoles[i]!], stepZ);
   }
-  cap(outer, upperHoles, bodyHeight + faceHeight);
+  cap(outer, upperHoles, topZ);
 
   const geometry = new BufferGeometry();
   geometry.setAttribute("position", new Float32BufferAttribute(values, 3));
@@ -273,6 +284,7 @@ function makePart(
 
 export function buildSign(letterShapes: Shape[], params: SignParams, style: SignStyle): SignBuild {
   const active = new Set<PartKind>(style.parts);
+  const unifiedPrintedCup = style.id === "fundo-impresso-frente-acrilica";
   const parts: SignPart[] = [];
 
   const rawBounds = shapesBounds(letterShapes);
@@ -355,7 +367,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
   );
 
   // ---------- fundo ----------
-  if (active.has("fundo")) {
+  if (active.has("fundo") && !unifiedPrintedCup) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
       const back = cloneShape(shape);
@@ -399,6 +411,12 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
               upperRings[i]!,
               bodyHeight,
               params.faceThickness,
+              unifiedPrintedCup ? params.backThickness : 0,
+              unifiedPrintedCup && params.mountHoles
+                ? letterHolePoints
+                    .filter((point) => pointInPolygon(point, lowerRings[i]!.getPoints(24)))
+                    .map((point) => circle(point.x, point.y, params.holeDiameter / 2).getPoints(24))
+                : [],
             );
             if (wall) geos.push(wall);
           }
@@ -410,11 +428,20 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
 
     const geo = combine(geos);
     if (geo) {
-      geo.translate(0, 0, baseZ + (active.has("fundo") ? params.backThickness : 0));
+      geo.translate(
+        0,
+        0,
+        unifiedPrintedCup ? baseZ : baseZ + (active.has("fundo") ? params.backThickness : 0),
+      );
       parts.push(
-        makePart("laterais", "laterais", "Laterais", params.bodyColor, geo, {
-          count: shapes.length,
-        }),
+        makePart(
+          unifiedPrintedCup ? "fundo-laterais" : "laterais",
+          "laterais",
+          unifiedPrintedCup ? "Fundo + laterais (peça única)" : "Laterais",
+          params.bodyColor,
+          geo,
+          { count: shapes.length },
+        ),
       );
     }
   }
@@ -464,6 +491,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
       geo.translate(0, 0, Math.max(z, baseZ));
       parts.push(
         makePart("frente", "frente", "Frente", params.faceColor, geo, {
+          opacity: 0.9,
           emissive:
             params.led &&
             (style.thumb.glow === "front" ||
@@ -526,35 +554,6 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
           count: holePoints.length,
         }),
       );
-    }
-  }
-
-  // Neste sistema construtivo, o fundo impresso e as paredes formam a mesma
-  // caixa. Mantém a frente acrílica separada para encaixe no rebaixo.
-  if (style.id === "fundo-impresso-frente-acrilica") {
-    const backIndex = parts.findIndex((part) => part.kind === "fundo");
-    const wallIndex = parts.findIndex((part) => part.kind === "laterais");
-    const back = parts[backIndex];
-    const walls = parts[wallIndex];
-    if (backIndex >= 0 && wallIndex >= 0 && back && walls) {
-      const geometry = combine([back.geometry, walls.geometry]);
-      if (geometry) {
-        const first = Math.min(backIndex, wallIndex);
-        const last = Math.max(backIndex, wallIndex);
-        parts.splice(last, 1);
-        parts.splice(
-          first,
-          1,
-          makePart(
-            "fundo-laterais",
-            "laterais",
-            "Fundo + laterais (peça única)",
-            params.bodyColor,
-            geometry,
-            { count: Math.max(back.count, walls.count) },
-          ),
-        );
-      }
     }
   }
 

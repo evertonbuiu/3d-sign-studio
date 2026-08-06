@@ -1,8 +1,10 @@
 import { useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import { Trash2 } from "lucide-react";
 import { Canvas, type ThreeEvent } from "@react-three/fiber";
 import { ContactShadows, Grid, OrbitControls } from "@react-three/drei";
 import {
@@ -229,6 +231,11 @@ function Model({
           selected.map((edge) => <EdgeHighlight key={edge.key} edge={edge} color="#f97316" />)}
         {showOutlines &&
           build.outlines.map((outline) => <OutlineLine key={outline.id} outline={outline} />)}
+        {useEditor()
+          .weldedEdges.flatMap((w) => w.edges)
+          .map((edge, i) => (
+            <EdgeHighlight key={`weld-${i}`} edge={edge} color="#22c55e" />
+          ))}
       </group>
     </group>
   );
@@ -245,6 +252,7 @@ export default function Viewport() {
     setWireframe,
     showOutlines,
     setShowOutlines,
+    weldSelectedEdges,
   } = useEditor();
 
   const [edgeSelect, setEdgeSelect] = useState(false);
@@ -299,7 +307,7 @@ export default function Viewport() {
         />
       </Canvas>
 
-      <div className="absolute left-4 top-4 w-64 space-y-3 rounded-lg border border-border bg-panel/90 p-3 shadow-lg backdrop-blur">
+      <div className="absolute left-4 top-4 w-64 space-y-3 rounded-lg border border-border bg-panel/90 p-3 shadow-lg backdrop-blur overflow-y-auto max-h-[calc(100vh-2rem)]">
         <div className="flex items-center justify-between">
           <Label className="text-sm font-medium">Modo wireframe</Label>
           <Switch checked={wireframe} onCheckedChange={setWireframe} />
@@ -338,14 +346,29 @@ export default function Viewport() {
               </p>
             )}
             {selected.length > 0 && (
-              <div>
+              <div className="flex gap-2 pt-1">
                 <Button
                   size="sm"
                   variant="outline"
-                  className="w-full"
+                  className="h-7 flex-1 text-xs"
+                  onClick={() => {
+                    const total = selected.reduce((s, e) => s + e.length, 0);
+                    const name =
+                      selected.length > 1 ? `${selected.length} arestas` : "Aresta única";
+                    weldSelectedEdges(selected, total, name);
+                    setSelected([]);
+                    toast.success("Arestas soldadas para conferência");
+                  }}
+                >
+                  Soldar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 flex-1 text-xs"
                   onClick={() => setSelected([])}
                 >
-                  Limpar medição
+                  Limpar
                 </Button>
               </div>
             )}
@@ -364,6 +387,30 @@ export default function Viewport() {
             onValueChange={([v]) => setExplode(v ?? 0)}
           />
         </div>
+
+        {useEditor().weldedEdges.length > 0 && (
+          <div className="space-y-1.5 pt-2 border-t border-border">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">Soldas ({useEditor().weldedEdges.length})</Label>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={() => useEditor().clearWelds()}
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </div>
+            <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
+              {useEditor().weldedEdges.map((w) => (
+                <div key={w.id} className="flex items-center justify-between text-[11px] bg-background/40 px-2 py-1 rounded">
+                  <span className="truncate flex-1">{w.name}</span>
+                  <span className="tabular-nums font-medium ml-2">{w.totalLength.toFixed(1)} mm</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {!ready && !loadError && (
