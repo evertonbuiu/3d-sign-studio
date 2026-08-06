@@ -242,6 +242,12 @@ export default function PropertiesPanel() {
                   </SelectContent>
                 </Select>
               </Field>
+              <button
+                type="button"
+                className="mt-2 w-full rounded border border-dashed border-border py-2 text-xs font-medium text-muted-foreground hover:bg-muted/50"
+              >
+                adicionar a fonte viola
+              </button>
               <NumberSlider
                 label="Altura da letra"
                 keyName="letterHeight"
