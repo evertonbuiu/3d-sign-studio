@@ -143,6 +143,64 @@ function steppedRingGeometry(
   return geometry;
 }
 
+/** Canal aberto que acompanha somente uma faixa de contorno. */
+function openContourCupGeometry(
+  footprint: Shape,
+  wallThickness: number,
+  channelHeight: number,
+  backThickness: number,
+): BufferGeometry | null {
+  const cavities = insetShape(footprint, wallThickness);
+  const topWalls = ringShape(footprint, wallThickness);
+  if (!cavities.length || !topWalls.length) return null;
+
+  const values: number[] = [];
+  const triangle = (a: Vector2, za: number, b: Vector2, zb: number, c: Vector2, zc: number) =>
+    values.push(a.x, a.y, za, b.x, b.y, zb, c.x, c.y, zc);
+  const wallStrip = (contour: Vector2[], z0: number, z1: number, reverse = false) => {
+    const points = cleanContour(contour);
+    for (let i = 0; i < points.length; i++) {
+      const a = points[i]!;
+      const b = points[(i + 1) % points.length]!;
+      if (reverse) {
+        triangle(a, z0, b, z1, b, z0);
+        triangle(a, z0, a, z1, b, z1);
+      } else {
+        triangle(a, z0, b, z0, b, z1);
+        triangle(a, z0, b, z1, a, z1);
+      }
+    }
+  };
+  const capShape = (shape: Shape, z: number, reverse = false) => {
+    const contour = cleanContour(shape.getPoints(24));
+    const holes = shape.holes.map((hole) => cleanContour(hole.getPoints(24)));
+    const points = [...contour, ...holes.flat()];
+    for (const face of ShapeUtils.triangulateShape(contour, holes)) {
+      const ia = reverse ? face[2]! : face[0]!;
+      const ib = face[1]!;
+      const ic = reverse ? face[0]! : face[2]!;
+      triangle(points[ia]!, z, points[ib]!, z, points[ic]!, z);
+    }
+  };
+  const boundaryWalls = (shape: Shape, z0: number, z1: number, reverse = false) => {
+    wallStrip(shape.getPoints(24), z0, z1, reverse);
+    for (const hole of shape.holes) wallStrip(hole.getPoints(24), z0, z1, !reverse);
+  };
+
+  const topZ = backThickness + channelHeight;
+  capShape(footprint, 0, true);
+  boundaryWalls(footprint, 0, topZ);
+  for (const cavity of cavities) {
+    capShape(cavity, backThickness);
+    boundaryWalls(cavity, backThickness, topZ, true);
+  }
+  for (const wall of topWalls) capShape(wall, topZ);
+
+  const geometry = new BufferGeometry();
+  geometry.setAttribute("position", new Float32BufferAttribute(values, 3));
+  return geometry;
+}
+
 function doubleRecessRingGeometry(
   thick: Shape,
   lip: Shape,
@@ -570,6 +628,19 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
   if (active.has("laterais")) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
+      if (neonFlexOpenCup) {
+        const contourWidth = params.neonFlexThickness + params.wall * 2;
+        for (const footprint of ringShape(shape, contourWidth)) {
+          const channel = openContourCupGeometry(
+            footprint,
+            params.wall,
+            params.neonFlexThickness,
+            params.backThickness,
+          );
+          if (channel) geos.push(channel);
+        }
+        continue;
+      }
       if (recessOn) {
         const lowerRings = ringShape(shape, params.wall);
         const upperRings = ringShape(shape, neonFlexOpenCup ? params.wall : recessLip);
@@ -782,7 +853,9 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
     (totem ? params.poleHeight : 0);
   const totalDepth = plateOn
     ? params.plateThickness + (active.has("frente") ? params.faceThickness : 0)
-    : params.depth;
+    : neonFlexOpenCup
+      ? params.backThickness + params.neonFlexThickness
+      : params.depth;
 
   const printedVolumeCm3 = parts
     .filter((p) => p.kind !== "canal-led")

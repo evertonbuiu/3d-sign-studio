@@ -125,7 +125,7 @@ test("Neon Flex gera fundo e paredes unidos sem tampa", () => {
     backThickness: 2.6,
     neonFlexThickness: 10,
   };
-  const build = buildSign(glyphShapes(archivo, "G", params.letterHeight), params, style);
+  const build = buildSign(glyphShapes(archivo, "I", params.letterHeight), params, style);
   const body = build.parts.find((part) => part.id === "fundo-laterais");
   assert.ok(body);
   assert.equal(
@@ -148,6 +148,39 @@ test("Neon Flex gera fundo e paredes unidos sem tampa", () => {
       (body.geometry.boundingBox?.max.z ?? -1) - (params.backThickness + params.neonFlexThickness),
     ) < 1e-5,
   );
+
+  // O miolo da letra permanece vazio: o fundo acompanha apenas o contorno.
+  const source = body.geometry.index ? body.geometry.toNonIndexed() : body.geometry;
+  const position = source.getAttribute("position");
+  const centerX =
+    ((body.geometry.boundingBox?.min.x ?? 0) + (body.geometry.boundingBox?.max.x ?? 0)) / 2;
+  const centerY =
+    ((body.geometry.boundingBox?.min.y ?? 0) + (body.geometry.boundingBox?.max.y ?? 0)) / 2;
+  const containsCenter = (ax, ay, bx, by, cx, cy) => {
+    const sign = (px, py, qx, qy, rx, ry) => (px - rx) * (qy - ry) - (qx - rx) * (py - ry);
+    const d1 = sign(centerX, centerY, ax, ay, bx, by);
+    const d2 = sign(centerX, centerY, bx, by, cx, cy);
+    const d3 = sign(centerX, centerY, cx, cy, ax, ay);
+    return !(d1 < 0 || d2 < 0 || d3 < 0) || !(d1 > 0 || d2 > 0 || d3 > 0);
+  };
+  let centerHasBottom = false;
+  for (let i = 0; i < position.count; i += 3) {
+    if ([0, 1, 2].some((offset) => Math.abs(position.getZ(i + offset)) > 1e-5)) continue;
+    if (
+      containsCenter(
+        position.getX(i),
+        position.getY(i),
+        position.getX(i + 1),
+        position.getY(i + 1),
+        position.getX(i + 2),
+        position.getY(i + 2),
+      )
+    ) {
+      centerHasBottom = true;
+      break;
+    }
+  }
+  assert.equal(centerHasBottom, false);
 });
 
 test("frente impressa e laterais formam uma unica peca com fundo separado", () => {

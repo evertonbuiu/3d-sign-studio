@@ -29,7 +29,7 @@ export interface SignParams {
   recessLip: number; // largura da aba externa que segura a frente (mm)
   backFlangeWidth: number; // avanço da aba traseira para dentro (mm)
   backFlangeThickness: number; // espessura da aba traseira no eixo Z (mm)
-  neonFlexThickness: number; // altura útil das paredes para acomodar o Neon Flex (mm)
+  neonFlexThickness: number; // largura livre do canal de contorno para o Neon Flex (mm)
   /** iluminação */
   led: boolean;
   ledChannelWidth: number;
@@ -193,7 +193,7 @@ export const STYLES: SignStyle[] = [
     name: "Neon Flex — Fundo Impresso sem Tampa",
     group: "Neon Flex",
     description:
-      "Fundo e paredes impressos em uma peça, com canal frontal aberto e altura ajustável para o Neon Flex.",
+      "Canal aberto acompanhando somente o contorno das letras, com fundo e paredes impressos em uma peça.",
     parts: ["fundo", "laterais"],
     preset: {
       depth: 11,

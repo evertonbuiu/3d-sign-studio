@@ -283,7 +283,8 @@ export default function PropertiesPanel() {
                     step={0.5}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Define a altura útil das paredes acima do fundo. Este estilo não gera tampa.
+                    Define a largura livre do canal que acompanha somente o contorno da letra. Este
+                    estilo não gera tampa.
                   </p>
                   <p className="text-xs font-medium text-muted-foreground">
                     Altura total impressa:{" "}
