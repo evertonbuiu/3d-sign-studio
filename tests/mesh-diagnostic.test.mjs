@@ -154,6 +154,29 @@ test("fundo impresso e laterais formam uma unica peca", () => {
   });
 });
 
+test("frente acrilica do fundo impresso nao tem vazados internos", () => {
+  const shapes = glyphShapes(archivo, "D", DEFAULT_PARAMS.letterHeight);
+  const bounds = new Box2();
+  for (const shape of shapes) bounds.union(new Box2().setFromPoints(shape.getPoints(24)));
+  const center = bounds.getCenter(new Vector2());
+  const holePoints = shapes[0].holes[0].getPoints(24);
+  const holeCenter = holePoints
+    .reduce((sum, point) => sum.add(point), new Vector2())
+    .multiplyScalar(1 / holePoints.length)
+    .sub(center);
+  const style = getStyle("fundo-impresso-frente-acrilica");
+  const params = { ...DEFAULT_PARAMS, ...style.preset, text: "D", mountHoles: false };
+  const build = buildSign(shapes, params, style);
+  const front = build.parts.find((part) => part.kind === "frente");
+  assert.ok(front);
+  assert.equal(frontCoversPoint(front.geometry, holeCenter), true);
+  assert.deepEqual(topology(front.geometry), {
+    boundary: 0,
+    nonManifold: 0,
+    components: 1,
+  });
+});
+
 test("Neon Flex gera fundo e paredes unidos sem tampa", () => {
   const style = getStyle("neon-flex-fundo-impresso");
   assert.equal(style.name, "Neon Flex — Fundo Impresso sem Tampa");
