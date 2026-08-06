@@ -112,7 +112,7 @@ export const DEFAULT_PARAMS: SignParams = {
 };
 
 export type StyleGroup =
-  "Acrílico & Impresso" | "Iluminação" | "Letras" | "Placas & Totem" | "Logotipo";
+  "Neon Flex" | "Acrílico & Impresso" | "Iluminação" | "Letras" | "Placas & Totem" | "Logotipo";
 
 export interface SignStyle {
   id: string;
@@ -191,7 +191,7 @@ export const STYLES: SignStyle[] = [
   {
     id: "neon-flex-fundo-impresso",
     name: "Neon Flex — Fundo Impresso sem Tampa",
-    group: "Iluminação",
+    group: "Neon Flex",
     description:
       "Fundo e paredes impressos em uma peça, com canal frontal aberto e altura ajustável para o Neon Flex.",
     parts: ["fundo", "laterais"],
@@ -428,6 +428,7 @@ export const STYLES: SignStyle[] = [
 ];
 
 export const STYLE_GROUPS: StyleGroup[] = [
+  "Neon Flex",
   "Acrílico & Impresso",
   "Iluminação",
   "Letras",
