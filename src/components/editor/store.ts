@@ -80,6 +80,8 @@ export function useEditorState(): EditorState {
   const [projectId, setProjectId] = useState<string | null>(null);
   const [projectName, setProjectName] = useState("Novo projeto");
 
+  const [weldedEdges, setWeldedEdges] = useState<any[]>([]);
+
   useEffect(() => {
     let cancelled = false;
     setLoadError(null);
