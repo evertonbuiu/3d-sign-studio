@@ -488,7 +488,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
     if (geo) {
       const z =
         plateOn && !active.has("laterais") ? baseZ : baseZ + params.depth - params.faceThickness;
-      geo.translate(0, 0, Math.max(z, baseZ));
+      geo.translate(0, 0, Math.max(z, baseZ + 0.1));
       parts.push(
         makePart("frente", "frente", "Frente", params.faceColor, geo, {
           opacity: 0.9,
