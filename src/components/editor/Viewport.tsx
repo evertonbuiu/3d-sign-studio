@@ -306,7 +306,7 @@ export default function Viewport() {
         />
       </Canvas>
 
-      <div className="absolute left-4 top-4 w-64 space-y-3 rounded-lg border border-border bg-panel/90 p-3 shadow-lg backdrop-blur">
+      <div className="absolute left-4 top-4 w-64 space-y-3 rounded-lg border border-border bg-panel/90 p-3 shadow-lg backdrop-blur overflow-y-auto max-h-[calc(100vh-2rem)]">
         <div className="flex items-center justify-between">
           <Label className="text-sm font-medium">Modo wireframe</Label>
           <Switch checked={wireframe} onCheckedChange={setWireframe} />
