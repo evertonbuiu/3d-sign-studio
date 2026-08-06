@@ -133,6 +133,61 @@ function perimeterMm(shapes: Shape[]): number {
   return total;
 }
 
+function pointInPolygon(point: Vector2, polygon: Vector2[]): boolean {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const a = polygon[i]!;
+    const b = polygon[j]!;
+    if (
+      a.y > point.y !== b.y > point.y &&
+      point.x < ((b.x - a.x) * (point.y - a.y)) / (b.y - a.y) + a.x
+    ) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+function distanceToSegment(point: Vector2, a: Vector2, b: Vector2): number {
+  const ab = b.clone().sub(a);
+  const lengthSq = ab.lengthSq();
+  if (!lengthSq) return point.distanceTo(a);
+  const t = Math.max(0, Math.min(1, point.clone().sub(a).dot(ab) / lengthSq));
+  return point.distanceTo(a.clone().addScaledVector(ab, t));
+}
+
+function findInteriorMountPoint(shape: Shape, minimumClearance: number): Vector2 | null {
+  const outer = shapePoints(shape);
+  const holes = shape.holes.map((hole) => hole.getPoints(24));
+  const bounds = new Box2().setFromPoints(outer);
+  let best: { point: Vector2; clearance: number } | null = null;
+
+  for (let y = 1; y < 10; y++) {
+    for (let x = 1; x < 10; x++) {
+      const point = new Vector2(
+        bounds.min.x + ((bounds.max.x - bounds.min.x) * x) / 10,
+        bounds.min.y + ((bounds.max.y - bounds.min.y) * y) / 10,
+      );
+      if (!pointInPolygon(point, outer) || holes.some((hole) => pointInPolygon(point, hole))) {
+        continue;
+      }
+      const contours = [outer, ...holes];
+      let clearance = Infinity;
+      for (const contour of contours) {
+        for (let i = 0; i < contour.length; i++) {
+          clearance = Math.min(
+            clearance,
+            distanceToSegment(point, contour[i]!, contour[(i + 1) % contour.length]!),
+          );
+        }
+      }
+      if (!best || clearance > best.clearance) best = { point, clearance };
+    }
+  }
+
+  return best && best.clearance >= minimumClearance ? best.point : null;
+}
+
 function makePart(
   id: string,
   kind: PartKind,
@@ -155,11 +210,7 @@ function makePart(
   };
 }
 
-export function buildSign(
-  letterShapes: Shape[],
-  params: SignParams,
-  style: SignStyle,
-): SignBuild {
+export function buildSign(letterShapes: Shape[], params: SignParams, style: SignStyle): SignBuild {
   const active = new Set<PartKind>(style.parts);
   const parts: SignPart[] = [];
 
@@ -200,6 +251,14 @@ export function buildSign(
       new Vector2(maxX, maxY),
     );
   }
+  const letterHolePoints =
+    params.mountHoles && !plateOn
+      ? shapes
+          .map((shape) =>
+            findInteriorMountPoint(shape, params.holeDiameter / 2 + Math.max(params.wall, 2)),
+          )
+          .filter((point): point is Vector2 => point !== null)
+      : [];
 
   // ---------- poste (totem) ----------
   if (totem) {
@@ -238,7 +297,17 @@ export function buildSign(
   if (active.has("fundo")) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
-      geos.push(extrude(cloneShape(shape), params.backThickness));
+      const back = cloneShape(shape);
+      if (!plateOn && params.mountHoles) {
+        const mountPoint = findInteriorMountPoint(
+          shape,
+          params.holeDiameter / 2 + Math.max(params.wall, 2),
+        );
+        if (mountPoint) {
+          back.holes.push(circle(mountPoint.x, mountPoint.y, params.holeDiameter / 2));
+        }
+      }
+      geos.push(extrude(back, params.backThickness));
     }
     const geo = combine(geos);
     if (geo) {
@@ -252,10 +321,7 @@ export function buildSign(
   // rebaixo (degrau) na parede interna para assentar a frente
   const recessLip = Math.min(Math.max(params.recessLip, 0.4), Math.max(params.wall - 0.4, 0.4));
   const recessOn =
-    params.faceRecess &&
-    active.has("frente") &&
-    active.has("laterais") &&
-    recessLip < params.wall;
+    params.faceRecess && active.has("frente") && active.has("laterais") && recessLip < params.wall;
   const faceInset = recessOn ? recessLip + params.clearance : 0;
 
   // ---------- laterais (parede + rebaixo em uma peça só) ----------
@@ -286,7 +352,6 @@ export function buildSign(
     }
   }
 
-
   // ---------- canal de LED ----------
   let ledLengthMm = 0;
   if (active.has("canal-led") && params.led) {
@@ -312,7 +377,6 @@ export function buildSign(
     }
   }
 
-
   // ---------- frente ----------
   if (active.has("frente")) {
     const geos: BufferGeometry[] = [];
@@ -328,11 +392,16 @@ export function buildSign(
 
     const geo = combine(geos);
     if (geo) {
-      const z = plateOn && !active.has("laterais") ? baseZ : baseZ + params.depth - params.faceThickness;
+      const z =
+        plateOn && !active.has("laterais") ? baseZ : baseZ + params.depth - params.faceThickness;
       geo.translate(0, 0, Math.max(z, baseZ));
       parts.push(
         makePart("frente", "frente", "Frente", params.faceColor, geo, {
-          emissive: params.led,
+          emissive:
+            params.led &&
+            (style.thumb.glow === "front" ||
+              style.thumb.glow === "both" ||
+              style.thumb.glow === "edge"),
           count: shapes.length,
         }),
       );
@@ -358,20 +427,25 @@ export function buildSign(
         params.layerThickness * (def.index - 1);
       geo.translate(0, 0, base);
       parts.push(
-        makePart(def.kind, def.kind, `Camada ${def.index + 1}`, shadeColor(params.bodyColor, def.index * 18), geo, {
-          count: shapes.length,
-        }),
+        makePart(
+          def.kind,
+          def.kind,
+          `Camada ${def.index + 1}`,
+          shadeColor(params.bodyColor, def.index * 18),
+          geo,
+          {
+            count: shapes.length,
+          },
+        ),
       );
     }
   }
 
-
-
-
   // ---------- furos ----------
-  if (params.mountHoles && active.has("furos") && holePoints.length) {
+  const activeHolePoints = plateOn ? holePoints : letterHolePoints;
+  if (params.mountHoles && active.has("furos") && activeHolePoints.length) {
     const geos: BufferGeometry[] = [];
-    for (const p of holePoints) {
+    for (const p of activeHolePoints) {
       const ring = new Shape();
       ring.absarc(p.x, p.y, params.holeDiameter / 2 + 2.5, 0, Math.PI * 2, false);
       ring.holes.push(circle(p.x, p.y, params.holeDiameter / 2));
@@ -402,13 +476,7 @@ export function buildSign(
 
   // ---------- contornos / offsets de conferência ----------
   const outlines: SignOutline[] = [];
-  const pushOutlines = (
-    id: string,
-    name: string,
-    color: string,
-    z: number,
-    list: Shape[],
-  ) => {
+  const pushOutlines = (id: string, name: string, color: string, z: number, list: Shape[]) => {
     list.forEach((shape, i) => {
       outlines.push({ id: `${id}-${i}`, name, color, z, points: contourPoints(shape) });
       shape.holes.forEach((hole, h) => {
@@ -517,7 +585,6 @@ function prepareForCsg(source: BufferGeometry): BufferGeometry {
   }
   return geometry;
 }
-
 
 function mergePositions(geos: BufferGeometry[]): BufferGeometry {
   let total = 0;

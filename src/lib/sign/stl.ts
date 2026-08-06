@@ -34,7 +34,15 @@ export function geometriesToStl(geometries: BufferGeometry[]): ArrayBuffer {
   let offset = 84;
   for (const t of triangles) {
     const [ax, ay, az, bx, by, bz, cx, cy, cz] = t as [
-      number, number, number, number, number, number, number, number, number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
     ];
     const ux = bx - ax;
     const uy = by - ay;

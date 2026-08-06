@@ -1,18 +1,15 @@
 import DxfParser from "dxf-parser";
 import { Path, Shape } from "three";
 
+// dxf-parser exposes heterogeneous entity records without a discriminated-union type.
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 type Pt = { x: number; y: number };
 
 const ARC_SEG = 24;
 
-function arcPoints(
-  cx: number,
-  cy: number,
-  r: number,
-  startDeg: number,
-  endDeg: number,
-): Pt[] {
-  let start = (startDeg * Math.PI) / 180;
+function arcPoints(cx: number, cy: number, r: number, startDeg: number, endDeg: number): Pt[] {
+  const start = (startDeg * Math.PI) / 180;
   let end = (endDeg * Math.PI) / 180;
   while (end <= start) end += Math.PI * 2;
   const steps = Math.max(4, Math.ceil(((end - start) / (Math.PI * 2)) * ARC_SEG * 2));
@@ -76,7 +73,10 @@ function flatten(entities: any[], blocks: any, t: Xf, depth = 0): any[] {
         x: 0,
         y: 0,
       };
-      const origin = applyXf({ x: pos.x - base.x * (e.xScale ?? 1), y: pos.y - base.y * (e.yScale ?? 1) }, t);
+      const origin = applyXf(
+        { x: pos.x - base.x * (e.xScale ?? 1), y: pos.y - base.y * (e.yScale ?? 1) },
+        t,
+      );
       local.x = origin.x;
       local.y = origin.y;
       out.push(...flatten(block.entities, blocks, local, depth + 1));
@@ -107,7 +107,14 @@ function entitiesToPolylines(entities: any[]): { pts: Pt[]; closed: boolean }[] 
     switch (e.type) {
       case "LINE": {
         const v = e.vertices ?? [];
-        if (v.length >= 2) out.push({ pts: [{ x: v[0].x, y: v[0].y }, { x: v[1].x, y: v[1].y }], closed: false });
+        if (v.length >= 2)
+          out.push({
+            pts: [
+              { x: v[0].x, y: v[0].y },
+              { x: v[1].x, y: v[1].y },
+            ],
+            closed: false,
+          });
         break;
       }
       case "LWPOLYLINE":
@@ -180,7 +187,8 @@ function stitch(polys: { pts: Pt[]; closed: boolean }[], tol: number): Pt[][] {
         if (near(tail, cHead, tol)) current = current.concat(cand.slice(1));
         else if (near(tail, cTail, tol)) current = current.concat(cand.slice().reverse().slice(1));
         else if (near(head, cTail, tol)) current = cand.slice(0, -1).concat(current);
-        else if (near(head, cHead, tol)) current = cand.slice().reverse().slice(0, -1).concat(current);
+        else if (near(head, cHead, tol))
+          current = cand.slice().reverse().slice(0, -1).concat(current);
         else continue;
         open.splice(i, 1);
         merged = true;

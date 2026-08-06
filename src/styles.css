@@ -62,8 +62,8 @@
   --color-panel: var(--panel);
   --color-panel-foreground: var(--panel-foreground);
   --color-viewport: var(--viewport);
-  --font-display: 'Archivo', system-ui, sans-serif;
-  --font-sans: 'Inter Tight', system-ui, sans-serif;
+  --font-display: "Archivo", system-ui, sans-serif;
+  --font-sans: "Inter Tight", system-ui, sans-serif;
 }
 
 :root {
@@ -104,7 +104,6 @@
   --sidebar-border: oklch(0.905 0.009 250);
   --sidebar-ring: oklch(0.62 0.18 258);
 }
-
 
 .dark {
   --background: oklch(0.129 0.042 264.695);
@@ -153,7 +152,10 @@
 }
 
 @layer base {
-  h1, h2, h3, h4 {
+  h1,
+  h2,
+  h3,
+  h4 {
     font-family: var(--font-display);
     letter-spacing: -0.015em;
   }

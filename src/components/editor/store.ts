@@ -1,6 +1,5 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
- import type { Font } from "opentype.js";
- import { Vector3 } from "three";
+import { createContext, useContext, useDeferredValue, useEffect, useMemo, useState } from "react";
+import type { Font } from "opentype.js";
 
 import { loadFont, textToShapes } from "@/lib/sign/fonts";
 import { svgToShapes } from "@/lib/sign/svg";
@@ -21,18 +20,17 @@ export interface EditorState {
   build: SignBuild | null;
   cost: CostBreakdown | null;
   ready: boolean;
+  loadError: string | null;
   explode: number;
   hidden: Set<string>;
   wireframe: boolean;
   showOutlines: boolean;
   svgName: string | null;
   vectorKind: "svg" | "dxf" | null;
-  weldedEdges: Array<{ a: [number, number, number]; b: [number, number, number] }>;
+  vectorSource: { name: string; content: string; kind: "svg" | "dxf" } | null;
   setSvg: (name: string, content: string) => void;
   setDxf: (name: string, content: string) => void;
   clearSvg: () => void;
-  addWeldedEdge: (edge: { a: [number, number, number]; b: [number, number, number] }) => void;
-  clearWeldedEdges: () => void;
   projectId: string | null;
   projectName: string;
   setParam: <K extends keyof SignParams>(key: K, value: SignParams[K]) => void;
@@ -42,12 +40,12 @@ export interface EditorState {
   setWireframe: (value: boolean) => void;
   setShowOutlines: (value: boolean) => void;
   togglePart: (id: string) => void;
-  weldSelectedEdges: (selected: Array<{ a: [number, number, number]; b: [number, number, number]; partId: string }>) => void;
   loadProject: (p: {
     id: string;
     name: string;
     styleId: string;
     params: Partial<SignParams>;
+    vectorSource?: { name: string; content: string; kind: "svg" | "dxf" } | null;
   }) => void;
   setProject: (id: string | null, name: string) => void;
 }
@@ -61,11 +59,12 @@ export function useEditor(): EditorState {
 }
 
 export function useEditorState(): EditorState {
-  const [styleId, setStyleId] = useState(DEFAULT_PARAMS.text ? "caixa-iluminada" : "caixa-iluminada");
+  const [styleId, setStyleId] = useState("caixa-iluminada");
   const [params, setParamsState] = useState<SignParams>(() =>
     paramsForStyle(getStyle("caixa-iluminada")),
   );
   const [font, setFont] = useState<Font | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [explode, setExplode] = useState(0);
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [wireframe, setWireframe] = useState(false);
@@ -75,42 +74,58 @@ export function useEditorState(): EditorState {
     content: string;
     kind: "svg" | "dxf";
   } | null>(null);
-  const [weldedEdges, setWeldedEdges] = useState<Array<{ a: [number, number, number]; b: [number, number, number] }>>([]);
   const [projectId, setProjectId] = useState<string | null>(null);
   const [projectName, setProjectName] = useState("Novo projeto");
 
   useEffect(() => {
     let cancelled = false;
+    setLoadError(null);
     loadFont(params.fontId)
       .then((f) => {
         if (!cancelled) setFont(f);
       })
-      .catch(() => undefined);
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setFont(null);
+          setLoadError(
+            error instanceof Error ? error.message : "Não foi possível carregar a fonte.",
+          );
+        }
+      });
     return () => {
       cancelled = true;
     };
   }, [params.fontId]);
 
   const style = useMemo(() => getStyle(styleId), [styleId]);
+  const deferredParams = useDeferredValue(params);
 
   const build = useMemo(() => {
     try {
       const shapes = svg
         ? svg.kind === "dxf"
-          ? dxfToShapes(svg.content, params.letterHeight)
-          : svgToShapes(svg.content, params.letterHeight)
+          ? dxfToShapes(svg.content, deferredParams.letterHeight)
+          : svgToShapes(svg.content, deferredParams.letterHeight)
         : font
-          ? textToShapes(font, params.text.toUpperCase(), params.letterHeight, params.tracking)
+          ? textToShapes(
+              font,
+              deferredParams.text.toUpperCase(),
+              deferredParams.letterHeight,
+              deferredParams.tracking,
+            )
           : [];
       if (!shapes.length) return null;
-      return buildSign(shapes, params, style);
+      return buildSign(shapes, deferredParams, style);
     } catch (error) {
       console.error("Falha ao gerar geometria", error);
       return null;
     }
-  }, [font, svg, params, style]);
+  }, [font, svg, deferredParams, style]);
 
-  const cost = useMemo(() => (build ? computeCost(build, params) : null), [build, params]);
+  const cost = useMemo(
+    () => (build ? computeCost(build, deferredParams) : null),
+    [build, deferredParams],
+  );
 
   return {
     params,
@@ -118,18 +133,17 @@ export function useEditorState(): EditorState {
     build,
     cost,
     ready: Boolean(font) || Boolean(svg),
+    loadError,
     explode,
     hidden,
     wireframe,
     showOutlines,
     svgName: svg?.name ?? null,
     vectorKind: svg?.kind ?? null,
+    vectorSource: svg,
     setSvg: (name, content) => setSvgState({ name, content, kind: "svg" }),
     setDxf: (name, content) => setSvgState({ name, content, kind: "dxf" }),
     clearSvg: () => setSvgState(null),
-    weldedEdges,
-    addWeldedEdge: (edge) => setWeldedEdges((prev) => [...prev, edge]),
-    clearWeldedEdges: () => setWeldedEdges([]),
     setWireframe,
     setShowOutlines,
     projectId,
@@ -149,39 +163,12 @@ export function useEditorState(): EditorState {
         else next.add(id);
         return next;
       }),
-    weldSelectedEdges: (selected) => {
-      if (selected.length < 2) return;
-      const points: Vector3[] = [];
-      selected.forEach(e => {
-        points.push(new Vector3(...e.a), new Vector3(...e.b));
-      });
-      if (points.length < 2) return;
-
-      let maxDist = -1;
-      let p1: Vector3 = points[0]!;
-      let p2: Vector3 = points[1]!;
-      for (let i = 0; i < points.length; i++) {
-        const pi = points[i]!;
-        for (let j = i + 1; j < points.length; j++) {
-          const pj = points[j]!;
-          const d = pi.distanceTo(pj);
-          if (d > maxDist) {
-            maxDist = d;
-            p1 = pi;
-            p2 = pj;
-          }
-        }
-      }
-      setWeldedEdges((prev) => [...prev, {
-        a: [p1.x, p1.y, p1.z],
-        b: [p2.x, p2.y, p2.z]
-      }]);
-    },
     loadProject: (p) => {
       setStyleId(p.styleId);
       setParamsState({ ...DEFAULT_PARAMS, ...p.params });
       setProjectId(p.id);
       setProjectName(p.name);
+      setSvgState(p.vectorSource ?? null);
       setHidden(new Set());
     },
     setProject: (id, name) => {

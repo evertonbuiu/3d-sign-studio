@@ -116,7 +116,7 @@ function PartMesh({
   wireframe: boolean;
 }) {
   const offset = (EXPLODE_ORDER[part.kind] ?? 0) * explode;
-  // Reduzimos o threshold para 1 grau para mostrar as curvas das letras 
+  // Reduzimos o threshold para 1 grau para mostrar as curvas das letras
   // mas ainda ocultar as diagonais internas de superfícies planas.
   const edges = useMemo(() => new EdgesGeometry(part.geometry, 1), [part.geometry]);
 
@@ -147,7 +147,6 @@ function PartMesh({
     </group>
   );
 }
-
 
 function OutlineLine({ outline }: { outline: SignOutline }) {
   const geometry = useMemo(() => {
@@ -183,7 +182,7 @@ function Model({
   onHover: (edge: PickedEdge | null) => void;
   onPick: (edge: PickedEdge, additive: boolean) => void;
 }) {
-  const { build, explode, hidden, wireframe, showOutlines, weldedEdges } = useEditor();
+  const { build, explode, hidden, wireframe, showOutlines } = useEditor();
   const groupRef = useRef<Group>(null);
 
   const { scale, center } = useMemo(() => {
@@ -227,25 +226,7 @@ function Model({
           ))}
         {edgeSelect && hover && <EdgeHighlight edge={hover} color="#38bdf8" />}
         {edgeSelect &&
-          selected.map((edge) => (
-            <EdgeHighlight key={edge.key} edge={edge} color="#f97316" />
-          ))}
-        {edgeSelect &&
-          weldedEdges.map((edge, i) => (
-            <EdgeHighlight
-              key={`welded-${i}`}
-              edge={{
-                key: `w-${i}`,
-                partId: "welded",
-                partLabel: "Soldada",
-                a: edge.a,
-                b: edge.b,
-                offset: 0,
-                length: 0,
-              }}
-              color="#10b981"
-            />
-          ))}
+          selected.map((edge) => <EdgeHighlight key={edge.key} edge={edge} color="#f97316" />)}
         {showOutlines &&
           build.outlines.map((outline) => <OutlineLine key={outline.id} outline={outline} />)}
       </group>
@@ -253,20 +234,17 @@ function Model({
   );
 }
 
-
 export default function Viewport() {
   const {
     build,
     ready,
+    loadError,
     explode,
     setExplode,
     wireframe,
     setWireframe,
     showOutlines,
     setShowOutlines,
-    addWeldedEdge,
-    clearWeldedEdges,
-    weldSelectedEdges,
   } = useEditor();
 
   const [edgeSelect, setEdgeSelect] = useState(false);
@@ -274,14 +252,6 @@ export default function Viewport() {
   const [selected, setSelected] = useState<PickedEdge[]>([]);
 
   const totalLength = selected.reduce((sum, e) => sum + e.length, 0);
-
-  const handleDeleteEdges = () => {
-    // Para realmente "deletar" de forma permanente no modelo, precisaríamos de uma lógica de máscara no build.ts.
-    // Como estamos em um editor paramétrico, por agora vamos limpar a seleção para atender o requisito visual de UI.
-    setSelected([]);
-    clearWeldedEdges();
-  };
-
 
   const handlePick = (edge: PickedEdge, additive: boolean) => {
     setSelected((prev) => {
@@ -293,12 +263,6 @@ export default function Viewport() {
       }
       return exists && prev.length === 1 ? [] : [edge];
     });
-  };
-
-  const handleWeldEdges = () => {
-    if (selected.length < 2) return;
-    weldSelectedEdges(selected);
-    setSelected([]);
   };
 
   return (
@@ -326,7 +290,13 @@ export default function Viewport() {
           fadeDistance={16}
           infiniteGrid
         />
-        <OrbitControls makeDefault enablePan target={[0, 0, 0]} minDistance={0.5} maxDistance={14} />
+        <OrbitControls
+          makeDefault
+          enablePan
+          target={[0, 0, 0]}
+          minDistance={0.5}
+          maxDistance={14}
+        />
       </Canvas>
 
       <div className="absolute left-4 top-4 w-64 space-y-3 rounded-lg border border-border bg-panel/90 p-3 shadow-lg backdrop-blur">
@@ -352,7 +322,7 @@ export default function Viewport() {
         {edgeSelect && (
           <div className="space-y-1 rounded-md border border-border bg-background/60 p-2">
             <p className="text-xs text-muted-foreground">
-              Clique para selecionar, Shift+clique para somar arestas.
+              Clique para medir; Shift+clique soma arestas à medição.
             </p>
             <div className="flex items-center justify-between text-sm">
               <span>Selecionadas</span>
@@ -368,31 +338,14 @@ export default function Viewport() {
               </p>
             )}
             {selected.length > 0 && (
-              <div className="flex gap-2">
+              <div>
                 <Button
                   size="sm"
                   variant="outline"
-                  className="flex-1"
+                  className="w-full"
                   onClick={() => setSelected([])}
                 >
-                  Limpar
-                </Button>
-                <Button
-                  size="sm"
-                  variant="default"
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                  disabled={selected.length < 2}
-                  onClick={handleWeldEdges}
-                >
-                  Soldar
-                </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  className="flex-1"
-                  onClick={handleDeleteEdges}
-                >
-                  Deletar
+                  Limpar medição
                 </Button>
               </div>
             )}
@@ -413,10 +366,14 @@ export default function Viewport() {
         </div>
       </div>
 
-
-      {!ready && (
+      {!ready && !loadError && (
         <div className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-muted-foreground">
           Carregando fontes...
+        </div>
+      )}
+      {loadError && (
+        <div className="pointer-events-none absolute inset-0 grid place-items-center px-6 text-center text-sm text-destructive">
+          {loadError}
         </div>
       )}
       {ready && !build && (

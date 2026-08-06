@@ -69,6 +69,7 @@ export default function Toolbar() {
           styleId: editor.style.id,
           text: editor.params.text,
           params: editor.params as unknown as Record<string, unknown>,
+          vectorSource: editor.vectorSource,
         },
       }),
     onSuccess: (row) => {
@@ -112,6 +113,14 @@ export default function Toolbar() {
       name: row.name,
       styleId: row.style_id,
       params: (row.params ?? {}) as never,
+      vectorSource:
+        row.vector_kind && row.vector_name && row.vector_content
+          ? {
+              kind: row.vector_kind,
+              name: row.vector_name,
+              content: row.vector_content,
+            }
+          : null,
     });
     setOpen(false);
     toast.success("Projeto carregado");
@@ -147,7 +156,7 @@ export default function Toolbar() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem className="text-xs" onSelect={() => exportStl("unico")}>
-              Arquivo único (.stl)
+              STL combinado — shells separados
             </DropdownMenuItem>
             <DropdownMenuItem className="text-xs" onSelect={() => exportStl("pecas")}>
               Peças separadas (.zip)
