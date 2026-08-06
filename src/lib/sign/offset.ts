@@ -159,6 +159,15 @@ export function ringShape(shape: Shape, thickness: number, startInset = 0): Shap
   return pathsToShapes(ring);
 }
 
+/** Gera o anel e o recuo interno a partir da mesma operação de offset. */
+export function insetWithRing(shape: Shape, inset: number): { ring: Shape[]; inner: Shape[] } {
+  const base = normalize(shapeToCPaths(shape));
+  if (!base.length) return { ring: [], inner: [] };
+  const innerPaths = offsetPaths(base, -inset);
+  const ringPaths = innerPaths.length ? differencePaths(base, innerPaths) : base;
+  return { ring: pathsToShapes(ringPaths), inner: pathsToShapes(innerPaths) };
+}
+
 /** Cópia exata de um Shape (mesmos pontos do contorno e dos furos). */
 export function cloneShape(shape: Shape): Shape {
   const copy = new Shape(shapePoints(shape).map((p) => p.clone()));

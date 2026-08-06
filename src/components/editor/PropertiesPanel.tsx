@@ -259,17 +259,17 @@ export default function PropertiesPanel() {
               {style.id !== "neon-flex-fundo-impresso" ? (
                 <NumberSlider label="Profundidade" keyName="depth" min={5} max={200} step={1} />
               ) : null}
-              <NumberSlider label="Parede" keyName="wall" min={0.5} max={12} step={0.1} />
+              <NumberSlider label="Parede" keyName="wall" min={0.8} max={12} step={0.1} />
               {style.id !== "neon-flex-fundo-impresso" ? (
                 <NumberSlider
                   label="Frente"
                   keyName="faceThickness"
-                  min={0.5}
+                  min={0.6}
                   max={60}
                   step={0.2}
                 />
               ) : null}
-              <NumberSlider label="Fundo" keyName="backThickness" min={0.5} max={20} step={0.2} />
+              <NumberSlider label="Fundo" keyName="backThickness" min={0.6} max={20} step={0.2} />
               {style.id === "neon-flex-fundo-impresso" ? (
                 <div className="space-y-3 rounded-md border border-border bg-background/40 p-3">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -297,7 +297,7 @@ export default function PropertiesPanel() {
                   <NumberSlider
                     label="Folga de encaixe"
                     keyName="clearance"
-                    min={0.5}
+                    min={0}
                     max={1.5}
                     step={0.05}
                   />
@@ -314,29 +314,32 @@ export default function PropertiesPanel() {
                     <NumberSlider
                       label="Aba do rebaixo"
                       keyName="recessLip"
-                      min={0.5}
-                      max={20}
+                      min={0.4}
+                      max={Math.max(params.wall - 0.4, 0.6)}
                       step={0.1}
                     />
                   ) : null}
                 </>
               ) : null}
-              {style.id === "fundo-acrilico-frente-acrilica-aba" ? (
+              {style.id === "fundo-acrilico-frente-acrilica-aba" ||
+              style.id === "fundo-impresso-frente-impressa-aba" ? (
                 <div className="space-y-3 rounded-md border border-border bg-background/40 p-3">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Aba traseira
+                    {style.id === "fundo-impresso-frente-impressa-aba"
+                      ? "Aba de encaixe do fundo"
+                      : "Aba traseira"}
                   </p>
                   <NumberSlider
                     label="Largura da aba"
                     keyName="backFlangeWidth"
-                    min={0.5}
+                    min={0.6}
                     max={30}
                     step={0.1}
                   />
                   <NumberSlider
                     label="Espessura da aba"
                     keyName="backFlangeThickness"
-                    min={0.5}
+                    min={0.6}
                     max={20}
                     step={0.2}
                   />
