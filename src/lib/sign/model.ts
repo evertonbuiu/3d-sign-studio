@@ -74,7 +74,7 @@ export const DEFAULT_PARAMS: SignParams = {
   wall: 2.4,
   faceThickness: 3,
   backThickness: 3,
-  clearance: 0.5,
+  clearance: 0.3,
   faceRecess: true,
   recessLip: 1.2,
   backFlangeWidth: 4,

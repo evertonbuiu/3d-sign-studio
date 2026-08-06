@@ -47,7 +47,7 @@ export interface SignBuild {
 const EXTRUDE = { bevelEnabled: false, curveSegments: 24, steps: 1 };
 
 function extrude(shape: Shape | Shape[], depth: number): ExtrudeGeometry {
-  return new ExtrudeGeometry(shape, { ...EXTRUDE, depth: Math.max(depth, 0.5) });
+  return new ExtrudeGeometry(shape, { ...EXTRUDE, depth: Math.max(depth, 0.2) });
 }
 
 function cleanContour(points: Vector2[]): Vector2[] {
@@ -241,21 +241,23 @@ function backFlangeRingGeometry(
     }
   };
 
-  const flangeStart = backHeight;
+  // A aba nasce exatamente na extremidade traseira da parede. O fundo
+  // acrílico fica logo à frente dela, apoiado no ombro interno.
+  const flangeStart = 0;
   const flangeEnd = Math.min(
-    backHeight + Math.max(flangeThickness, 0.5),
-    backHeight + bodyHeight / 2,
+    Math.max(flangeThickness, 0.2),
+    Math.max(backHeight + bodyHeight / 2, 0.2),
   );
   const frontStart = backHeight + bodyHeight;
   const totalHeight = frontStart + faceHeight;
-  cap(outer, thickHoles, 0, true);
+  // A tampa traseira acompanha o vazio menor criado pela aba. Assim parede e
+  // aba compartilham uma única borda, sem faces coplanares sobrepostas.
+  cap(outer, flangeHoles, 0, true);
   wallStrip(outer, 0, totalHeight);
   for (let i = 0; i < thickHoles.length; i++) {
     const thickHole = thickHoles[i]!;
     const frontHole = frontHoles[i]!;
     const flangeHole = flangeHoles[i]!;
-    wallStrip(thickHole, 0, flangeStart, true);
-    cap(thickHole, [flangeHole], flangeStart);
     wallStrip(flangeHole, flangeStart, flangeEnd, true);
     cap(thickHole, [flangeHole], flangeEnd, true);
     wallStrip(thickHole, flangeEnd, frontStart, true);
@@ -539,7 +541,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
     }
     const geo = combine(geos);
     if (geo) {
-      geo.translate(0, 0, baseZ);
+      geo.translate(0, 0, baseZ + (acrylicBackFlange ? params.backFlangeThickness : 0));
       parts.push(
         makePart("fundo", "fundo", "Fundo", params.backColor, geo, { count: shapes.length }),
       );
@@ -547,7 +549,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
   }
 
   // rebaixo (degrau) na parede interna para assentar a frente
-  const recessLip = Math.max(params.recessLip, 0.5);
+  const recessLip = Math.min(Math.max(params.recessLip, 0.4), Math.max(params.wall - 0.4, 0.4));
   const recessOn =
     doubleAcrylicRecess ||
     acrylicBackFlange ||

@@ -182,7 +182,7 @@ test("novo estilo usa fundo acrilico apoiado por aba interna", () => {
     components: 1,
   });
   const wallPositions = walls.geometry.getAttribute("position");
-  const flangeEnd = params.backThickness + params.backFlangeThickness;
+  const flangeEnd = params.backFlangeThickness;
   assert.ok(
     Array.from({ length: wallPositions.count }, (_, index) => wallPositions.getZ(index)).some(
       (z) => Math.abs(z - flangeEnd) < 1e-5,
@@ -190,6 +190,11 @@ test("novo estilo usa fundo acrilico apoiado por aba interna", () => {
   );
   back.geometry.computeBoundingBox();
   front.geometry.computeBoundingBox();
-  assert.ok(Math.abs((back.geometry.boundingBox?.max.z ?? 0) - params.backThickness) < 1e-5);
+  assert.ok(Math.abs((back.geometry.boundingBox?.min.z ?? 0) - params.backFlangeThickness) < 1e-5);
+  assert.ok(
+    Math.abs(
+      (back.geometry.boundingBox?.max.z ?? 0) - (params.backFlangeThickness + params.backThickness),
+    ) < 1e-5,
+  );
   assert.equal(front.geometry.boundingBox?.min.z, params.depth - params.faceThickness);
 });
