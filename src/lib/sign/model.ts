@@ -29,6 +29,7 @@ export interface SignParams {
   recessLip: number; // largura da aba externa que segura a frente (mm)
   backFlangeWidth: number; // avanço da aba traseira para dentro (mm)
   backFlangeThickness: number; // espessura da aba traseira no eixo Z (mm)
+  neonFlexThickness: number; // altura útil das paredes para acomodar o Neon Flex (mm)
   /** iluminação */
   led: boolean;
   ledChannelWidth: number;
@@ -79,6 +80,7 @@ export const DEFAULT_PARAMS: SignParams = {
   recessLip: 1.2,
   backFlangeWidth: 4,
   backFlangeThickness: 2.4,
+  neonFlexThickness: 8,
   led: true,
   ledChannelWidth: 12,
   ledChannelHeight: 6,
@@ -185,6 +187,24 @@ export const STYLES: SignStyle[] = [
     parts: boxParts,
     preset: { depth: 45, faceThickness: 2.4, led: true },
     thumb: { face: "#8f9db0", body: "#39424f", glow: "halo" },
+  },
+  {
+    id: "neon-flex-fundo-impresso",
+    name: "Neon Flex — Fundo Impresso sem Tampa",
+    group: "Iluminação",
+    description:
+      "Fundo e paredes impressos em uma peça, com canal frontal aberto e altura ajustável para o Neon Flex.",
+    parts: ["fundo", "laterais"],
+    preset: {
+      depth: 11,
+      wall: 1.6,
+      backThickness: 3,
+      neonFlexThickness: 8,
+      faceRecess: false,
+      led: false,
+      mountHoles: false,
+    },
+    thumb: { face: "#ff4fd8", body: "#252836", glow: "front", outline: true },
   },
   {
     id: "frente-petg",

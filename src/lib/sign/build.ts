@@ -126,11 +126,17 @@ function steppedRingGeometry(
     wallStrip(hole, backThickness, stepZ, true);
   });
   for (const hole of throughHoles) wallStrip(hole, 0, backThickness, true);
-  upperHoles.forEach((hole) => wallStrip(hole, stepZ, topZ, true));
-  for (let i = 0; i < lowerHoles.length; i++) {
-    cap(upperHoles[i]!, [lowerHoles[i]!], stepZ);
+  if (faceHeight > 0) {
+    upperHoles.forEach((hole) => wallStrip(hole, stepZ, topZ, true));
+    for (let i = 0; i < lowerHoles.length; i++) {
+      cap(upperHoles[i]!, [lowerHoles[i]!], stepZ);
+    }
+    cap(outer, upperHoles, topZ);
+  } else {
+    // Canal aberto: fecha apenas o topo das paredes, sem criar o degrau ou
+    // faces degeneradas de uma tampa com altura zero.
+    cap(outer, lowerHoles, topZ);
   }
-  cap(outer, upperHoles, topZ);
 
   const geometry = new BufferGeometry();
   geometry.setAttribute("position", new Float32BufferAttribute(values, 3));
@@ -246,7 +252,7 @@ function backFlangeRingGeometry(
   const flangeStart = 0;
   const flangeEnd = Math.min(
     Math.max(flangeThickness, 0.5),
-    Math.max(backHeight + bodyHeight / 2, 0.2),
+    Math.max(backHeight + bodyHeight / 2, 0.5),
   );
   const frontStart = backHeight + bodyHeight;
   const totalHeight = frontStart + faceHeight;
@@ -432,7 +438,8 @@ function makePart(
 
 export function buildSign(letterShapes: Shape[], params: SignParams, style: SignStyle): SignBuild {
   const active = new Set<PartKind>(style.parts);
-  const unifiedPrintedCup = style.id === "fundo-impresso-frente-acrilica";
+  const neonFlexOpenCup = style.id === "neon-flex-fundo-impresso";
+  const unifiedPrintedCup = style.id === "fundo-impresso-frente-acrilica" || neonFlexOpenCup;
   const unifiedPrintedFace = style.id === "fundo-acrilico-frente-impressa";
   const doubleAcrylicRecess = style.id === "fundo-acrilico-frente-acrilica";
   const acrylicBackFlange = style.id === "fundo-acrilico-frente-acrilica-aba";
@@ -512,10 +519,9 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
     parts.push(makePart("placa", "placa", "Placa base", params.backColor, geo));
   }
 
-  const bodyHeight = Math.max(
-    params.depth - params.backThickness - params.faceThickness,
-    params.wall,
-  );
+  const bodyHeight = neonFlexOpenCup
+    ? params.neonFlexThickness
+    : Math.max(params.depth - params.backThickness - params.faceThickness, params.wall);
 
   // ---------- fundo ----------
   if (active.has("fundo") && !unifiedPrintedCup) {
@@ -551,9 +557,12 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
   // rebaixo (degrau) na parede interna para assentar a frente
   const recessLip = Math.max(params.recessLip, 0.5);
   const recessOn =
+    neonFlexOpenCup ||
     doubleAcrylicRecess ||
     acrylicBackFlange ||
-    (params.faceRecess && active.has("frente") && active.has("laterais"));
+    (params.faceRecess &&
+      active.has("frente") &&
+      active.has("laterais"));
   const faceInset = recessOn ? recessLip + params.clearance : 0;
 
   // ---------- laterais (parede + rebaixo em uma peça só) ----------
@@ -562,7 +571,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
     for (const shape of shapes) {
       if (recessOn) {
         const lowerRings = ringShape(shape, params.wall);
-        const upperRings = ringShape(shape, recessLip);
+        const upperRings = ringShape(shape, neonFlexOpenCup ? params.wall : recessLip);
         const flangeRings = acrylicBackFlange
           ? ringShape(shape, params.wall + params.backFlangeWidth)
           : [];
@@ -593,7 +602,11 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
                     lowerRings[i]!,
                     upperRings[i]!,
                     bodyHeight,
-                    unifiedPrintedFace ? params.backThickness : params.faceThickness,
+                    neonFlexOpenCup
+                      ? 0
+                      : unifiedPrintedFace
+                        ? params.backThickness
+                        : params.faceThickness,
                     unifiedPrintedCup
                       ? params.backThickness
                       : unifiedPrintedFace
