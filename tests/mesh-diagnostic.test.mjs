@@ -118,6 +118,43 @@ function frontCoversPoint(geometry, point) {
   return false;
 }
 
+function backCoversPoint(geometry, point) {
+  const source = geometry.index ? geometry.toNonIndexed() : geometry;
+  const position = source.getAttribute("position");
+  let minZ = Infinity;
+  for (let i = 0; i < position.count; i++) minZ = Math.min(minZ, position.getZ(i));
+  const side = (px, py, ax, ay, bx, by) => (px - bx) * (ay - by) - (ax - bx) * (py - by);
+  for (let i = 0; i < position.count; i += 3) {
+    if ([0, 1, 2].some((offset) => Math.abs(position.getZ(i + offset) - minZ) > 1e-5)) continue;
+    const d1 = side(
+      point.x,
+      point.y,
+      position.getX(i),
+      position.getY(i),
+      position.getX(i + 1),
+      position.getY(i + 1),
+    );
+    const d2 = side(
+      point.x,
+      point.y,
+      position.getX(i + 1),
+      position.getY(i + 1),
+      position.getX(i + 2),
+      position.getY(i + 2),
+    );
+    const d3 = side(
+      point.x,
+      point.y,
+      position.getX(i + 2),
+      position.getY(i + 2),
+      position.getX(i),
+      position.getY(i),
+    );
+    if (!((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0))) return true;
+  }
+  return false;
+}
+
 const archivo = opentype.parse(
   fs.readFileSync(new URL("../src/assets/fonts/archivo-black.ttf", import.meta.url)).buffer,
 );
@@ -154,7 +191,7 @@ test("fundo impresso e laterais formam uma unica peca", () => {
   });
 });
 
-test("frente acrilica do fundo impresso nao tem vazados internos", () => {
+test("frente acrilica e fundo impresso preservam os vazados internos", () => {
   const shapes = glyphShapes(archivo, "D", DEFAULT_PARAMS.letterHeight);
   const bounds = new Box2();
   for (const shape of shapes) bounds.union(new Box2().setFromPoints(shape.getPoints(24)));
@@ -168,9 +205,16 @@ test("frente acrilica do fundo impresso nao tem vazados internos", () => {
   const params = { ...DEFAULT_PARAMS, ...style.preset, text: "D", mountHoles: false };
   const build = buildSign(shapes, params, style);
   const front = build.parts.find((part) => part.kind === "frente");
-  assert.ok(front);
-  assert.equal(frontCoversPoint(front.geometry, holeCenter), true);
+  const printedBack = build.parts.find((part) => part.id === "fundo-laterais");
+  assert.ok(front && printedBack);
+  assert.equal(frontCoversPoint(front.geometry, holeCenter), false);
+  assert.equal(backCoversPoint(printedBack.geometry, holeCenter), false);
   assert.deepEqual(topology(front.geometry), {
+    boundary: 0,
+    nonManifold: 0,
+    components: 1,
+  });
+  assert.deepEqual(topology(printedBack.geometry), {
     boundary: 0,
     nonManifold: 0,
     components: 1,
