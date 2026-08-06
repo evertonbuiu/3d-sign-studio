@@ -57,6 +57,13 @@ export interface SignParams {
   bodyColor: string;
   backColor: string;
   /** custos */
+  printerId: string;
+  buildWidth: number;
+  buildDepth: number;
+  buildHeight: number;
+  nozzleDiameter: number;
+  filamentDiameter: number;
+  maxPrintSpeed: number;
   filamentPrice: number; // R$/kg
   density: number; // g/cm3
   printSpeed: number; // cm3/h
@@ -102,6 +109,13 @@ export const DEFAULT_PARAMS: SignParams = {
   faceColor: "#f4f6fa",
   bodyColor: "#3f4a5a",
   backColor: "#2c333d",
+  printerId: "creality-ender-3-v3-se",
+  buildWidth: 220,
+  buildDepth: 220,
+  buildHeight: 250,
+  nozzleDiameter: 0.4,
+  filamentDiameter: 1.75,
+  maxPrintSpeed: 250,
   filamentPrice: 120,
   density: 1.24,
   printSpeed: 22,
