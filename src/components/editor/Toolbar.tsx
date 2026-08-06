@@ -23,7 +23,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { supabase } from "@/integrations/supabase/client";
+import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
 import { geometriesToStl, downloadBlob, slugify } from "@/lib/sign/stl";
 import {
   deleteSignProject,
@@ -40,6 +40,7 @@ export default function Toolbar() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
+    if (!isSupabaseConfigured) return;
     supabase.auth.getUser().then(({ data }) => setUser(data.user ?? null));
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
@@ -116,7 +117,7 @@ export default function Toolbar() {
       vectorSource:
         row.vector_kind && row.vector_name && row.vector_content
           ? {
-              kind: row.vector_kind as "dxf" | "svg",
+              kind: row.vector_kind,
               name: row.vector_name,
               content: row.vector_content,
             }
