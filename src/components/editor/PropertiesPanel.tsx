@@ -235,15 +235,12 @@ export default function PropertiesPanel() {
               </Field>
 
               <Field label="Fonte">
-                <Select
-                  value={params.fontId}
-                  onValueChange={(v) => setParam("fontId", v as FontId)}
-                >
+                <Select value={params.fontId} onValueChange={(v) => setParam("fontId", v)}>
                   <SelectTrigger className="h-9 bg-card text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {FONTS.map((f) => (
+                    {availableFonts.map((f) => (
                       <SelectItem key={f.id} value={f.id} className="text-sm">
                         {f.label}
                       </SelectItem>
@@ -251,6 +248,51 @@ export default function PropertiesPanel() {
                   </SelectContent>
                 </Select>
               </Field>
+
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-9 w-full gap-1.5 text-xs">
+                    <Package className="h-3.5 w-3.5" />
+                    Instalar pacotes de fontes
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Pacotes de fontes do Google Fonts</DialogTitle>
+                    <DialogDescription>
+                      Instale pacotes para usar novas fontes no editor. As fontes ficam
+                      disponíveis na lista acima.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="max-h-96 space-y-3 overflow-y-auto pr-1">
+                    {GOOGLE_FONT_PACKAGES.map((pkg) => {
+                      const installed = installedFontPackages.includes(pkg.id);
+                      return (
+                        <div key={pkg.id} className="rounded-md border border-border bg-card p-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <h4 className="text-sm font-semibold">{pkg.name}</h4>
+                              <p className="text-xs text-muted-foreground">{pkg.description}</p>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant={installed ? "secondary" : "default"}
+                              disabled={installed}
+                              onClick={() => installFontPackage(pkg.id)}
+                              className="h-7 text-xs"
+                            >
+                              {installed ? "Instalado" : "Instalar"}
+                            </Button>
+                          </div>
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            {pkg.fonts.map((f) => f.label).join(", ")}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </DialogContent>
+              </Dialog>
               <NumberSlider
                 label="Altura da letra"
                 keyName="letterHeight"
