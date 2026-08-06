@@ -472,7 +472,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
   }
 
   // rebaixo (degrau) na parede interna para assentar a frente
-  const recessLip = Math.min(Math.max(params.recessLip, 0.4), Math.max(params.wall - 0.4, 0.4));
+  const recessLip = Math.max(params.recessLip, 0.5);
   const recessOn =
     doubleAcrylicRecess ||
     (params.faceRecess &&
