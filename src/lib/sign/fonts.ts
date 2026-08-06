@@ -23,7 +23,9 @@ export async function loadFont(id: FontId): Promise<opentype.Font> {
   const cached = cache.get(id);
   if (cached) return cached;
   const entry = FONTS.find((f) => f.id === id) ?? FONTS[0];
-  const buffer = await fetch(entry.url).then((r) => r.arrayBuffer());
+  const response = await fetch(entry.url);
+  if (!response.ok) throw new Error(`Não foi possível carregar a fonte (${response.status}).`);
+  const buffer = await response.arrayBuffer();
   const font = opentype.parse(buffer);
   cache.set(id, font);
   return font;
@@ -42,7 +44,7 @@ export function textToShapes(
 ): Shape[] {
   const source = text.length ? text : " ";
   const unitsPerEm = font.unitsPerEm || 1000;
-  const capUnits = (font.tables?.['os2']?.['sCapHeight'] as number | undefined) || unitsPerEm * 0.7;
+  const capUnits = (font.tables?.["os2"]?.["sCapHeight"] as number | undefined) || unitsPerEm * 0.7;
   const fontSize = (capHeight * unitsPerEm) / capUnits;
 
   const path = new ShapePath();
@@ -67,7 +69,7 @@ export function textToShapes(
           path.quadraticCurveTo(cmd.x1, -cmd.y1, cmd.x, -cmd.y);
           break;
         case "Z":
-          path.currentPath?.autoClose && path.currentPath.closePath();
+          path.currentPath?.closePath();
           break;
       }
     }

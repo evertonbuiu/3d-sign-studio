@@ -43,13 +43,19 @@ export default function CostBar() {
   return (
     <div className="flex h-16 items-center divide-x divide-border overflow-x-auto border-t border-border bg-panel">
       <Metric icon={Ruler} label="Dimensões" value={dims} />
-      <Metric icon={Boxes} label="Volume impresso" value={`${build.printedVolumeCm3.toFixed(1)} cm³`} />
+      <Metric
+        icon={Boxes}
+        label="Volume impresso"
+        value={`${build.printedVolumeCm3.toFixed(1)} cm³`}
+      />
       <Metric icon={Weight} label="Peso estimado" value={`${cost.weightG.toFixed(0)} g`} />
       <Metric icon={Clock} label="Tempo de impressão" value={`${cost.hours.toFixed(1)} h`} />
       <Metric
         icon={Zap}
         label="Fita de LED"
-        value={params.led ? `${(build.ledLengthMm / 1000).toFixed(2)} m · ${ledPower.toFixed(1)} W` : "—"}
+        value={
+          params.led ? `${(build.ledLengthMm / 1000).toFixed(2)} m · ${ledPower.toFixed(1)} W` : "—"
+        }
       />
       <Metric icon={DollarSign} label="Custo" value={brl(cost.subtotal)} />
       <Metric icon={DollarSign} label="Preço de venda" value={brl(cost.total)} strong />

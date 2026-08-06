@@ -80,17 +80,37 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "3D Sign Maker PRO — Letras e placas 3D paramétricas" },
-      { name: "description", content: "Crie letras caixa, placas, totens e logotipos 3D paramétricos, visualize em tempo real, calcule custos e exporte em STL para impressão 3D." },
+      {
+        name: "description",
+        content:
+          "Crie letras caixa, placas, totens e logotipos 3D paramétricos, visualize em tempo real, calcule custos e exporte em STL para impressão 3D.",
+      },
       { name: "author", content: "Lovable" },
       { property: "og:title", content: "3D Sign Maker PRO — Letras e placas 3D paramétricas" },
-      { property: "og:description", content: "Crie letras caixa, placas, totens e logotipos 3D paramétricos, visualize em tempo real, calcule custos e exporte em STL para impressão 3D." },
+      {
+        property: "og:description",
+        content:
+          "Crie letras caixa, placas, totens e logotipos 3D paramétricos, visualize em tempo real, calcule custos e exporte em STL para impressão 3D.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@Lovable" },
       { name: "twitter:title", content: "3D Sign Maker PRO — Letras e placas 3D paramétricas" },
-      { name: "twitter:description", content: "Crie letras caixa, placas, totens e logotipos 3D paramétricos, visualize em tempo real, calcule custos e exporte em STL para impressão 3D." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4a498fbd-a47b-47b7-9a18-822e3fa2a46b/id-preview-0281896d--ef71fff6-2c07-45fa-af40-f0bc17fc860b.lovable.app-1785942848096.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4a498fbd-a47b-47b7-9a18-822e3fa2a46b/id-preview-0281896d--ef71fff6-2c07-45fa-af40-f0bc17fc860b.lovable.app-1785942848096.png" },
+      {
+        name: "twitter:description",
+        content:
+          "Crie letras caixa, placas, totens e logotipos 3D paramétricos, visualize em tempo real, calcule custos e exporte em STL para impressão 3D.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4a498fbd-a47b-47b7-9a18-822e3fa2a46b/id-preview-0281896d--ef71fff6-2c07-45fa-af40-f0bc17fc860b.lovable.app-1785942848096.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4a498fbd-a47b-47b7-9a18-822e3fa2a46b/id-preview-0281896d--ef71fff6-2c07-45fa-af40-f0bc17fc860b.lovable.app-1785942848096.png",
+      },
     ],
     links: [
       {

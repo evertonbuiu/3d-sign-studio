@@ -12,10 +12,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { FONTS, type FontId } from "@/lib/sign/fonts";
 import type { SignParams } from "@/lib/sign/model";
 import { useEditor } from "./store";
+
+const MAX_VECTOR_FILE_BYTES = 2_000_000;
+
+function validateVectorFile(file: File): boolean {
+  if (file.size <= MAX_VECTOR_FILE_BYTES) return true;
+  toast.error("O arquivo vetorial deve ter no máximo 2 MB.");
+  return false;
+}
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -172,6 +185,10 @@ export default function PropertiesPanel() {
                         onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (!file) return;
+                          if (!validateVectorFile(file)) {
+                            e.target.value = "";
+                            return;
+                          }
                           setSvg(file.name, await file.text());
                           e.target.value = "";
                         }}
@@ -187,6 +204,10 @@ export default function PropertiesPanel() {
                         onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (!file) return;
+                          if (!validateVectorFile(file)) {
+                            e.target.value = "";
+                            return;
+                          }
                           const content = await file.text();
                           e.target.value = "";
                           const { dxfToShapes } = await import("@/lib/sign/dxf");
@@ -221,7 +242,13 @@ export default function PropertiesPanel() {
                   </SelectContent>
                 </Select>
               </Field>
-              <NumberSlider label="Altura da letra" keyName="letterHeight" min={30} max={800} step={5} />
+              <NumberSlider
+                label="Altura da letra"
+                keyName="letterHeight"
+                min={30}
+                max={800}
+                step={5}
+              />
               <NumberSlider label="Espaçamento" keyName="tracking" min={-10} max={40} step={0.5} />
             </AccordionContent>
           </AccordionItem>
@@ -233,7 +260,13 @@ export default function PropertiesPanel() {
               <NumberSlider label="Parede" keyName="wall" min={0.8} max={12} step={0.1} />
               <NumberSlider label="Frente" keyName="faceThickness" min={0.6} max={60} step={0.2} />
               <NumberSlider label="Fundo" keyName="backThickness" min={0.6} max={20} step={0.2} />
-              <NumberSlider label="Folga de encaixe" keyName="clearance" min={0} max={1.5} step={0.05} />
+              <NumberSlider
+                label="Folga de encaixe"
+                keyName="clearance"
+                min={0}
+                max={1.5}
+                step={0.05}
+              />
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium text-muted-foreground">
                   Rebaixo para a frente
@@ -262,10 +295,35 @@ export default function PropertiesPanel() {
                 <Label className="text-sm font-medium text-muted-foreground">LED ativo</Label>
                 <Switch checked={params.led} onCheckedChange={(v) => setParam("led", v)} />
               </div>
-              <NumberSlider label="Largura do canal" keyName="ledChannelWidth" min={3} max={40} step={0.5} />
-              <NumberSlider label="Altura do canal" keyName="ledChannelHeight" min={2} max={30} step={0.5} />
-              <NumberSlider label="Afastamento da parede" keyName="ledOffset" min={0} max={25} step={0.5} />
-              <NumberSlider label="Potência da fita" keyName="ledPowerPerMeter" min={2} max={30} step={0.2} unit="W/m" />
+              <NumberSlider
+                label="Largura do canal"
+                keyName="ledChannelWidth"
+                min={3}
+                max={40}
+                step={0.5}
+              />
+              <NumberSlider
+                label="Altura do canal"
+                keyName="ledChannelHeight"
+                min={2}
+                max={30}
+                step={0.5}
+              />
+              <NumberSlider
+                label="Afastamento da parede"
+                keyName="ledOffset"
+                min={0}
+                max={25}
+                step={0.5}
+              />
+              <NumberSlider
+                label="Potência da fita"
+                keyName="ledPowerPerMeter"
+                min={2}
+                max={30}
+                step={0.2}
+                unit="W/m"
+              />
               <ColorField label="Cor da luz" keyName="ledColor" />
             </AccordionContent>
           </AccordionItem>
@@ -282,21 +340,57 @@ export default function PropertiesPanel() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="letras" className="text-sm">Letras soltas</SelectItem>
-                    <SelectItem value="placa" className="text-sm">Placa</SelectItem>
-                    <SelectItem value="totem" className="text-sm">Totem</SelectItem>
+                    <SelectItem value="letras" className="text-sm">
+                      Letras soltas
+                    </SelectItem>
+                    <SelectItem value="placa" className="text-sm">
+                      Placa
+                    </SelectItem>
+                    <SelectItem value="totem" className="text-sm">
+                      Totem
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </Field>
-              <NumberSlider label="Margem da placa" keyName="plateMargin" min={5} max={200} step={1} />
-              <NumberSlider label="Espessura da placa" keyName="plateThickness" min={2} max={40} step={0.5} />
-              <NumberSlider label="Altura do poste" keyName="poleHeight" min={100} max={2000} step={10} />
+              <NumberSlider
+                label="Margem da placa"
+                keyName="plateMargin"
+                min={5}
+                max={200}
+                step={1}
+              />
+              <NumberSlider
+                label="Espessura da placa"
+                keyName="plateThickness"
+                min={2}
+                max={40}
+                step={0.5}
+              />
+              <NumberSlider
+                label="Altura do poste"
+                keyName="poleHeight"
+                min={100}
+                max={2000}
+                step={10}
+              />
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium text-muted-foreground">Letras vazadas</Label>
                 <Switch checked={params.cutout} onCheckedChange={(v) => setParam("cutout", v)} />
               </div>
-              <NumberSlider label="Espessura da camada" keyName="layerThickness" min={1} max={30} step={0.5} />
-              <NumberSlider label="Redução por camada" keyName="layerShrink" min={1} max={40} step={0.5} />
+              <NumberSlider
+                label="Espessura da camada"
+                keyName="layerThickness"
+                min={1}
+                max={30}
+                step={0.5}
+              />
+              <NumberSlider
+                label="Redução por camada"
+                keyName="layerShrink"
+                min={1}
+                max={40}
+                step={0.5}
+              />
             </AccordionContent>
           </AccordionItem>
 
@@ -304,10 +398,21 @@ export default function PropertiesPanel() {
             <AccordionTrigger className="text-sm">Montagem</AccordionTrigger>
             <AccordionContent className="space-y-3 pb-4">
               <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium text-muted-foreground">Furos de fixação</Label>
-                <Switch checked={params.mountHoles} onCheckedChange={(v) => setParam("mountHoles", v)} />
+                <Label className="text-sm font-medium text-muted-foreground">
+                  Furos de fixação
+                </Label>
+                <Switch
+                  checked={params.mountHoles}
+                  onCheckedChange={(v) => setParam("mountHoles", v)}
+                />
               </div>
-              <NumberSlider label="Diâmetro do furo" keyName="holeDiameter" min={2} max={20} step={0.5} />
+              <NumberSlider
+                label="Diâmetro do furo"
+                keyName="holeDiameter"
+                min={2}
+                max={20}
+                step={0.5}
+              />
               <ColorField label="Cor da frente" keyName="faceColor" />
               <ColorField label="Cor do corpo" keyName="bodyColor" />
               <ColorField label="Cor do fundo" keyName="backColor" />
@@ -361,9 +466,10 @@ export default function PropertiesPanel() {
                 </div>
               )}
               <div className="space-y-1.5">
-
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium text-muted-foreground">Vista explodida</Label>
+                  <Label className="text-sm font-medium text-muted-foreground">
+                    Vista explodida
+                  </Label>
                   <span className="text-sm tabular-nums">{explode.toFixed(0)} mm</span>
                 </div>
                 <Slider

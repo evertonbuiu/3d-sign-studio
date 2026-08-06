@@ -2,8 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-
-const paramsSchema = z.record(z.string(), z.unknown());
+import { signParamsSchema, styleIdSchema, vectorSourceSchema } from "@/lib/sign/schema";
 
 export const listSignProjects = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -18,11 +17,13 @@ export const listSignProjects = createServerFn({ method: "GET" })
 
 export const getSignProject = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
+  .validator((input) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { data: row, error } = await context.supabase
       .from("sign_projects")
-      .select("id, name, style_id, text, params, updated_at")
+      .select(
+        "id, name, style_id, text, params, vector_name, vector_kind, vector_content, updated_at",
+      )
       .eq("id", data.id)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -31,14 +32,15 @@ export const getSignProject = createServerFn({ method: "GET" })
 
 export const saveSignProject = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) =>
+  .validator((input) =>
     z
       .object({
         id: z.string().uuid().nullable().optional(),
         name: z.string().min(1).max(120),
-        styleId: z.string().min(1),
+        styleId: styleIdSchema,
         text: z.string().max(120),
-        params: paramsSchema,
+        params: signParamsSchema,
+        vectorSource: vectorSourceSchema,
       })
       .parse(input),
   )
@@ -49,6 +51,9 @@ export const saveSignProject = createServerFn({ method: "POST" })
       style_id: data.styleId,
       text: data.text,
       params: data.params as never,
+      vector_name: data.vectorSource?.name ?? null,
+      vector_kind: data.vectorSource?.kind ?? null,
+      vector_content: data.vectorSource?.content ?? null,
     };
 
     if (data.id) {
@@ -73,7 +78,7 @@ export const saveSignProject = createServerFn({ method: "POST" })
 
 export const deleteSignProject = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
+  .validator((input) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase.from("sign_projects").delete().eq("id", data.id);
     if (error) throw new Error(error.message);

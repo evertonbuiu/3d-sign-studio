@@ -22,7 +22,7 @@ export function computeCost(build: SignBuild, params: SignParams): CostBreakdown
   const hours = params.printSpeed > 0 ? volume / params.printSpeed : 0;
 
   const materialCost = (weightG / 1000) * params.filamentPrice;
-  const energyCost = ((params.printerPower / 1000) * hours) * params.energyPrice;
+  const energyCost = (params.printerPower / 1000) * hours * params.energyPrice;
   const laborCost = hours * params.hourlyRate;
   const ledCost = params.led ? (build.ledLengthMm / 1000) * 28 : 0;
 

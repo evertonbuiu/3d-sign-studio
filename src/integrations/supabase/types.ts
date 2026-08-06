@@ -24,6 +24,9 @@ export type Database = {
           text: string
           updated_at: string
           user_id: string
+          vector_content: string | null
+          vector_kind: string | null
+          vector_name: string | null
         }
         Insert: {
           created_at?: string
@@ -34,6 +37,9 @@ export type Database = {
           text?: string
           updated_at?: string
           user_id: string
+          vector_content?: string | null
+          vector_kind?: string | null
+          vector_name?: string | null
         }
         Update: {
           created_at?: string
@@ -44,6 +50,9 @@ export type Database = {
           text?: string
           updated_at?: string
           user_id?: string
+          vector_content?: string | null
+          vector_kind?: string | null
+          vector_name?: string | null
         }
         Relationships: []
       }

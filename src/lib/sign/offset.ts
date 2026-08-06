@@ -63,7 +63,7 @@ function normalize(paths: CPath[]): CPath[] {
 
 function offsetPaths(paths: CPath[], delta: number): CPath[] {
   if (!paths.length) return [];
-  // Use a very small epsilon to ensure Clipper always creates a valid manifold polygon 
+  // Use a very small epsilon to ensure Clipper always creates a valid manifold polygon
   // even for "zero" offsets, which helps closing tiny gaps in fonts.
   const effectiveDelta = delta === 0 ? 0.001 : delta;
   const co = new ClipperLib.ClipperOffset(MITER_LIMIT, ARC_TOLERANCE);
@@ -95,7 +95,9 @@ function toVectors(path: CPath): Vector2[] {
 
 /** Converte contornos do clipper em Shapes (externos + furos aninhados). */
 function pathsToShapes(paths: CPath[]): Shape[] {
-  const valid = paths.filter((p) => p.length >= 3 && Math.abs(ClipperLib.Clipper.Area(p)) > SCALE * SCALE * 0.01);
+  const valid = paths.filter(
+    (p) => p.length >= 3 && Math.abs(ClipperLib.Clipper.Area(p)) > SCALE * SCALE * 0.01,
+  );
   if (!valid.length) return [];
 
   const outers = valid.filter((p) => ClipperLib.Clipper.Orientation(p));

@@ -106,11 +106,7 @@ export const DEFAULT_PARAMS: SignParams = {
 };
 
 export type StyleGroup =
-  | "Acrílico & Impresso"
-  | "Iluminação"
-  | "Letras"
-  | "Placas & Totem"
-  | "Logotipo";
+  "Acrílico & Impresso" | "Iluminação" | "Letras" | "Placas & Totem" | "Logotipo";
 
 export interface SignStyle {
   id: string;
@@ -131,13 +127,7 @@ export interface SignStyle {
   };
 }
 
-const boxParts: PartKind[] = [
-  "fundo",
-  "laterais",
-  "frente",
-  "canal-led",
-  "furos",
-];
+const boxParts: PartKind[] = ["fundo", "laterais", "frente", "canal-led", "furos"];
 
 export const STYLES: SignStyle[] = [
   {
@@ -208,7 +198,7 @@ export const STYLES: SignStyle[] = [
     name: "Halo Light",
     group: "Iluminação",
     description: "Letra opaca com halo de luz projetado na parede.",
-    parts: boxParts,
+    parts: ["laterais", "frente", "canal-led", "furos"],
     preset: { led: true, depth: 45, faceThickness: 4, ledOffset: 6 },
     thumb: { face: "#7b8798", body: "#2f3742", glow: "halo" },
   },
@@ -217,7 +207,7 @@ export const STYLES: SignStyle[] = [
     name: "Back Light",
     group: "Iluminação",
     description: "Iluminação traseira com fundo aberto.",
-    parts: boxParts,
+    parts: ["laterais", "frente", "canal-led", "furos"],
     preset: { led: true, depth: 50, backThickness: 2 },
     thumb: { face: "#6f7c8f", body: "#2f3742", glow: "back" },
   },
@@ -235,7 +225,7 @@ export const STYLES: SignStyle[] = [
     name: "Front + Back Light",
     group: "Iluminação",
     description: "Luz na frente e halo traseiro simultâneos.",
-    parts: boxParts,
+    parts: ["laterais", "frente", "canal-led", "furos"],
     preset: { led: true, depth: 60, ledChannelWidth: 16 },
     thumb: { face: "#ffe9ad", body: "#333c48", glow: "both" },
   },
