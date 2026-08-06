@@ -141,6 +141,9 @@ export default function PropertiesPanel() {
     setSvg,
     setDxf,
     clearSvg,
+    availableFonts,
+    installedFontPackages,
+    installFontPackage,
   } = useEditor();
 
   return (
