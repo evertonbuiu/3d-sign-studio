@@ -149,6 +149,13 @@ export function useEditorState(): EditorState {
     setSvg: (name, content) => setSvgState({ name, content, kind: "svg" }),
     setDxf: (name, content) => setSvgState({ name, content, kind: "dxf" }),
     clearSvg: () => setSvgState(null),
+    weldedEdges,
+    weldSelectedEdges: (edges, totalLength, name) =>
+      setWeldedEdges((prev) => [
+        ...prev,
+        { id: Math.random().toString(36).slice(2), name, totalLength, edges },
+      ]),
+    clearWelds: () => setWeldedEdges([]),
     setWireframe,
     setShowOutlines,
     projectId,
