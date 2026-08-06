@@ -6,6 +6,7 @@ import { svgToShapes } from "@/lib/sign/svg";
 import { dxfToShapes } from "@/lib/sign/dxf";
 import { buildSign, type SignBuild } from "@/lib/sign/build";
 import { computeCost, type CostBreakdown } from "@/lib/sign/cost";
+import { paramsForPrinter } from "@/lib/sign/printers";
 import {
   DEFAULT_PARAMS,
   getStyle,
@@ -38,6 +39,7 @@ export interface EditorState {
   projectName: string;
   setParam: <K extends keyof SignParams>(key: K, value: SignParams[K]) => void;
   setParams: (patch: Partial<SignParams>) => void;
+  selectPrinter: (id: string) => void;
   selectStyle: (id: string) => void;
   setExplode: (value: number) => void;
   setWireframe: (value: boolean) => void;
@@ -166,6 +168,7 @@ export function useEditorState(): EditorState {
     projectName,
     setParam: (key, value) => setParamsState((prev) => ({ ...prev, [key]: value })),
     setParams: (patch) => setParamsState((prev) => ({ ...prev, ...patch })),
+    selectPrinter: (id) => setParamsState((prev) => paramsForPrinter(id, prev)),
     selectStyle: (id) => {
       setStyleId(id);
       setParamsState((prev) => paramsForStyle(getStyle(id), prev));
@@ -195,4 +198,3 @@ export function useEditorState(): EditorState {
 }
 
 export const EditorProvider = EditorContext.Provider;
-
