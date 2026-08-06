@@ -23,6 +23,7 @@ import type { SignParams } from "@/lib/sign/model";
 import { useEditor } from "./store";
 
 const MAX_VECTOR_FILE_BYTES = 2_000_000;
+const MAX_FONT_FILE_BYTES = 5_000_000;
 
 function validateVectorFile(file: File): boolean {
   if (file.size <= MAX_VECTOR_FILE_BYTES) return true;
@@ -132,6 +133,9 @@ export default function PropertiesPanel() {
     setSvg,
     setDxf,
     clearSvg,
+    customFontName,
+    setCustomFont,
+    clearCustomFont,
   } = useEditor();
 
   return (
@@ -227,13 +231,22 @@ export default function PropertiesPanel() {
 
               <Field label="Fonte">
                 <Select
-                  value={params.fontId}
-                  onValueChange={(v) => setParam("fontId", v as FontId)}
+                  value={customFontName ? "__custom__" : params.fontId}
+                  onValueChange={(v) => {
+                    if (v === "__custom__") return;
+                    clearCustomFont();
+                    setParam("fontId", v as FontId);
+                  }}
                 >
                   <SelectTrigger className="h-9 bg-card text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    {customFontName ? (
+                      <SelectItem value="__custom__" className="text-sm">
+                        {customFontName} (local)
+                      </SelectItem>
+                    ) : null}
                     {FONTS.map((f) => (
                       <SelectItem key={f.id} value={f.id} className="text-sm">
                         {f.label}
@@ -241,6 +254,48 @@ export default function PropertiesPanel() {
                     ))}
                   </SelectContent>
                 </Select>
+                <label className="mt-2 flex h-9 cursor-pointer items-center justify-center gap-2 rounded border border-dashed border-border bg-card px-2 text-sm text-muted-foreground hover:border-primary hover:text-foreground">
+                  <Upload className="h-4 w-4" />
+                  Importar fonte local (.ttf / .otf)
+                  <input
+                    type="file"
+                    accept=".ttf,.otf,font/ttf,font/otf"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      e.target.value = "";
+                      if (!file) return;
+                      if (file.size > MAX_FONT_FILE_BYTES) {
+                        toast.error("A fonte deve ter no máximo 5 MB.");
+                        return;
+                      }
+                      if (!/\.(ttf|otf)$/i.test(file.name)) {
+                        toast.error("Selecione uma fonte TTF ou OTF válida.");
+                        return;
+                      }
+                      try {
+                        setCustomFont(
+                          file.name.replace(/\.(ttf|otf)$/i, ""),
+                          await file.arrayBuffer(),
+                        );
+                        toast.success(`Fonte ${file.name} carregada localmente.`);
+                      } catch {
+                        toast.error(
+                          "Não foi possível ler essa fonte. Verifique se o arquivo TTF/OTF é válido.",
+                        );
+                      }
+                    }}
+                  />
+                </label>
+                {customFontName ? (
+                  <button
+                    type="button"
+                    onClick={clearCustomFont}
+                    className="mt-2 w-full text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Remover fonte local
+                  </button>
+                ) : null}
               </Field>
               <NumberSlider
                 label="Altura da letra"
