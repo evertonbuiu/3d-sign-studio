@@ -47,7 +47,7 @@ export interface SignBuild {
 const EXTRUDE = { bevelEnabled: false, curveSegments: 24, steps: 1 };
 
 function extrude(shape: Shape | Shape[], depth: number): ExtrudeGeometry {
-  return new ExtrudeGeometry(shape, { ...EXTRUDE, depth: Math.max(depth, 0.5) });
+  return new ExtrudeGeometry(shape, { ...EXTRUDE, depth: Math.max(depth, 0.2) });
 }
 
 function cleanContour(points: Vector2[]): Vector2[] {
@@ -204,6 +204,7 @@ function backFlangeRingGeometry(
   bodyHeight: number,
   backHeight: number,
   faceHeight: number,
+  flangeThickness: number,
 ): BufferGeometry | null {
   if (thick.holes.length !== frontLip.holes.length || thick.holes.length !== flange.holes.length) {
     return null;
@@ -241,7 +242,10 @@ function backFlangeRingGeometry(
   };
 
   const flangeStart = backHeight;
-  const flangeEnd = Math.min(backHeight + Math.max(backHeight, 1.2), backHeight + bodyHeight / 2);
+  const flangeEnd = Math.min(
+    backHeight + Math.max(flangeThickness, 0.2),
+    backHeight + bodyHeight / 2,
+  );
   const frontStart = backHeight + bodyHeight;
   const totalHeight = frontStart + faceHeight;
   cap(outer, thickHoles, 0, true);
@@ -543,7 +547,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
   }
 
   // rebaixo (degrau) na parede interna para assentar a frente
-  const recessLip = Math.max(params.recessLip, 0.5);
+  const recessLip = Math.min(Math.max(params.recessLip, 0.4), Math.max(params.wall - 0.4, 0.4));
   const recessOn =
     doubleAcrylicRecess ||
     acrylicBackFlange ||
@@ -560,7 +564,9 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
       if (recessOn) {
         const lowerRings = ringShape(shape, params.wall);
         const upperRings = ringShape(shape, recessLip);
-        const flangeRings = acrylicBackFlange ? ringShape(shape, params.wall + recessLip) : [];
+        const flangeRings = acrylicBackFlange
+          ? ringShape(shape, params.wall + params.backFlangeWidth)
+          : [];
         if (
           lowerRings.length === upperRings.length &&
           (!acrylicBackFlange || lowerRings.length === flangeRings.length)
@@ -574,6 +580,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
                   bodyHeight,
                   params.backThickness,
                   params.faceThickness,
+                  params.backFlangeThickness,
                 )
               : doubleAcrylicRecess
                 ? doubleRecessRingGeometry(

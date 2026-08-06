@@ -155,14 +155,22 @@ test("frente e fundo acrilicos ficam separados com rebaixo duplo", () => {
   front.geometry.computeBoundingBox();
   assert.equal(walls.geometry.boundingBox?.min.z, 0);
   assert.equal(walls.geometry.boundingBox?.max.z, params.depth);
-  assert.equal(back.geometry.boundingBox?.max.z, params.backThickness);
+  assert.ok(Math.abs((back.geometry.boundingBox?.max.z ?? 0) - params.backThickness) < 1e-5);
   assert.equal(front.geometry.boundingBox?.min.z, params.depth - params.faceThickness);
 });
 
 test("novo estilo usa fundo acrilico apoiado por aba interna", () => {
   const style = getStyle("fundo-acrilico-frente-acrilica-aba");
   assert.equal(style.name, "Fundo Acrílico + Frente Acrílica com Aba");
-  const params = { ...DEFAULT_PARAMS, ...style.preset, text: "G", mountHoles: false };
+  const params = {
+    ...DEFAULT_PARAMS,
+    ...style.preset,
+    text: "G",
+    mountHoles: false,
+    backThickness: 1.4,
+    backFlangeWidth: 5,
+    backFlangeThickness: 4,
+  };
   const build = buildSign(glyphShapes(archivo, "G", params.letterHeight), params, style);
   const back = build.parts.find((part) => part.kind === "fundo");
   const walls = build.parts.find((part) => part.kind === "laterais");
@@ -173,8 +181,15 @@ test("novo estilo usa fundo acrilico apoiado por aba interna", () => {
     nonManifold: 0,
     components: 1,
   });
+  const wallPositions = walls.geometry.getAttribute("position");
+  const flangeEnd = params.backThickness + params.backFlangeThickness;
+  assert.ok(
+    Array.from({ length: wallPositions.count }, (_, index) => wallPositions.getZ(index)).some(
+      (z) => Math.abs(z - flangeEnd) < 1e-5,
+    ),
+  );
   back.geometry.computeBoundingBox();
   front.geometry.computeBoundingBox();
-  assert.equal(back.geometry.boundingBox?.max.z, params.backThickness);
+  assert.ok(Math.abs((back.geometry.boundingBox?.max.z ?? 0) - params.backThickness) < 1e-5);
   assert.equal(front.geometry.boundingBox?.min.z, params.depth - params.faceThickness);
 });
