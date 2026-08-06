@@ -364,7 +364,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
 
   const bodyHeight = Math.max(
     params.depth - params.backThickness - params.faceThickness,
-    params.wall,
+    0.5,
   );
 
   // ---------- fundo ----------
