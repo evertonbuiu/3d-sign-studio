@@ -1,4 +1,3 @@
-
 import {
   BufferGeometry,
   Float32BufferAttribute,
@@ -582,6 +581,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
   const active = new Set<PartKind>(style.parts);
   const neonFlexOpenCup = style.id === "neon-flex-fundo-impresso";
   const unifiedPrintedCup = style.id === "fundo-impresso-frente-acrilica" || neonFlexOpenCup;
+  const solidAcrylicFace = style.id === "fundo-impresso-frente-acrilica";
   const printedFrontRearInsert = style.id === "fundo-impresso-frente-impressa-aba";
   const unifiedPrintedFace =
     style.id === "fundo-acrilico-frente-impressa" || printedFrontRearInsert;
@@ -877,13 +877,15 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
   if (active.has("frente") && !unifiedPrintedFace) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
+      const faceShape = cloneShape(shape);
+      if (solidAcrylicFace) faceShape.holes = [];
       if (faceInset > 0) {
-        for (const inner of insetShape(shape, faceInset)) {
+        for (const inner of insetShape(faceShape, faceInset)) {
           geos.push(extrude(inner, params.faceThickness));
         }
         continue;
       }
-      geos.push(extrude(cloneShape(shape), params.faceThickness));
+      geos.push(extrude(faceShape, params.faceThickness));
     }
 
     const geo = combine(geos);
@@ -1083,4 +1085,3 @@ export function buildBoundingBox(parts: SignPart[]): Box3 {
 function contourPoints(shape: Shape): Array<[number, number]> {
   return shapePoints(shape).map((p) => [p.x, p.y] as [number, number]);
 }
-
