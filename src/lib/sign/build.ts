@@ -1,3 +1,4 @@
+
 import {
   BufferGeometry,
   Float32BufferAttribute,
@@ -86,6 +87,9 @@ function steppedRingGeometry(
   faceHeight: number,
   backThickness = 0,
   throughHoles: Vector2[][] = [],
+  frontFaceHoles: Vector2[][] | null = null,
+  skipFrontCap = false,
+  backShelfHoles: Vector2[][] | null = null,
 ): BufferGeometry | null {
   if (lower.holes.length !== upper.holes.length) return null;
 
@@ -123,16 +127,22 @@ function steppedRingGeometry(
 
   const stepZ = backThickness + bodyHeight;
   const topZ = stepZ + faceHeight;
-  cap(outer, backThickness > 0 ? throughHoles : lowerHoles, 0, true);
-  wallStrip(outer, 0, topZ);
+  if (!skipFrontCap) {
+    cap(outer, frontFaceHoles ?? (backThickness > 0 ? throughHoles : lowerHoles), 0, true);
+  }
+  wallStrip(outer, skipFrontCap ? backThickness : 0, topZ);
   lowerHoles.forEach((hole) => {
-    if (backThickness > 0) {
-      const holes = throughHoles.filter((candidate) => pointInPolygon(candidate[0]!, hole));
+    if (backThickness > 0 && !skipFrontCap) {
+      const holes = (backShelfHoles ?? throughHoles).filter((candidate) =>
+        pointInPolygon(candidate[0]!, hole),
+      );
       cap(hole, holes, backThickness);
     }
-    wallStrip(hole, backThickness, stepZ, true);
+    wallStrip(hole, skipFrontCap ? 0 : backThickness, stepZ, true);
   });
-  for (const hole of throughHoles) wallStrip(hole, 0, backThickness, true);
+  if (!skipFrontCap) {
+    for (const hole of throughHoles) wallStrip(hole, 0, backThickness, true);
+  }
   if (faceHeight > 0) {
     upperHoles.forEach((hole) => wallStrip(hole, stepZ, topZ, true));
     for (let i = 0; i < lowerHoles.length; i++) {
@@ -738,6 +748,17 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
           lowerRings.length === upperRings.length &&
           (!acrylicBackFlange || lowerRings.length === flangeRings.length)
         ) {
+          const outerRingIndex = lowerRings.reduce((largest, ring, index) => {
+            const area = Math.abs(ShapeUtils.area(cleanContour(ring.getPoints(24))));
+            const largestArea = Math.abs(
+              ShapeUtils.area(cleanContour(lowerRings[largest]!.getPoints(24))),
+            );
+            return area > largestArea ? index : largest;
+          }, 0);
+          const printedFaceHoles = shape.holes.map((hole) => cleanContour(hole.getPoints(24)));
+          const printedBackShelfHoles = lowerRings
+            .filter((_, index) => index !== outerRingIndex)
+            .map((ring) => cleanContour(ring.getPoints(24)));
           for (let i = 0; i < lowerRings.length; i++) {
             const wall = acrylicBackFlange
               ? backFlangeRingGeometry(
@@ -778,6 +799,9 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
                             circle(point.x, point.y, params.holeDiameter / 2).getPoints(24),
                           )
                       : [],
+                    unifiedPrintedFace && i === outerRingIndex ? printedFaceHoles : null,
+                    unifiedPrintedFace && i !== outerRingIndex,
+                    unifiedPrintedFace && i === outerRingIndex ? printedBackShelfHoles : null,
                   );
             if (wall) {
               if (unifiedPrintedFace) {
@@ -1059,3 +1083,4 @@ export function buildBoundingBox(parts: SignPart[]): Box3 {
 function contourPoints(shape: Shape): Array<[number, number]> {
   return shapePoints(shape).map((p) => [p.x, p.y] as [number, number]);
 }
+
