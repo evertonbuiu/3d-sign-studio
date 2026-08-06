@@ -69,7 +69,7 @@ export const DEFAULT_PARAMS: SignParams = {
   letterHeight: 200,
   tracking: 4,
   depth: 60,
-  wall: 2.4,
+  wall: 0.5,
   faceThickness: 0.5,
   backThickness: 0.5,
   clearance: 0.5,
