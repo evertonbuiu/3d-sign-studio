@@ -230,6 +230,11 @@ function Model({
           selected.map((edge) => <EdgeHighlight key={edge.key} edge={edge} color="#f97316" />)}
         {showOutlines &&
           build.outlines.map((outline) => <OutlineLine key={outline.id} outline={outline} />)}
+        {useEditor()
+          .weldedEdges.flatMap((w) => w.edges)
+          .map((edge, i) => (
+            <EdgeHighlight key={`weld-${i}`} edge={edge} color="#22c55e" />
+          ))}
       </group>
     </group>
   );
