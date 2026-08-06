@@ -256,7 +256,7 @@ export default function PropertiesPanel() {
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm" className="h-9 w-full gap-1.5 text-xs">
                     <Package className="h-3.5 w-3.5" />
-                    Instalar pacotes de fontes
+                    Instalar fonte viola
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-lg">
