@@ -137,15 +137,6 @@ const boxParts: PartKind[] = ["fundo", "laterais", "frente", "canal-led", "furos
 
 export const STYLES: SignStyle[] = [
   {
-    id: "fundo-impresso-tampa-acrilica",
-    name: "Fundo Impresso + Tampa Acrílica",
-    group: "Acrílico & Impresso",
-    description: "Caixa impressa em 3D com tampa de acrílico sobreposta.",
-    parts: boxParts,
-    preset: { depth: 55, faceThickness: 3, led: true },
-    thumb: { face: "#dbe7f5", body: "#3f4a5a", glow: "front" },
-  },
-  {
     id: "fundo-impresso-frente-acrilica",
     name: "Fundo Impresso + Frente Acrílica",
     group: "Acrílico & Impresso",
@@ -171,11 +162,15 @@ export const STYLES: SignStyle[] = [
     parts: boxParts,
     preset: {
       depth: 45,
+      wall: 2.4,
       backThickness: 3,
       faceThickness: 3,
+      clearance: 0.3,
       faceRecess: true,
+      recessLip: 1.2,
       backFlangeWidth: 4,
       backFlangeThickness: 2.4,
+      led: true,
     },
     thumb: { face: "#dceafb", body: "#526176", glow: "both" },
   },
@@ -226,24 +221,6 @@ export const STYLES: SignStyle[] = [
       mountHoles: false,
     },
     thumb: { face: "#ff4fd8", body: "#252836", glow: "front", outline: true },
-  },
-  {
-    id: "frente-petg",
-    name: "Frente PETG",
-    group: "Acrílico & Impresso",
-    description: "Frente em PETG translúcido impressa em camadas finas.",
-    parts: boxParts,
-    preset: { depth: 48, faceThickness: 1.2 },
-    thumb: { face: "#dff1ea", body: "#3f4a5a", glow: "front" },
-  },
-  {
-    id: "frente-acrilico-leitoso",
-    name: "Frente Acrílico Leitoso",
-    group: "Acrílico & Impresso",
-    description: "Difusão suave e uniforme com acrílico leitoso.",
-    parts: boxParts,
-    preset: { depth: 52, ledColor: "#fff6e0" },
-    thumb: { face: "#f6f8fb", body: "#3f4a5a", glow: "front" },
   },
   {
     id: "face-lit",
@@ -464,4 +441,3 @@ export function getStyle(id: string): SignStyle {
 export function paramsForStyle(style: SignStyle, base: SignParams = DEFAULT_PARAMS): SignParams {
   return { ...base, ...style.preset };
 }
-
