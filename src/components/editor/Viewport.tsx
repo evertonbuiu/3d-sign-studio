@@ -246,6 +246,7 @@ export default function Viewport() {
     setWireframe,
     showOutlines,
     setShowOutlines,
+    weldSelectedEdges,
   } = useEditor();
 
   const [edgeSelect, setEdgeSelect] = useState(false);
