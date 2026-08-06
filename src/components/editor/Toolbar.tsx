@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 
-const isSupabaseConfigured = Boolean(import.meta.env.VITE_SUPABASE_URL);
+const isSupabaseConfigured = Boolean(import.meta.env["VITE_SUPABASE_URL"]);
 import { geometriesToStl, downloadBlob, slugify } from "@/lib/sign/stl";
 import {
   deleteSignProject,
