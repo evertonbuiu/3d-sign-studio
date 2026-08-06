@@ -386,6 +386,30 @@ export default function Viewport() {
             onValueChange={([v]) => setExplode(v ?? 0)}
           />
         </div>
+
+        {useEditor().weldedEdges.length > 0 && (
+          <div className="space-y-1.5 pt-2 border-t border-border">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">Soldas ({useEditor().weldedEdges.length})</Label>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={() => useEditor().clearWelds()}
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </div>
+            <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
+              {useEditor().weldedEdges.map((w) => (
+                <div key={w.id} className="flex items-center justify-between text-[11px] bg-background/40 px-2 py-1 rounded">
+                  <span className="truncate flex-1">{w.name}</span>
+                  <span className="tabular-nums font-medium ml-2">{w.totalLength.toFixed(1)} mm</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {!ready && !loadError && (
