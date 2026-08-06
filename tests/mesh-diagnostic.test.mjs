@@ -1,4 +1,3 @@
-
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
@@ -6,7 +5,7 @@ import opentype from "opentype.js";
 import { Box2, ShapePath, Vector2 } from "three";
 
 import { buildSign } from "../src/lib/sign/build.ts";
-import { DEFAULT_PARAMS, getStyle } from "../src/lib/sign/model.ts";
+import { DEFAULT_PARAMS, STYLES, getStyle, paramsForStyle } from "../src/lib/sign/model.ts";
 
 function glyphShapes(font, text, height) {
   const capUnits = font.tables?.os2?.sCapHeight || font.unitsPerEm * 0.7;
@@ -371,3 +370,51 @@ test("novo estilo usa fundo acrilico apoiado por aba interna", () => {
   assert.equal(front.geometry.boundingBox?.min.z, params.depth - params.faceThickness);
 });
 
+test("estilo acrilico com aba tem preset completo e estilos removidos nao retornam", () => {
+  const removed = new Set([
+    "fundo-impresso-tampa-acrilica",
+    "frente-petg",
+    "frente-acrilico-leitoso",
+  ]);
+  assert.equal(
+    STYLES.some((style) => removed.has(style.id)),
+    false,
+  );
+
+  const style = getStyle("fundo-acrilico-frente-acrilica-aba");
+  const contaminatedBase = {
+    ...DEFAULT_PARAMS,
+    wall: 9,
+    clearance: 1.4,
+    recessLip: 0.4,
+    faceRecess: false,
+    led: false,
+  };
+  const params = paramsForStyle(style, contaminatedBase);
+  assert.deepEqual(
+    {
+      depth: params.depth,
+      wall: params.wall,
+      backThickness: params.backThickness,
+      faceThickness: params.faceThickness,
+      clearance: params.clearance,
+      faceRecess: params.faceRecess,
+      recessLip: params.recessLip,
+      backFlangeWidth: params.backFlangeWidth,
+      backFlangeThickness: params.backFlangeThickness,
+      led: params.led,
+    },
+    {
+      depth: 45,
+      wall: 2.4,
+      backThickness: 3,
+      faceThickness: 3,
+      clearance: 0.3,
+      faceRecess: true,
+      recessLip: 1.2,
+      backFlangeWidth: 4,
+      backFlangeThickness: 2.4,
+      led: true,
+    },
+  );
+});
