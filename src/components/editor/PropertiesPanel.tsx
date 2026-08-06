@@ -280,7 +280,7 @@ export default function PropertiesPanel() {
                 <NumberSlider
                   label="Aba do rebaixo"
                   keyName="recessLip"
-                  min={0.4}
+                  min={0.5}
                   max={Math.max(params.wall - 0.4, 0.6)}
                   step={0.1}
                 />
