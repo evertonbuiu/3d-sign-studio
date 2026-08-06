@@ -47,7 +47,7 @@ export interface SignBuild {
 const EXTRUDE = { bevelEnabled: false, curveSegments: 24, steps: 1 };
 
 function extrude(shape: Shape | Shape[], depth: number): ExtrudeGeometry {
-  return new ExtrudeGeometry(shape, { ...EXTRUDE, depth: Math.max(depth, 0.5) });
+  return new ExtrudeGeometry(shape, { ...EXTRUDE, depth: Math.max(depth, 0.2) });
 }
 
 function cleanContour(points: Vector2[]): Vector2[] {
@@ -285,6 +285,7 @@ function makePart(
 export function buildSign(letterShapes: Shape[], params: SignParams, style: SignStyle): SignBuild {
   const active = new Set<PartKind>(style.parts);
   const unifiedPrintedCup = style.id === "fundo-impresso-frente-acrilica";
+  const unifiedPrintedFace = style.id === "fundo-acrilico-frente-impressa";
   const parts: SignPart[] = [];
 
   const rawBounds = shapesBounds(letterShapes);
@@ -363,7 +364,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
 
   const bodyHeight = Math.max(
     params.depth - params.backThickness - params.faceThickness,
-    0.5,
+    params.wall,
   );
 
   // ---------- fundo ----------
@@ -392,7 +393,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
   }
 
   // rebaixo (degrau) na parede interna para assentar a frente
-  const recessLip = Math.min(Math.max(params.recessLip, 0.5), Math.max(params.wall - 0.5, 0.5));
+  const recessLip = Math.min(Math.max(params.recessLip, 0.4), Math.max(params.wall - 0.4, 0.4));
   const recessOn =
     params.faceRecess && active.has("frente") && active.has("laterais") && recessLip < params.wall;
   const faceInset = recessOn ? recessLip + params.clearance : 0;
@@ -410,15 +411,25 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
               lowerRings[i]!,
               upperRings[i]!,
               bodyHeight,
-              params.faceThickness,
-              unifiedPrintedCup ? params.backThickness : 0,
+              unifiedPrintedFace ? params.backThickness : params.faceThickness,
+              unifiedPrintedCup
+                ? params.backThickness
+                : unifiedPrintedFace
+                  ? params.faceThickness
+                  : 0,
               unifiedPrintedCup && params.mountHoles
                 ? letterHolePoints
                     .filter((point) => pointInPolygon(point, lowerRings[i]!.getPoints(24)))
                     .map((point) => circle(point.x, point.y, params.holeDiameter / 2).getPoints(24))
                 : [],
             );
-            if (wall) geos.push(wall);
+            if (wall) {
+              if (unifiedPrintedFace) {
+                wall.scale(1, 1, -1);
+                wall.translate(0, 0, params.depth);
+              }
+              geos.push(wall);
+            }
           }
           continue;
         }
@@ -431,13 +442,23 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
       geo.translate(
         0,
         0,
-        unifiedPrintedCup ? baseZ : baseZ + (active.has("fundo") ? params.backThickness : 0),
+        unifiedPrintedCup || unifiedPrintedFace
+          ? baseZ
+          : baseZ + (active.has("fundo") ? params.backThickness : 0),
       );
       parts.push(
         makePart(
-          unifiedPrintedCup ? "fundo-laterais" : "laterais",
+          unifiedPrintedCup
+            ? "fundo-laterais"
+            : unifiedPrintedFace
+              ? "frente-laterais"
+              : "laterais",
           "laterais",
-          unifiedPrintedCup ? "Fundo + laterais (peça única)" : "Laterais",
+          unifiedPrintedCup
+            ? "Fundo + laterais (peça única)"
+            : unifiedPrintedFace
+              ? "Frente + laterais (peça única)"
+              : "Laterais",
           params.bodyColor,
           geo,
           { count: shapes.length },
@@ -472,7 +493,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
   }
 
   // ---------- frente ----------
-  if (active.has("frente")) {
+  if (active.has("frente") && !unifiedPrintedFace) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
       if (faceInset > 0) {
@@ -491,7 +512,6 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
       geo.translate(0, 0, Math.max(z, baseZ));
       parts.push(
         makePart("frente", "frente", "Frente", params.faceColor, geo, {
-          opacity: 0.9,
           emissive:
             params.led &&
             (style.thumb.glow === "front" ||

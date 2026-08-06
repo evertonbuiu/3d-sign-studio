@@ -28,9 +28,6 @@ export interface EditorState {
   svgName: string | null;
   vectorKind: "svg" | "dxf" | null;
   vectorSource: { name: string; content: string; kind: "svg" | "dxf" } | null;
-  weldedEdges: Array<{ id: string; name: string; totalLength: number; edges: any[] }>;
-  weldSelectedEdges: (edges: any[], totalLength: number, name: string) => void;
-  clearWelds: () => void;
   setSvg: (name: string, content: string) => void;
   setDxf: (name: string, content: string) => void;
   clearSvg: () => void;
@@ -79,8 +76,6 @@ export function useEditorState(): EditorState {
   } | null>(null);
   const [projectId, setProjectId] = useState<string | null>(null);
   const [projectName, setProjectName] = useState("Novo projeto");
-
-  const [weldedEdges, setWeldedEdges] = useState<any[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -149,13 +144,6 @@ export function useEditorState(): EditorState {
     setSvg: (name, content) => setSvgState({ name, content, kind: "svg" }),
     setDxf: (name, content) => setSvgState({ name, content, kind: "dxf" }),
     clearSvg: () => setSvgState(null),
-    weldedEdges,
-    weldSelectedEdges: (edges, totalLength, name) =>
-      setWeldedEdges((prev) => [
-        ...prev,
-        { id: Math.random().toString(36).slice(2), name, totalLength, edges },
-      ]),
-    clearWelds: () => setWeldedEdges([]),
     setWireframe,
     setShowOutlines,
     projectId,
