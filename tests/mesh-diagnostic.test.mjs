@@ -81,12 +81,16 @@ test("a letra G gera componentes fechados e manifold", () => {
 
 test("fundo impresso e laterais formam uma unica peca", () => {
   const style = getStyle("fundo-impresso-frente-acrilica");
-  const params = { ...DEFAULT_PARAMS, ...style.preset, text: "G", mountHoles: false };
+  const params = { ...DEFAULT_PARAMS, ...style.preset, text: "G", mountHoles: true };
   const build = buildSign(glyphShapes(archivo, "G", params.letterHeight), params, style);
   const body = build.parts.filter((part) =>
     ["fundo", "laterais", "fundo-laterais"].includes(part.id),
   );
   assert.equal(body.length, 1);
   assert.equal(body[0]?.id, "fundo-laterais");
-  assert.equal(topology(body[0].geometry).components, 1);
+  assert.deepEqual(topology(body[0].geometry), {
+    boundary: 0,
+    nonManifold: 0,
+    components: 1,
+  });
 });
