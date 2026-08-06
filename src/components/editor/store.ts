@@ -1,11 +1,7 @@
 import { createContext, useContext, useDeferredValue, useEffect, useMemo, useState } from "react";
 import type { Font } from "opentype.js";
 
-import { getAvailableFonts, loadFont, textToShapes } from "@/lib/sign/fonts";
-import {
-  getInstalledFontPackageIds,
-  setInstalledFontPackageIds,
-} from "@/lib/sign/googleFonts";
+import { loadFont, textToShapes } from "@/lib/sign/fonts";
 import { svgToShapes } from "@/lib/sign/svg";
 import { dxfToShapes } from "@/lib/sign/dxf";
 import { buildSign, type SignBuild } from "@/lib/sign/build";
@@ -17,7 +13,6 @@ import {
   type SignParams,
   type SignStyle,
 } from "@/lib/sign/model";
-import type { FontEntry } from "@/lib/sign/fonts";
 
 export interface EditorState {
   params: SignParams;
@@ -33,8 +28,6 @@ export interface EditorState {
   svgName: string | null;
   vectorKind: "svg" | "dxf" | null;
   vectorSource: { name: string; content: string; kind: "svg" | "dxf" } | null;
-  availableFonts: FontEntry[];
-  installedFontPackages: string[];
   setSvg: (name: string, content: string) => void;
   setDxf: (name: string, content: string) => void;
   clearSvg: () => void;
@@ -47,8 +40,6 @@ export interface EditorState {
   setWireframe: (value: boolean) => void;
   setShowOutlines: (value: boolean) => void;
   togglePart: (id: string) => void;
-  installFontPackage: (id: string) => void;
-  uninstallFontPackage: (id: string) => void;
   loadProject: (p: {
     id: string;
     name: string;
@@ -85,9 +76,6 @@ export function useEditorState(): EditorState {
   } | null>(null);
   const [projectId, setProjectId] = useState<string | null>(null);
   const [projectName, setProjectName] = useState("Novo projeto");
-  const [installedFontPackages, setInstalledFontPackages] = useState<string[]>(() =>
-    getInstalledFontPackageIds(),
-  );
 
   useEffect(() => {
     let cancelled = false;
@@ -111,10 +99,6 @@ export function useEditorState(): EditorState {
 
   const style = useMemo(() => getStyle(styleId), [styleId]);
   const deferredParams = useDeferredValue(params);
-  const availableFonts = useMemo(
-    () => getAvailableFonts(installedFontPackages),
-    [installedFontPackages],
-  );
 
   const build = useMemo(() => {
     try {
@@ -157,8 +141,6 @@ export function useEditorState(): EditorState {
     svgName: svg?.name ?? null,
     vectorKind: svg?.kind ?? null,
     vectorSource: svg,
-    availableFonts,
-    installedFontPackages,
     setSvg: (name, content) => setSvgState({ name, content, kind: "svg" }),
     setDxf: (name, content) => setSvgState({ name, content, kind: "dxf" }),
     clearSvg: () => setSvgState(null),
@@ -179,18 +161,6 @@ export function useEditorState(): EditorState {
         const next = new Set(prev);
         if (next.has(id)) next.delete(id);
         else next.add(id);
-        return next;
-      }),
-    installFontPackage: (id) =>
-      setInstalledFontPackages((prev) => {
-        const next = prev.includes(id) ? prev : [...prev, id];
-        setInstalledFontPackageIds(next);
-        return next;
-      }),
-    uninstallFontPackage: (id) =>
-      setInstalledFontPackages((prev) => {
-        const next = prev.filter((p) => p !== id);
-        setInstalledFontPackageIds(next);
         return next;
       }),
     loadProject: (p) => {

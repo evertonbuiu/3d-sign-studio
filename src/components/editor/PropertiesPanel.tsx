@@ -1,11 +1,10 @@
 import { toast } from "sonner";
-import { Eye, EyeOff, Package, Upload, X } from "lucide-react";
+import { Eye, EyeOff, Upload, X } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -19,15 +18,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { GOOGLE_FONT_PACKAGES } from "@/lib/sign/googleFonts";
+import { FONTS, type FontId } from "@/lib/sign/fonts";
 import type { SignParams } from "@/lib/sign/model";
 import { useEditor } from "./store";
 
@@ -141,9 +132,6 @@ export default function PropertiesPanel() {
     setSvg,
     setDxf,
     clearSvg,
-    availableFonts,
-    installedFontPackages,
-    installFontPackage,
   } = useEditor();
 
   return (
@@ -238,12 +226,15 @@ export default function PropertiesPanel() {
               </Field>
 
               <Field label="Fonte">
-                <Select value={params.fontId} onValueChange={(v) => setParam("fontId", v)}>
+                <Select
+                  value={params.fontId}
+                  onValueChange={(v) => setParam("fontId", v as FontId)}
+                >
                   <SelectTrigger className="h-9 bg-card text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableFonts.map((f) => (
+                    {FONTS.map((f) => (
                       <SelectItem key={f.id} value={f.id} className="text-sm">
                         {f.label}
                       </SelectItem>
@@ -251,51 +242,6 @@ export default function PropertiesPanel() {
                   </SelectContent>
                 </Select>
               </Field>
-
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-9 w-full gap-1.5 text-xs">
-                    <Package className="h-3.5 w-3.5" />
-                    adicionar a fonte viola
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-lg">
-                  <DialogHeader>
-                    <DialogTitle>Pacotes de fontes do Google Fonts</DialogTitle>
-                    <DialogDescription>
-                      Instale pacotes para usar novas fontes no editor. As fontes ficam
-                      disponíveis na lista acima.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="max-h-96 space-y-3 overflow-y-auto pr-1">
-                    {GOOGLE_FONT_PACKAGES.map((pkg) => {
-                      const installed = installedFontPackages.includes(pkg.id);
-                      return (
-                        <div key={pkg.id} className="rounded-md border border-border bg-card p-3">
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <h4 className="text-sm font-semibold">{pkg.name}</h4>
-                              <p className="text-xs text-muted-foreground">{pkg.description}</p>
-                            </div>
-                            <Button
-                              size="sm"
-                              variant={installed ? "secondary" : "default"}
-                              disabled={installed}
-                              onClick={() => installFontPackage(pkg.id)}
-                              className="h-7 text-xs"
-                            >
-                              {installed ? "Instalado" : "Instalar"}
-                            </Button>
-                          </div>
-                          <p className="mt-2 text-xs text-muted-foreground">
-                            {pkg.fonts.map((f) => f.label).join(", ")}
-                          </p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </DialogContent>
-              </Dialog>
               <NumberSlider
                 label="Altura da letra"
                 keyName="letterHeight"
@@ -313,17 +259,17 @@ export default function PropertiesPanel() {
               {style.id !== "neon-flex-fundo-impresso" ? (
                 <NumberSlider label="Profundidade" keyName="depth" min={5} max={200} step={1} />
               ) : null}
-              <NumberSlider label="Parede" keyName="wall" min={0.5} max={12} step={0.1} />
+              <NumberSlider label="Parede" keyName="wall" min={0.8} max={12} step={0.1} />
               {style.id !== "neon-flex-fundo-impresso" ? (
                 <NumberSlider
                   label="Frente"
                   keyName="faceThickness"
-                  min={0.5}
+                  min={0.6}
                   max={60}
                   step={0.2}
                 />
               ) : null}
-              <NumberSlider label="Fundo" keyName="backThickness" min={0.5} max={20} step={0.2} />
+              <NumberSlider label="Fundo" keyName="backThickness" min={0.6} max={20} step={0.2} />
               {style.id === "neon-flex-fundo-impresso" ? (
                 <div className="space-y-3 rounded-md border border-border bg-background/40 p-3">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -351,7 +297,7 @@ export default function PropertiesPanel() {
                   <NumberSlider
                     label="Folga de encaixe"
                     keyName="clearance"
-                    min={0.5}
+                    min={0}
                     max={1.5}
                     step={0.05}
                   />
@@ -368,8 +314,8 @@ export default function PropertiesPanel() {
                     <NumberSlider
                       label="Aba do rebaixo"
                       keyName="recessLip"
-                      min={0.5}
-                      max={20}
+                      min={0.4}
+                      max={Math.max(params.wall - 0.4, 0.6)}
                       step={0.1}
                     />
                   ) : null}
@@ -386,14 +332,14 @@ export default function PropertiesPanel() {
                   <NumberSlider
                     label="Largura da aba"
                     keyName="backFlangeWidth"
-                    min={0.5}
+                    min={0.6}
                     max={30}
                     step={0.1}
                   />
                   <NumberSlider
                     label="Espessura da aba"
                     keyName="backFlangeThickness"
-                    min={0.5}
+                    min={0.6}
                     max={20}
                     step={0.2}
                   />

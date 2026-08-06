@@ -54,7 +54,7 @@ export interface SignBuild {
 const EXTRUDE = { bevelEnabled: false, curveSegments: 24, steps: 1 };
 
 function extrude(shape: Shape | Shape[], depth: number): ExtrudeGeometry {
-  return new ExtrudeGeometry(shape, { ...EXTRUDE, depth: Math.max(depth, 0.5) });
+  return new ExtrudeGeometry(shape, { ...EXTRUDE, depth: Math.max(depth, 0.2) });
 }
 
 function cleanContour(points: Vector2[]): Vector2[] {
@@ -383,8 +383,8 @@ function backFlangeRingGeometry(
   // acrílico fica logo à frente dela, apoiado no ombro interno.
   const flangeStart = 0;
   const flangeEnd = Math.min(
-    Math.max(flangeThickness, 0.5),
-    Math.max(backHeight + bodyHeight / 2, 0.5),
+    Math.max(flangeThickness, 0.2),
+    Math.max(backHeight + bodyHeight / 2, 0.2),
   );
   const frontStart = backHeight + bodyHeight;
   const totalHeight = frontStart + faceHeight;
@@ -700,7 +700,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
   }
 
   // rebaixo (degrau) na parede interna para assentar a frente
-  const recessLip = Math.max(params.recessLip, 0.5);
+  const recessLip = Math.min(Math.max(params.recessLip, 0.4), Math.max(params.wall - 0.4, 0.4));
   const recessOn =
     neonFlexOpenCup ||
     doubleAcrylicRecess ||
@@ -708,7 +708,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
     (params.faceRecess &&
       active.has("frente") &&
       active.has("laterais") &&
-      recessLip > 0);
+      recessLip < params.wall);
   const faceInset = recessOn ? recessLip + params.clearance : 0;
 
   // ---------- laterais (parede + rebaixo em uma peça só) ----------
