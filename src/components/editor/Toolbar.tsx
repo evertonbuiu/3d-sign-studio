@@ -23,7 +23,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { geometriesToStl, downloadBlob, slugify } from "@/lib/sign/stl";
 import {
   deleteSignProject,
@@ -32,6 +32,10 @@ import {
   saveSignProject,
 } from "@/lib/signProjects.functions";
 import { useEditor } from "./store";
+
+const isSupabaseConfigured = Boolean(import.meta.env["VITE_SUPABASE_URL"]);
+
+
 
 export default function Toolbar() {
   const editor = useEditor();
@@ -117,7 +121,7 @@ export default function Toolbar() {
       vectorSource:
         row.vector_kind && row.vector_name && row.vector_content
           ? {
-              kind: row.vector_kind,
+              kind: row.vector_kind as "dxf" | "svg",
               name: row.vector_name,
               content: row.vector_content,
             }
