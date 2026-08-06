@@ -28,6 +28,9 @@ export interface EditorState {
   svgName: string | null;
   vectorKind: "svg" | "dxf" | null;
   vectorSource: { name: string; content: string; kind: "svg" | "dxf" } | null;
+  weldedEdges: Array<{ id: string; name: string; totalLength: number; edges: any[] }>;
+  weldSelectedEdges: (edges: any[], totalLength: number, name: string) => void;
+  clearWelds: () => void;
   setSvg: (name: string, content: string) => void;
   setDxf: (name: string, content: string) => void;
   clearSvg: () => void;
