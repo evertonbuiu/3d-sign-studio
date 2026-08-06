@@ -257,13 +257,13 @@ export default function PropertiesPanel() {
             <AccordionTrigger className="text-sm">Construção</AccordionTrigger>
             <AccordionContent className="space-y-3 pb-4">
               <NumberSlider label="Profundidade" keyName="depth" min={5} max={200} step={1} />
-              <NumberSlider label="Parede" keyName="wall" min={0.8} max={12} step={0.1} />
-              <NumberSlider label="Frente" keyName="faceThickness" min={0.6} max={60} step={0.2} />
-              <NumberSlider label="Fundo" keyName="backThickness" min={0.6} max={20} step={0.2} />
+              <NumberSlider label="Parede" keyName="wall" min={0.5} max={12} step={0.1} />
+              <NumberSlider label="Frente" keyName="faceThickness" min={0.5} max={60} step={0.2} />
+              <NumberSlider label="Fundo" keyName="backThickness" min={0.5} max={20} step={0.2} />
               <NumberSlider
                 label="Folga de encaixe"
                 keyName="clearance"
-                min={0}
+                min={0.5}
                 max={1.5}
                 step={0.05}
               />
