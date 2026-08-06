@@ -94,3 +94,18 @@ test("fundo impresso e laterais formam uma unica peca", () => {
     components: 1,
   });
 });
+
+test("frente impressa e laterais formam uma unica peca com fundo separado", () => {
+  const style = getStyle("fundo-acrilico-frente-impressa");
+  const params = { ...DEFAULT_PARAMS, ...style.preset, text: "G", mountHoles: true };
+  const build = buildSign(glyphShapes(archivo, "G", params.letterHeight), params, style);
+  const printedBody = build.parts.find((part) => part.id === "frente-laterais");
+  assert.ok(printedBody);
+  assert.deepEqual(topology(printedBody.geometry), {
+    boundary: 0,
+    nonManifold: 0,
+    components: 1,
+  });
+  assert.equal(build.parts.filter((part) => part.kind === "frente").length, 0);
+  assert.equal(build.parts.filter((part) => part.kind === "fundo").length, 1);
+});
