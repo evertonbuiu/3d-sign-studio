@@ -1,10 +1,11 @@
 import { toast } from "sonner";
-import { Eye, EyeOff, Upload, X } from "lucide-react";
+import { Eye, EyeOff, Package, Upload, X } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -18,7 +19,15 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { FONTS, type FontId } from "@/lib/sign/fonts";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { GOOGLE_FONT_PACKAGES } from "@/lib/sign/googleFonts";
 import type { SignParams } from "@/lib/sign/model";
 import { useEditor } from "./store";
 
