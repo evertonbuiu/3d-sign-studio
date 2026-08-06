@@ -298,14 +298,14 @@ export default function PropertiesPanel() {
               <NumberSlider
                 label="Largura do canal"
                 keyName="ledChannelWidth"
-                min={3}
+                min={0.5}
                 max={40}
                 step={0.5}
               />
               <NumberSlider
                 label="Altura do canal"
                 keyName="ledChannelHeight"
-                min={2}
+                min={0.5}
                 max={30}
                 step={0.5}
               />
