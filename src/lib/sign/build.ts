@@ -328,7 +328,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
     for (const shape of shapes) {
       const wallGeos = ringShape(shape, params.wall).map((ring) => extrude(ring, bodyHeight));
       if (recessOn) {
-        const overlap = Math.min(0.1, bodyHeight / 4);
+        const overlap = Math.min(0.5, bodyHeight / 4);
         for (const outer of ringShape(shape, recessLip)) {
           const lip = extrude(outer, params.faceThickness + overlap);
           lip.translate(0, 0, bodyHeight - overlap);
