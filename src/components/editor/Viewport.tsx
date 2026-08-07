@@ -8,6 +8,7 @@ import { ContactShadows, Grid, OrbitControls } from "@react-three/drei";
 import {
   Box3,
   BufferGeometry,
+  DoubleSide,
   EdgesGeometry,
   Float32BufferAttribute,
   Vector3,
@@ -148,6 +149,81 @@ function PartMesh({
   );
 }
 
+function CutPreview({
+  part,
+  explode,
+  plateWidth,
+  plateDepth,
+  margin,
+}: {
+  part: SignPart;
+  explode: number;
+  plateWidth: number;
+  plateDepth: number;
+  margin: number;
+}) {
+  const planes = useMemo(() => {
+    part.geometry.computeBoundingBox();
+    const box = part.geometry.boundingBox;
+    if (!box) return [];
+    const size = box.getSize(new Vector3());
+    const usableWidth = plateWidth - margin * 2;
+    const usableDepth = plateDepth - margin * 2;
+    if (usableWidth <= 0 || usableDepth <= 0) return [];
+    const result: Array<{
+      key: string;
+      position: [number, number, number];
+      rotation: [number, number, number];
+      width: number;
+      height: number;
+    }> = [];
+    for (let x = box.min.x + usableWidth; x < box.max.x - 1e-5; x += usableWidth) {
+      result.push({
+        key: `x-${x}`,
+        position: [x, (box.min.y + box.max.y) / 2, (box.min.z + box.max.z) / 2],
+        rotation: [0, Math.PI / 2, 0],
+        width: size.y,
+        height: Math.max(size.z, 1),
+      });
+    }
+    for (let y = box.min.y + usableDepth; y < box.max.y - 1e-5; y += usableDepth) {
+      result.push({
+        key: `y-${y}`,
+        position: [(box.min.x + box.max.x) / 2, y, (box.min.z + box.max.z) / 2],
+        rotation: [Math.PI / 2, 0, 0],
+        width: size.x,
+        height: Math.max(size.z, 1),
+      });
+    }
+    return result;
+  }, [part.geometry, plateWidth, plateDepth, margin]);
+
+  if (!planes.length) return null;
+  const offset = (EXPLODE_ORDER[part.kind] ?? 0) * explode;
+  return (
+    <group position={[0, 0, offset]}>
+      {planes.map((plane) => (
+        <mesh
+          key={plane.key}
+          position={plane.position}
+          rotation={plane.rotation}
+          renderOrder={1001}
+        >
+          <planeGeometry args={[plane.width, plane.height]} />
+          <meshBasicMaterial
+            color="#ef4444"
+            transparent
+            opacity={0.32}
+            depthTest={false}
+            depthWrite={false}
+            side={DoubleSide}
+          />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
 function OutlineLine({ outline }: { outline: SignOutline }) {
   const geometry = useMemo(() => {
     const pts = outline.points;
@@ -182,7 +258,7 @@ function Model({
   onHover: (edge: PickedEdge | null) => void;
   onPick: (edge: PickedEdge, additive: boolean) => void;
 }) {
-  const { build, explode, hidden, wireframe, showOutlines } = useEditor();
+  const { build, explode, hidden, wireframe, showOutlines, params } = useEditor();
   const groupRef = useRef<Group>(null);
 
   const { scale, center } = useMemo(() => {
@@ -214,6 +290,17 @@ function Model({
         {visible.map((part) => (
           <PartMesh key={part.id} part={part} explode={explode} wireframe={wireframe} />
         ))}
+        {params.splitForBuildPlate &&
+          visible.map((part) => (
+            <CutPreview
+              key={`cut-${part.id}`}
+              part={part}
+              explode={explode}
+              plateWidth={params.buildWidth}
+              plateDepth={params.buildDepth}
+              margin={params.splitMargin}
+            />
+          ))}
         {edgeSelect &&
           visible.map((part) => (
             <EdgePicker
@@ -245,6 +332,7 @@ export default function Viewport() {
     setWireframe,
     showOutlines,
     setShowOutlines,
+    params,
   } = useEditor();
 
   const [edgeSelect, setEdgeSelect] = useState(false);
@@ -365,6 +453,13 @@ export default function Viewport() {
           />
         </div>
       </div>
+
+      {params.splitForBuildPlate ? (
+        <div className="pointer-events-none absolute right-4 top-4 rounded-md border border-red-300 bg-red-50/90 px-3 py-2 text-xs font-medium text-red-700 shadow-sm backdrop-blur">
+          Prévia de corte ativa · área útil {params.buildWidth - params.splitMargin * 2} ×{" "}
+          {params.buildDepth - params.splitMargin * 2} mm
+        </div>
+      ) : null}
 
       {!ready && !loadError && (
         <div className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-muted-foreground">

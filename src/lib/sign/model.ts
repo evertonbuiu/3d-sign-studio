@@ -64,6 +64,8 @@ export interface SignParams {
   nozzleDiameter: number;
   filamentDiameter: number;
   maxPrintSpeed: number;
+  splitForBuildPlate: boolean;
+  splitMargin: number;
   filamentPrice: number; // R$/kg
   density: number; // g/cm3
   printSpeed: number; // cm3/h
@@ -116,6 +118,8 @@ export const DEFAULT_PARAMS: SignParams = {
   nozzleDiameter: 0.4,
   filamentDiameter: 1.75,
   maxPrintSpeed: 250,
+  splitForBuildPlate: false,
+  splitMargin: 5,
   filamentPrice: 120,
   density: 1.24,
   printSpeed: 22,

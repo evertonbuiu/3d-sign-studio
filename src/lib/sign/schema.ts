@@ -49,6 +49,8 @@ export const signParamsSchema = z.object({
   nozzleDiameter: finite(0.1, 3),
   filamentDiameter: finite(1, 3),
   maxPrintSpeed: finite(1, 2_000),
+  splitForBuildPlate: z.boolean(),
+  splitMargin: finite(0, 100),
   filamentPrice: finite(0, 100_000),
   density: finite(0.1, 30),
   printSpeed: finite(0.1, 10_000),

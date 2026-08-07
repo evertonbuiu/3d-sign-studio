@@ -570,6 +570,25 @@ export default function PropertiesPanel() {
                 <MoneyField label="Filamento (mm)" keyName="filamentDiameter" step={0.05} />
               </div>
               <MoneyField label="Velocidade máxima (mm/s)" keyName="maxPrintSpeed" />
+              <div className="space-y-3 rounded-md border border-border bg-background/40 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">
+                      Cortar conforme a mesa
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Divide peças grandes ao exportar o ZIP.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={params.splitForBuildPlate}
+                    onCheckedChange={(value) => setParam("splitForBuildPlate", value)}
+                  />
+                </div>
+                {params.splitForBuildPlate ? (
+                  <MoneyField label="Margem da mesa (mm)" keyName="splitMargin" step={1} />
+                ) : null}
+              </div>
               <MoneyField label="Filamento (R$/kg)" keyName="filamentPrice" />
               <MoneyField label="Densidade (g/cm³)" keyName="density" step={0.01} />
               <MoneyField label="Velocidade (cm³/h)" keyName="printSpeed" />
