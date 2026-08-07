@@ -64,9 +64,7 @@ export const PRINTER_PROFILES: PrinterProfile[] = [
   profile("custom", "Outros", "Personalizada", [220, 220, 250], 200, 18, 350),
 ];
 
-export const DEFAULT_PRINTER = PRINTER_PROFILES.find(
-  (printer) => printer.id === "creality-ender-3-v3-se",
-)!;
+export const DEFAULT_PRINTER = PRINTER_PROFILES.find((printer) => printer.id === "bambu-a1")!;
 
 export function getPrinterProfile(id: string): PrinterProfile {
   return PRINTER_PROFILES.find((printer) => printer.id === id) ?? DEFAULT_PRINTER;
