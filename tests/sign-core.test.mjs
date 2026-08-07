@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { BufferGeometry, Float32BufferAttribute } from "three";
+import { BoxGeometry, BufferGeometry, Float32BufferAttribute, Vector3 } from "three";
 
 import { computeCost } from "../src/lib/sign/cost.ts";
 import { DEFAULT_PARAMS } from "../src/lib/sign/model.ts";
 import { getPrinterProfile, paramsForPrinter, PRINTER_PROFILES } from "../src/lib/sign/printers.ts";
 import { geometriesToStl, slugify } from "../src/lib/sign/stl.ts";
+import { splitGeometryForBuildPlate } from "../src/lib/sign/split.ts";
 
 const build = {
   parts: [],
@@ -62,4 +63,18 @@ test("selecionar impressora carrega todos os parâmetros do perfil", () => {
     },
     selected.params,
   );
+});
+
+test("corta uma peça grande conforme a mesa da impressora", () => {
+  const geometry = new BoxGeometry(500, 300, 10);
+  const pieces = splitGeometryForBuildPlate(geometry, { width: 220, depth: 220, margin: 10 });
+  assert.equal(pieces.length, 6);
+  for (const piece of pieces) {
+    piece.geometry.computeBoundingBox();
+    const size = piece.geometry.boundingBox.getSize(new Vector3());
+    assert.ok(size.x <= 200.001);
+    assert.ok(size.y <= 200.001);
+    assert.ok(size.z <= 10.001);
+    assert.ok(piece.geometry.getAttribute("position").count > 0);
+  }
 });
