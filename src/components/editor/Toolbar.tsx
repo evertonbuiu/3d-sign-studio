@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
 import { geometriesToStl, downloadBlob, slugify } from "@/lib/sign/stl";
+import { splitGeometryForBuildPlate } from "@/lib/sign/split";
 import {
   deleteSignProject,
   getSignProject,
@@ -98,11 +99,28 @@ export default function Toolbar() {
     }
     const zip = new JSZip();
     for (const part of parts) {
-      zip.file(`${base}-${slugify(part.name)}.stl`, geometriesToStl([part.geometry]));
+      const segments = editor.params.splitForBuildPlate
+        ? splitGeometryForBuildPlate(part.geometry, {
+            width: editor.params.buildWidth,
+            depth: editor.params.buildDepth,
+            margin: editor.params.splitMargin,
+          })
+        : [{ geometry: part.geometry, column: 1, row: 1, index: 1, total: 1 }];
+      for (const segment of segments) {
+        const suffix =
+          segment.total > 1
+            ? `-segmento-${String(segment.index).padStart(2, "0")}-x${segment.column}-y${segment.row}`
+            : "";
+        zip.file(`${base}-${slugify(part.name)}${suffix}.stl`, geometriesToStl([segment.geometry]));
+      }
     }
     void zip.generateAsync({ type: "blob" }).then((blob) => {
       downloadBlob(blob, `${base}-pecas.zip`, "application/zip");
-      toast.success("Peças exportadas em ZIP");
+      toast.success(
+        editor.params.splitForBuildPlate
+          ? "Peças cortadas conforme a mesa e exportadas em ZIP"
+          : "Peças exportadas em ZIP",
+      );
     });
   }
 
