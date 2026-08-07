@@ -3,7 +3,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Link } from "@tanstack/react-router";
 import JSZip from "jszip";
-import { Box, CloudUpload, Download, FolderOpen, LogIn, LogOut, Trash2 } from "lucide-react";
+import {
+  Box,
+  CloudUpload,
+  Download,
+  FolderOpen,
+  LogIn,
+  LogOut,
+  Scissors,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import type { User } from "@supabase/supabase-js";
 
@@ -167,6 +176,24 @@ export default function Toolbar() {
       />
 
       <div className="ml-auto flex items-center gap-2">
+        <Button
+          size="sm"
+          variant={editor.params.splitForBuildPlate ? "default" : "outline"}
+          className="h-8 gap-1.5 text-xs"
+          title="Mostrar e aplicar cortes conforme a mesa da impressora"
+          onClick={() => {
+            const active = !editor.params.splitForBuildPlate;
+            editor.setParam("splitForBuildPlate", active);
+            toast.success(
+              active
+                ? "Corte conforme a mesa ativado. Veja a prévia vermelha no modelo."
+                : "Corte conforme a mesa desativado.",
+            );
+          }}
+        >
+          <Scissors className="h-3.5 w-3.5" />
+          {editor.params.splitForBuildPlate ? "Corte ativo" : "Corte da mesa"}
+        </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs">
