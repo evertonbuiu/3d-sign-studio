@@ -3,7 +3,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Link } from "@tanstack/react-router";
 import JSZip from "jszip";
-import { Box, CloudUpload, Download, FolderOpen, LogIn, LogOut, Trash2 } from "lucide-react";
+import {
+  Box,
+  CloudUpload,
+  Download,
+  FolderOpen,
+  LogIn,
+  LogOut,
+  Scissors,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import type { User } from "@supabase/supabase-js";
 
@@ -91,13 +100,14 @@ export default function Toolbar() {
       return;
     }
     const base = slugify(editor.params.text || editor.projectName);
-    if (mode === "unico") {
+    if (mode === "unico" && !editor.params.splitForBuildPlate) {
       const buffer = geometriesToStl(parts.map((p) => p.geometry));
       downloadBlob(buffer, `${base}.stl`, "model/stl");
       toast.success("STL exportado");
       return;
     }
     const zip = new JSZip();
+    let exportedSegments = 0;
     for (const part of parts) {
       const segments = editor.params.splitForBuildPlate
         ? splitGeometryForBuildPlate(part.geometry, {
@@ -107,6 +117,7 @@ export default function Toolbar() {
           })
         : [{ geometry: part.geometry, column: 1, row: 1, index: 1, total: 1 }];
       for (const segment of segments) {
+        exportedSegments += 1;
         const suffix =
           segment.total > 1
             ? `-segmento-${String(segment.index).padStart(2, "0")}-x${segment.column}-y${segment.row}`
@@ -118,7 +129,7 @@ export default function Toolbar() {
       downloadBlob(blob, `${base}-pecas.zip`, "application/zip");
       toast.success(
         editor.params.splitForBuildPlate
-          ? "Peças cortadas conforme a mesa e exportadas em ZIP"
+          ? `${exportedSegments} segmentos cortados conforme a mesa e exportados em ZIP`
           : "Peças exportadas em ZIP",
       );
     });
@@ -167,6 +178,24 @@ export default function Toolbar() {
       />
 
       <div className="ml-auto flex items-center gap-2">
+        <Button
+          size="sm"
+          variant={editor.params.splitForBuildPlate ? "default" : "outline"}
+          className="h-8 gap-1.5 text-xs"
+          title="Mostrar e aplicar cortes conforme a mesa da impressora"
+          onClick={() => {
+            const active = !editor.params.splitForBuildPlate;
+            editor.setParam("splitForBuildPlate", active);
+            toast.success(
+              active
+                ? "Corte conforme a mesa ativado. Veja a prévia vermelha no modelo."
+                : "Corte conforme a mesa desativado.",
+            );
+          }}
+        >
+          <Scissors className="h-3.5 w-3.5" />
+          {editor.params.splitForBuildPlate ? "Corte ativo" : "Corte da mesa"}
+        </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs">
@@ -175,7 +204,9 @@ export default function Toolbar() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem className="text-xs" onSelect={() => exportStl("unico")}>
-              STL combinado — shells separados
+              {editor.params.splitForBuildPlate
+                ? "Exportar segmentos cortados (.zip)"
+                : "STL combinado — shells separados"}
             </DropdownMenuItem>
             <DropdownMenuItem className="text-xs" onSelect={() => exportStl("pecas")}>
               Peças separadas (.zip)
