@@ -5,7 +5,12 @@ import { BoxGeometry, BufferGeometry, Float32BufferAttribute, Vector3 } from "th
 
 import { computeCost } from "../src/lib/sign/cost.ts";
 import { DEFAULT_PARAMS } from "../src/lib/sign/model.ts";
-import { getPrinterProfile, paramsForPrinter, PRINTER_PROFILES } from "../src/lib/sign/printers.ts";
+import {
+  DEFAULT_PRINTER,
+  getPrinterProfile,
+  paramsForPrinter,
+  PRINTER_PROFILES,
+} from "../src/lib/sign/printers.ts";
 import { geometriesToStl, slugify } from "../src/lib/sign/stl.ts";
 import { splitGeometryForBuildPlate } from "../src/lib/sign/split.ts";
 
@@ -62,6 +67,29 @@ test("selecionar impressora carrega todos os parâmetros do perfil", () => {
       printerPower: params.printerPower,
     },
     selected.params,
+  );
+});
+
+test("Bambu Lab A1 é a impressora padrão", () => {
+  assert.equal(DEFAULT_PRINTER.id, "bambu-a1");
+  assert.equal(DEFAULT_PARAMS.printerId, "bambu-a1");
+  assert.deepEqual(
+    {
+      buildWidth: DEFAULT_PARAMS.buildWidth,
+      buildDepth: DEFAULT_PARAMS.buildDepth,
+      buildHeight: DEFAULT_PARAMS.buildHeight,
+      maxPrintSpeed: DEFAULT_PARAMS.maxPrintSpeed,
+      printSpeed: DEFAULT_PARAMS.printSpeed,
+      printerPower: DEFAULT_PARAMS.printerPower,
+    },
+    {
+      buildWidth: 256,
+      buildDepth: 256,
+      buildHeight: 256,
+      maxPrintSpeed: 500,
+      printSpeed: 25,
+      printerPower: 350,
+    },
   );
 });
 
