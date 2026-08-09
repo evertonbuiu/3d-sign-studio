@@ -570,73 +570,6 @@ export default function PropertiesPanel() {
                 <MoneyField label="Filamento (mm)" keyName="filamentDiameter" step={0.05} />
               </div>
               <MoneyField label="Velocidade máxima (mm/s)" keyName="maxPrintSpeed" />
-              <div className="space-y-3 rounded-md border border-border bg-background/40 p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <Label className="text-sm font-medium text-muted-foreground">
-                      Ferramenta de corte
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Corte automático pela mesa ou plano manual rotacionável.
-                    </p>
-                  </div>
-                  <Switch
-                    checked={params.splitForBuildPlate}
-                    onCheckedChange={(value) => setParam("splitForBuildPlate", value)}
-                  />
-                </div>
-                {params.splitForBuildPlate ? (
-                  <div className="space-y-3 border-t border-border pt-3">
-                    <Field label="Modo do corte">
-                      <Select
-                        value={params.splitMode}
-                        onValueChange={(value) =>
-                          setParam("splitMode", value as SignParams["splitMode"])
-                        }
-                      >
-                        <SelectTrigger className="h-9 bg-card text-sm">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="automatic">Conforme a mesa</SelectItem>
-                          <SelectItem value="manual">Plano manual</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </Field>
-                    {params.splitMode === "automatic" ? (
-                      <MoneyField label="Margem da mesa (mm)" keyName="splitMargin" step={1} />
-                    ) : (
-                      <>
-                        <NumberSlider
-                          label="Rotação do corte (eixo Z)"
-                          keyName="manualCutAngle"
-                          min={-180}
-                          max={180}
-                          step={1}
-                          unit="°"
-                        />
-                        <NumberSlider
-                          label="Posição do plano"
-                          keyName="manualCutOffset"
-                          min={-400}
-                          max={400}
-                          step={1}
-                        />
-                        <NumberSlider
-                          label="Afastar partes na visualização"
-                          keyName="manualCutSeparation"
-                          min={0}
-                          max={100}
-                          step={1}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          A separação é apenas visual. A exportação mantém as coordenadas corretas.
-                        </p>
-                      </>
-                    )}
-                  </div>
-                ) : null}
-              </div>
               <MoneyField label="Filamento (R$/kg)" keyName="filamentPrice" />
               <MoneyField label="Densidade (g/cm³)" keyName="density" step={0.01} />
               <MoneyField label="Velocidade (cm³/h)" keyName="printSpeed" />
@@ -644,6 +577,134 @@ export default function PropertiesPanel() {
               <MoneyField label="Energia (R$/kWh)" keyName="energyPrice" step={0.01} />
               <MoneyField label="Potência da impressora (W)" keyName="printerPower" />
               <MoneyField label="Margem (%)" keyName="margin" />
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="corte">
+            <AccordionTrigger className="text-sm">Corte e encaixe</AccordionTrigger>
+            <AccordionContent className="space-y-4 pb-4">
+              <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-background/40 p-3">
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">
+                    Ativar ferramenta de corte
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Configure o plano e o encaixe antes de exportar.
+                  </p>
+                </div>
+                <Switch
+                  checked={params.splitForBuildPlate}
+                  onCheckedChange={(value) => setParam("splitForBuildPlate", value)}
+                />
+              </div>
+              {params.splitForBuildPlate ? (
+                <>
+                  <Field label="Modo do corte">
+                    <Select
+                      value={params.splitMode}
+                      onValueChange={(value) =>
+                        setParam("splitMode", value as SignParams["splitMode"])
+                      }
+                    >
+                      <SelectTrigger className="h-9 bg-card text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="manual">Plano manual</SelectItem>
+                        <SelectItem value="automatic">Automático pela mesa</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  {params.splitMode === "automatic" ? (
+                    <MoneyField label="Margem da mesa (mm)" keyName="splitMargin" step={1} />
+                  ) : (
+                    <>
+                      <NumberSlider
+                        label="Rotação do plano (eixo Z)"
+                        keyName="manualCutAngle"
+                        min={-180}
+                        max={180}
+                        step={1}
+                        unit="°"
+                      />
+                      <NumberSlider
+                        label="Posição do plano"
+                        keyName="manualCutOffset"
+                        min={-400}
+                        max={400}
+                        step={1}
+                      />
+                      <NumberSlider
+                        label="Afastar partes na prévia"
+                        keyName="manualCutSeparation"
+                        min={0}
+                        max={100}
+                        step={1}
+                      />
+                      <div className="space-y-3 rounded-md border border-border bg-background/40 p-3">
+                        <Field label="Encaixe no corte">
+                          <Select
+                            value={params.cutConnector}
+                            onValueChange={(value) =>
+                              setParam("cutConnector", value as SignParams["cutConnector"])
+                            }
+                          >
+                            <SelectTrigger className="h-9 bg-card text-sm">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Sem encaixe</SelectItem>
+                              <SelectItem value="male-female">Macho e fêmea</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </Field>
+                        {params.cutConnector === "male-female" ? (
+                          <>
+                            <Field label="Lado macho">
+                              <Select
+                                value={params.cutMaleSide}
+                                onValueChange={(value) =>
+                                  setParam("cutMaleSide", value as SignParams["cutMaleSide"])
+                                }
+                              >
+                                <SelectTrigger className="h-9 bg-card text-sm">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="part-1">Parte 1</SelectItem>
+                                  <SelectItem value="part-2">Parte 2</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </Field>
+                            <NumberSlider
+                              label="Profundidade do encaixe"
+                              keyName="cutConnectorDepth"
+                              min={0.4}
+                              max={20}
+                              step={0.2}
+                            />
+                            <NumberSlider
+                              label="Largura na face do corte"
+                              keyName="cutConnectorWidth"
+                              min={10}
+                              max={100}
+                              step={5}
+                              unit="%"
+                            />
+                            <NumberSlider
+                              label="Folga macho/fêmea"
+                              keyName="cutConnectorClearance"
+                              min={0}
+                              max={1.5}
+                              step={0.05}
+                            />
+                          </>
+                        ) : null}
+                      </div>
+                    </>
+                  )}
+                </>
+              ) : null}
             </AccordionContent>
           </AccordionItem>
 
@@ -728,3 +789,4 @@ export default function PropertiesPanel() {
     </div>
   );
 }
+
