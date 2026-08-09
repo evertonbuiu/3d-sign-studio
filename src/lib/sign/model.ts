@@ -70,6 +70,11 @@ export interface SignParams {
   manualCutAngle: number;
   manualCutOffset: number;
   manualCutSeparation: number;
+  cutConnector: "none" | "male-female";
+  cutMaleSide: "part-1" | "part-2";
+  cutConnectorDepth: number;
+  cutConnectorWidth: number;
+  cutConnectorClearance: number;
   filamentPrice: number; // R$/kg
   density: number; // g/cm3
   printSpeed: number; // cm3/h
@@ -124,10 +129,15 @@ export const DEFAULT_PARAMS: SignParams = {
   maxPrintSpeed: 500,
   splitForBuildPlate: false,
   splitMargin: 5,
-  splitMode: "automatic",
+  splitMode: "manual",
   manualCutAngle: 90,
   manualCutOffset: 0,
   manualCutSeparation: 20,
+  cutConnector: "none",
+  cutMaleSide: "part-1",
+  cutConnectorDepth: 4,
+  cutConnectorWidth: 100,
+  cutConnectorClearance: 0.2,
   filamentPrice: 120,
   density: 1.24,
   printSpeed: 25,
@@ -467,3 +477,4 @@ export function getStyle(id: string): SignStyle {
 export function paramsForStyle(style: SignStyle, base: SignParams = DEFAULT_PARAMS): SignParams {
   return { ...base, ...style.preset };
 }
+

@@ -128,3 +128,27 @@ test("corte manual aceita malha sem UV e sem normais, como as letras geradas", (
     assert.ok(piece.geometry.getAttribute("normal"));
   }
 });
+
+test("corte manual cria macho e fêmea complementares com folga", () => {
+  const geometry = new BoxGeometry(100, 60, 20);
+  const plain = splitGeometryByPlane(geometry, { angle: 0, offset: 0 });
+  const pieces = splitGeometryByPlane(geometry, {
+    angle: 0,
+    offset: 0,
+    connector: "male-female",
+    maleSide: "part-1",
+    connectorDepth: 4,
+    connectorWidth: 100,
+    connectorClearance: 0.2,
+  });
+  assert.equal(pieces.length, 2);
+  pieces[0].geometry.computeBoundingBox();
+  pieces[1].geometry.computeBoundingBox();
+  assert.ok(pieces[0].geometry.boundingBox.max.x >= 3.99, "o macho deve avançar 4 mm");
+  assert.ok(
+    pieces[1].geometry.getAttribute("position").count >
+      plain[1].geometry.getAttribute("position").count,
+    "a fêmea deve conter a cavidade com folga",
+  );
+});
+

@@ -55,6 +55,11 @@ export const signParamsSchema = z.object({
   manualCutAngle: finite(-180, 180),
   manualCutOffset: finite(-2_000, 2_000),
   manualCutSeparation: finite(0, 200),
+  cutConnector: z.enum(["none", "male-female"]),
+  cutMaleSide: z.enum(["part-1", "part-2"]),
+  cutConnectorDepth: finite(0.4, 30),
+  cutConnectorWidth: finite(10, 100),
+  cutConnectorClearance: finite(0, 1.5),
   filamentPrice: finite(0, 100_000),
   density: finite(0.1, 30),
   printSpeed: finite(0.1, 10_000),
@@ -73,3 +78,4 @@ export const vectorSourceSchema = z
     content: z.string().min(1).max(2_000_000),
   })
   .nullable();
+

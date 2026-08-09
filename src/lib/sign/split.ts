@@ -1,5 +1,5 @@
 import { Box3, BoxGeometry, BufferGeometry, Vector3 } from "three";
-import { Brush, Evaluator, INTERSECTION } from "three-bvh-csg";
+import { ADDITION, Brush, Evaluator, INTERSECTION, SUBTRACTION } from "three-bvh-csg";
 
 export interface SplitPiece {
   geometry: BufferGeometry;
@@ -18,6 +18,28 @@ export interface BuildPlateSplitOptions {
 export interface ManualSplitOptions {
   angle: number;
   offset?: number;
+  connector?: "none" | "male-female";
+  maleSide?: "part-1" | "part-2";
+  connectorDepth?: number;
+  connectorWidth?: number;
+  connectorClearance?: number;
+}
+
+function evaluateGeometry(
+  first: BufferGeometry,
+  second: BufferGeometry,
+  operation: number,
+): BufferGeometry {
+  const evaluator = new Evaluator();
+  evaluator.attributes = ["position"];
+  const a = new Brush(first.clone());
+  const b = new Brush(second.clone());
+  a.updateMatrixWorld(true);
+  b.updateMatrixWorld(true);
+  const result = evaluator.evaluate(a, b, operation).geometry.clone();
+  result.computeVertexNormals();
+  result.computeBoundingBox();
+  return result;
 }
 
 /** Divide uma malha por um plano vertical rotacionado em torno do eixo Z. */
@@ -66,6 +88,77 @@ export function splitGeometryByPlane(
       total: 2,
     });
   }
+  if (pieces.length !== 2 || options.connector !== "male-female") {
+    return pieces.map((piece) => ({ ...piece, total: pieces.length }));
+  }
+
+  const depth = Math.max(options.connectorDepth ?? 4, 0.4);
+  const clearance = Math.max(options.connectorClearance ?? 0.2, 0);
+  const widthPercent = Math.min(Math.max(options.connectorWidth ?? 100, 10), 100) * 0.01;
+  const maleIndex = options.maleSide === "part-2" ? 1 : 0;
+  const femaleIndex = maleIndex === 0 ? 1 : 0;
+  const direction = normal.clone().multiplyScalar(maleIndex === 0 ? 1 : -1);
+
+  const capGeometry = pieces[maleIndex]!.geometry.index
+    ? pieces[maleIndex]!.geometry.toNonIndexed()
+    : pieces[maleIndex]!.geometry;
+  const position = capGeometry.getAttribute("position");
+  let connectorCenter: Vector3 | null = null;
+  let bestDistance = Infinity;
+  const modelCenter = bounds.getCenter(new Vector3());
+  for (let i = 0; i < position.count; i += 3) {
+    const a = new Vector3(position.getX(i), position.getY(i), position.getZ(i));
+    const b = new Vector3(position.getX(i + 1), position.getY(i + 1), position.getZ(i + 1));
+    const c = new Vector3(position.getX(i + 2), position.getY(i + 2), position.getZ(i + 2));
+    if (
+      Math.abs(normal.dot(a.clone().sub(center))) > 1e-3 ||
+      Math.abs(normal.dot(b.clone().sub(center))) > 1e-3 ||
+      Math.abs(normal.dot(c.clone().sub(center))) > 1e-3
+    ) {
+      continue;
+    }
+    const candidate = a
+      .add(b)
+      .add(c)
+      .multiplyScalar(1 / 3);
+    const distance = candidate.distanceToSquared(modelCenter);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      connectorCenter = candidate;
+    }
+  }
+  if (!connectorCenter) return pieces.map((piece) => ({ ...piece, total: pieces.length }));
+
+  const connectorWidth = Math.max(1, Math.min(20, size.z * widthPercent));
+  const connectorHeight = Math.max(1, Math.min(20, size.z * widthPercent));
+  const overlap = Math.min(0.5, depth * 0.2);
+  const makeConnector = (normalDepth: number, centerOffset: number, extraSize = 0) => {
+    const connector = new BoxGeometry(
+      normalDepth,
+      connectorWidth + extraSize,
+      connectorHeight + extraSize,
+    );
+    connector.rotateZ(radians);
+    connector.translate(
+      connectorCenter.x + direction.x * centerOffset,
+      connectorCenter.y + direction.y * centerOffset,
+      connectorCenter.z,
+    );
+    return connector;
+  };
+
+  const maleConnector = makeConnector(depth + overlap, (depth - overlap) / 2);
+  const femaleDepth = depth + clearance;
+  const femaleCavity = makeConnector(femaleDepth, femaleDepth / 2, clearance * 2);
+
+  pieces[maleIndex] = {
+    ...pieces[maleIndex]!,
+    geometry: evaluateGeometry(pieces[maleIndex]!.geometry, maleConnector, ADDITION),
+  };
+  pieces[femaleIndex] = {
+    ...pieces[femaleIndex]!,
+    geometry: evaluateGeometry(pieces[femaleIndex]!.geometry, femaleCavity, SUBTRACTION),
+  };
   return pieces.map((piece) => ({ ...piece, total: pieces.length }));
 }
 
@@ -128,3 +221,4 @@ export function splitGeometryForBuildPlate(
   }
   return pieces.map((piece) => ({ ...piece, total: pieces.length }));
 }
+

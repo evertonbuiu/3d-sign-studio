@@ -224,6 +224,34 @@ test("plano manual corta todas as malhas reais da letra sem lançar erro", () =>
   }
 });
 
+test("encaixe macho e fêmea é gerado na malha real da letra", () => {
+  const params = { ...DEFAULT_PARAMS, text: "G", mountHoles: false };
+  const build = buildSign(
+    glyphShapes(archivo, "G", params.letterHeight),
+    params,
+    getStyle("caixa-iluminada"),
+  );
+  const target = build.parts.find((part) => part.kind === "fundo") ?? build.parts[0];
+  const pieces = splitGeometryByPlane(target.geometry, {
+    angle: 90,
+    connector: "male-female",
+    maleSide: "part-1",
+    connectorDepth: 4,
+    connectorWidth: 100,
+    connectorClearance: 0.2,
+  });
+  assert.equal(pieces.length, 2);
+  for (const piece of pieces) {
+    const position = piece.geometry.getAttribute("position");
+    assert.ok(position.count > 0);
+    for (let i = 0; i < position.count; i++) {
+      assert.ok(Number.isFinite(position.getX(i)));
+      assert.ok(Number.isFinite(position.getY(i)));
+      assert.ok(Number.isFinite(position.getZ(i)));
+    }
+  }
+});
+
 test("fundo impresso e laterais formam uma unica peca", () => {
   const style = getStyle("fundo-impresso-frente-acrilica");
   const params = { ...DEFAULT_PARAMS, ...style.preset, text: "G", mountHoles: true };
@@ -538,3 +566,4 @@ test("estilo acrilico com aba tem preset completo e estilos removidos nao retorn
     },
   );
 });
+
