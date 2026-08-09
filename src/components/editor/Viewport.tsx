@@ -11,13 +11,13 @@ import {
   DoubleSide,
   EdgesGeometry,
   Float32BufferAttribute,
+  Plane,
   Vector3,
   type Group,
 } from "three";
 
 import { useEditor } from "./store";
 import type { SignOutline, SignPart } from "@/lib/sign/build";
-import { splitGeometryByPlane } from "@/lib/sign/split";
 
 const EXPLODE_ORDER: Record<string, number> = {
   poste: -2,
@@ -123,31 +123,29 @@ function PartMesh({
   // Reduzimos o threshold para 1 grau para mostrar as curvas das letras
   // mas ainda ocultar as diagonais internas de superfícies planas.
   const edges = useMemo(() => new EdgesGeometry(part.geometry, 1), [part.geometry]);
-  const cutPieces = useMemo(() => {
-    if (!manualCut) return [];
-    try {
-      return splitGeometryByPlane(part.geometry, {
-        angle: manualCut.angle,
-        offset: manualCut.offset,
-      });
-    } catch (error) {
-      console.error(`Falha ao calcular o corte manual da peça ${part.id}`, error);
-      return [];
-    }
-  }, [part.geometry, part.id, manualCut]);
+  const clippingPlanes = useMemo(() => {
+    if (!manualCut) return null;
+    const radians = (manualCut.angle * Math.PI) / 180;
+    const normal = new Vector3(Math.cos(radians), Math.sin(radians), 0);
+    part.geometry.computeBoundingBox();
+    const center = part.geometry.boundingBox?.getCenter(new Vector3()) ?? new Vector3();
+    center.addScaledVector(normal, manualCut.offset);
+    const positive = new Plane(normal, -normal.dot(center));
+    return [positive, positive.clone().negate()] as const;
+  }, [part.geometry, manualCut]);
 
-  if (manualCut && cutPieces.length > 1) {
+  if (manualCut && clippingPlanes) {
     const radians = (manualCut.angle * Math.PI) / 180;
     const normal: [number, number, number] = [Math.cos(radians), Math.sin(radians), 0];
     return (
       <group position={[0, 0, offset]}>
-        {cutPieces.map((piece, index) => {
+        {clippingPlanes.map((clippingPlane, index) => {
           const direction = index === 0 ? -1 : 1;
           const separation = manualCut.separation / 2;
           return (
             <mesh
-              key={piece.index}
-              geometry={piece.geometry}
+              key={index}
+              geometry={part.geometry}
               position={[normal[0] * direction * separation, normal[1] * direction * separation, 0]}
               castShadow
               receiveShadow
@@ -158,6 +156,9 @@ function PartMesh({
                 opacity={part.opacity}
                 roughness={0.55}
                 metalness={0.05}
+                clippingPlanes={[clippingPlane]}
+                clipShadows
+                side={DoubleSide}
               />
             </mesh>
           );
@@ -483,7 +484,14 @@ export default function Viewport() {
 
   return (
     <div className="absolute inset-0 bg-viewport">
-      <Canvas shadows camera={{ position: [0, 1.1, 4.6], fov: 42 }} dpr={[1, 2]}>
+      <Canvas
+        shadows
+        camera={{ position: [0, 1.1, 4.6], fov: 42 }}
+        dpr={[1, 2]}
+        onCreated={({ gl }) => {
+          gl.localClippingEnabled = true;
+        }}
+      >
         <color attach="background" args={["#e6ebf2"]} />
         <hemisphereLight args={["#ffffff", "#c7d0dc", 1.1]} />
         <directionalLight position={[4, 6, 6]} intensity={1.5} castShadow />
