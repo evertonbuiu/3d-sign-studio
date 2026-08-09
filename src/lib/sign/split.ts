@@ -15,6 +15,57 @@ export interface BuildPlateSplitOptions {
   margin?: number;
 }
 
+export interface ManualSplitOptions {
+  angle: number;
+  offset?: number;
+}
+
+/** Divide uma malha por um plano vertical rotacionado em torno do eixo Z. */
+export function splitGeometryByPlane(
+  geometry: BufferGeometry,
+  options: ManualSplitOptions,
+): SplitPiece[] {
+  geometry.computeBoundingBox();
+  const bounds = geometry.boundingBox?.clone();
+  if (!bounds || bounds.isEmpty()) return [];
+  const size = bounds.getSize(new Vector3());
+  const center = bounds.getCenter(new Vector3());
+  const radians = (options.angle * Math.PI) / 180;
+  const normal = new Vector3(Math.cos(radians), Math.sin(radians), 0);
+  center.addScaledVector(normal, options.offset ?? 0);
+  const extent = Math.max(size.x, size.y) * 4 + Math.abs(options.offset ?? 0) * 2 + 10;
+  const zPadding = Math.max(size.z, 1) + 2;
+  const source = new Brush(geometry.clone());
+  source.updateMatrixWorld(true);
+  const evaluator = new Evaluator();
+  const pieces: SplitPiece[] = [];
+
+  for (const side of [-1, 1] as const) {
+    const cutterGeometry = new BoxGeometry(extent, extent * 2, zPadding);
+    cutterGeometry.rotateZ(radians);
+    cutterGeometry.translate(
+      center.x + normal.x * side * (extent / 2),
+      center.y + normal.y * side * (extent / 2),
+      (bounds.min.z + bounds.max.z) / 2,
+    );
+    const cutter = new Brush(cutterGeometry);
+    cutter.updateMatrixWorld(true);
+    const result = evaluator.evaluate(source, cutter, INTERSECTION).geometry.clone();
+    result.computeBoundingBox();
+    const resultSize = result.boundingBox?.getSize(new Vector3());
+    if (!resultSize || result.getAttribute("position").count === 0) continue;
+    if (resultSize.x < 1e-5 || resultSize.y < 1e-5 || resultSize.z < 1e-5) continue;
+    pieces.push({
+      geometry: result,
+      column: side < 0 ? 1 : 2,
+      row: 1,
+      index: pieces.length + 1,
+      total: 2,
+    });
+  }
+  return pieces.map((piece) => ({ ...piece, total: pieces.length }));
+}
+
 /** Divide uma malha em blocos fechados que cabem na área útil XY da impressora. */
 export function splitGeometryForBuildPlate(
   geometry: BufferGeometry,
