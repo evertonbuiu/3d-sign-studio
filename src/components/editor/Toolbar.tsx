@@ -116,6 +116,11 @@ export default function Toolbar() {
             ? splitGeometryByPlane(part.geometry, {
                 angle: editor.params.manualCutAngle,
                 offset: editor.params.manualCutOffset,
+                connector: editor.params.cutConnector,
+                maleSide: editor.params.cutMaleSide,
+                connectorDepth: editor.params.cutConnectorDepth,
+                connectorWidth: editor.params.cutConnectorWidth,
+                connectorClearance: editor.params.cutConnectorClearance,
               })
             : splitGeometryForBuildPlate(part.geometry, {
                 width: editor.params.buildWidth,
@@ -311,3 +316,4 @@ export default function Toolbar() {
     </header>
   );
 }
+
