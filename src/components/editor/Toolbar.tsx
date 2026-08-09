@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
 import { geometriesToStl, downloadBlob, slugify } from "@/lib/sign/stl";
-import { splitGeometryForBuildPlate } from "@/lib/sign/split";
+import { splitGeometryByPlane, splitGeometryForBuildPlate } from "@/lib/sign/split";
 import {
   deleteSignProject,
   getSignProject,
@@ -110,11 +110,16 @@ export default function Toolbar() {
     let exportedSegments = 0;
     for (const part of parts) {
       const segments = editor.params.splitForBuildPlate
-        ? splitGeometryForBuildPlate(part.geometry, {
-            width: editor.params.buildWidth,
-            depth: editor.params.buildDepth,
-            margin: editor.params.splitMargin,
-          })
+        ? editor.params.splitMode === "manual"
+          ? splitGeometryByPlane(part.geometry, {
+              angle: editor.params.manualCutAngle,
+              offset: editor.params.manualCutOffset,
+            })
+          : splitGeometryForBuildPlate(part.geometry, {
+              width: editor.params.buildWidth,
+              depth: editor.params.buildDepth,
+              margin: editor.params.splitMargin,
+            })
         : [{ geometry: part.geometry, column: 1, row: 1, index: 1, total: 1 }];
       for (const segment of segments) {
         exportedSegments += 1;
@@ -129,7 +134,7 @@ export default function Toolbar() {
       downloadBlob(blob, `${base}-pecas.zip`, "application/zip");
       toast.success(
         editor.params.splitForBuildPlate
-          ? `${exportedSegments} segmentos cortados conforme a mesa e exportados em ZIP`
+          ? `${exportedSegments} segmentos cortados e exportados em ZIP`
           : "Peças exportadas em ZIP",
       );
     });
@@ -182,19 +187,19 @@ export default function Toolbar() {
           size="sm"
           variant={editor.params.splitForBuildPlate ? "default" : "outline"}
           className="h-8 gap-1.5 text-xs"
-          title="Mostrar e aplicar cortes conforme a mesa da impressora"
+          title="Configurar e aplicar cortes no modelo"
           onClick={() => {
             const active = !editor.params.splitForBuildPlate;
             editor.setParam("splitForBuildPlate", active);
             toast.success(
               active
-                ? "Corte conforme a mesa ativado. Veja a prévia vermelha no modelo."
-                : "Corte conforme a mesa desativado.",
+                ? "Corte ativado. Configure o modo no painel de produção."
+                : "Corte desativado.",
             );
           }}
         >
           <Scissors className="h-3.5 w-3.5" />
-          {editor.params.splitForBuildPlate ? "Corte ativo" : "Corte da mesa"}
+          {editor.params.splitForBuildPlate ? "Corte ativo" : "Ferramenta de corte"}
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
