@@ -123,16 +123,18 @@ function PartMesh({
   // Reduzimos o threshold para 1 grau para mostrar as curvas das letras
   // mas ainda ocultar as diagonais internas de superfícies planas.
   const edges = useMemo(() => new EdgesGeometry(part.geometry, 1), [part.geometry]);
-  const cutPieces = useMemo(
-    () =>
-      manualCut
-        ? splitGeometryByPlane(part.geometry, {
-            angle: manualCut.angle,
-            offset: manualCut.offset,
-          })
-        : [],
-    [part.geometry, manualCut],
-  );
+  const cutPieces = useMemo(() => {
+    if (!manualCut) return [];
+    try {
+      return splitGeometryByPlane(part.geometry, {
+        angle: manualCut.angle,
+        offset: manualCut.offset,
+      });
+    } catch (error) {
+      console.error(`Falha ao calcular o corte manual da peça ${part.id}`, error);
+      return [];
+    }
+  }, [part.geometry, part.id, manualCut]);
 
   if (manualCut && cutPieces.length > 1) {
     const radians = (manualCut.angle * Math.PI) / 180;
