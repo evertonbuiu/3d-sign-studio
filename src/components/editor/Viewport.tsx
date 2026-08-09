@@ -17,6 +17,7 @@ import {
 
 import { useEditor } from "./store";
 import type { SignOutline, SignPart } from "@/lib/sign/build";
+import { splitGeometryByPlane } from "@/lib/sign/split";
 
 const EXPLODE_ORDER: Record<string, number> = {
   poste: -2,
@@ -111,15 +112,57 @@ function PartMesh({
   part,
   explode,
   wireframe,
+  manualCut,
 }: {
   part: SignPart;
   explode: number;
   wireframe: boolean;
+  manualCut?: { angle: number; offset: number; separation: number } | undefined;
 }) {
   const offset = (EXPLODE_ORDER[part.kind] ?? 0) * explode;
   // Reduzimos o threshold para 1 grau para mostrar as curvas das letras
   // mas ainda ocultar as diagonais internas de superfícies planas.
   const edges = useMemo(() => new EdgesGeometry(part.geometry, 1), [part.geometry]);
+  const cutPieces = useMemo(
+    () =>
+      manualCut
+        ? splitGeometryByPlane(part.geometry, {
+            angle: manualCut.angle,
+            offset: manualCut.offset,
+          })
+        : [],
+    [part.geometry, manualCut],
+  );
+
+  if (manualCut && cutPieces.length > 1) {
+    const radians = (manualCut.angle * Math.PI) / 180;
+    const normal: [number, number, number] = [Math.cos(radians), Math.sin(radians), 0];
+    return (
+      <group position={[0, 0, offset]}>
+        {cutPieces.map((piece, index) => {
+          const direction = index === 0 ? -1 : 1;
+          const separation = manualCut.separation / 2;
+          return (
+            <mesh
+              key={piece.index}
+              geometry={piece.geometry}
+              position={[normal[0] * direction * separation, normal[1] * direction * separation, 0]}
+              castShadow
+              receiveShadow
+            >
+              <meshStandardMaterial
+                color={part.color}
+                transparent={part.opacity < 1}
+                opacity={part.opacity}
+                roughness={0.55}
+                metalness={0.05}
+              />
+            </mesh>
+          );
+        })}
+      </group>
+    );
+  }
 
   return (
     <group position={[0, 0, offset]}>
@@ -224,6 +267,67 @@ function CutPreview({
   );
 }
 
+function ManualCutPlane({
+  parts,
+  angle,
+  offset,
+}: {
+  parts: SignPart[];
+  angle: number;
+  offset: number;
+}) {
+  const geometry = useMemo(() => {
+    const box = new Box3();
+    for (const part of parts) {
+      part.geometry.computeBoundingBox();
+      if (part.geometry.boundingBox) box.union(part.geometry.boundingBox);
+    }
+    if (box.isEmpty()) return null;
+    const radians = (angle * Math.PI) / 180;
+    const normal = new Vector3(Math.cos(radians), Math.sin(radians), 0);
+    const tangent = new Vector3(-normal.y, normal.x, 0);
+    const center = box.getCenter(new Vector3()).addScaledVector(normal, offset);
+    const size = box.getSize(new Vector3());
+    const halfLength = Math.hypot(size.x, size.y) * 0.65 + 10;
+    const minZ = box.min.z - 5;
+    const maxZ = box.max.z + 5;
+    const a = center.clone().addScaledVector(tangent, -halfLength).setZ(minZ);
+    const b = center.clone().addScaledVector(tangent, halfLength).setZ(minZ);
+    const c = center.clone().addScaledVector(tangent, halfLength).setZ(maxZ);
+    const d = center.clone().addScaledVector(tangent, -halfLength).setZ(maxZ);
+    const result = new BufferGeometry();
+    result.setAttribute(
+      "position",
+      new Float32BufferAttribute(
+        [
+          ...a.toArray(),
+          ...b.toArray(),
+          ...c.toArray(),
+          ...a.toArray(),
+          ...c.toArray(),
+          ...d.toArray(),
+        ],
+        3,
+      ),
+    );
+    result.computeVertexNormals();
+    return result;
+  }, [parts, angle, offset]);
+  if (!geometry) return null;
+  return (
+    <mesh geometry={geometry} renderOrder={1001}>
+      <meshBasicMaterial
+        color="#2563eb"
+        transparent
+        opacity={0.28}
+        depthTest={false}
+        depthWrite={false}
+        side={DoubleSide}
+      />
+    </mesh>
+  );
+}
+
 function OutlineLine({ outline }: { outline: SignOutline }) {
   const geometry = useMemo(() => {
     const pts = outline.points;
@@ -288,9 +392,24 @@ function Model({
     <group ref={groupRef} scale={scale} rotation={[-0.05, 0, 0]}>
       <group position={[-center.x, -center.y, -center.z]}>
         {visible.map((part) => (
-          <PartMesh key={part.id} part={part} explode={explode} wireframe={wireframe} />
+          <PartMesh
+            key={part.id}
+            part={part}
+            explode={explode}
+            wireframe={wireframe}
+            manualCut={
+              params.splitForBuildPlate && params.splitMode === "manual"
+                ? {
+                    angle: params.manualCutAngle,
+                    offset: params.manualCutOffset,
+                    separation: params.manualCutSeparation,
+                  }
+                : undefined
+            }
+          />
         ))}
         {params.splitForBuildPlate &&
+          params.splitMode === "automatic" &&
           visible.map((part) => (
             <CutPreview
               key={`cut-${part.id}`}
@@ -301,6 +420,13 @@ function Model({
               margin={params.splitMargin}
             />
           ))}
+        {params.splitForBuildPlate && params.splitMode === "manual" ? (
+          <ManualCutPlane
+            parts={visible}
+            angle={params.manualCutAngle}
+            offset={params.manualCutOffset}
+          />
+        ) : null}
         {edgeSelect &&
           visible.map((part) => (
             <EdgePicker
