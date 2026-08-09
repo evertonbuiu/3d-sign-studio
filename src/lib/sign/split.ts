@@ -35,9 +35,11 @@ export function splitGeometryByPlane(
   center.addScaledVector(normal, options.offset ?? 0);
   const extent = Math.max(size.x, size.y) * 4 + Math.abs(options.offset ?? 0) * 2 + 10;
   const zPadding = Math.max(size.z, 1) + 2;
-  const source = new Brush(geometry.clone());
+  const sourceGeometry = geometry.clone();
+  const source = new Brush(sourceGeometry);
   source.updateMatrixWorld(true);
   const evaluator = new Evaluator();
+  evaluator.attributes = ["position"];
   const pieces: SplitPiece[] = [];
 
   for (const side of [-1, 1] as const) {
@@ -51,6 +53,7 @@ export function splitGeometryByPlane(
     const cutter = new Brush(cutterGeometry);
     cutter.updateMatrixWorld(true);
     const result = evaluator.evaluate(source, cutter, INTERSECTION).geometry.clone();
+    result.computeVertexNormals();
     result.computeBoundingBox();
     const resultSize = result.boundingBox?.getSize(new Vector3());
     if (!resultSize || result.getAttribute("position").count === 0) continue;
@@ -86,9 +89,11 @@ export function splitGeometryForBuildPlate(
   if (columns === 1 && rows === 1) {
     return [{ geometry: geometry.clone(), column: 1, row: 1, index: 1, total: 1 }];
   }
-  const source = new Brush(geometry.clone());
+  const sourceGeometry = geometry.clone();
+  const source = new Brush(sourceGeometry);
   source.updateMatrixWorld(true);
   const evaluator = new Evaluator();
+  evaluator.attributes = ["position"];
   const pieces: Omit<SplitPiece, "total">[] = [];
   const zPadding = Math.max(size.z, 1) + 2;
   for (let row = 0; row < rows; row++) {
@@ -108,6 +113,7 @@ export function splitGeometryForBuildPlate(
       cutter.updateMatrixWorld(true);
       const result = evaluator.evaluate(source, cutter, INTERSECTION);
       const clipped = result.geometry.clone();
+      clipped.computeVertexNormals();
       clipped.computeBoundingBox();
       const clippedSize = clipped.boundingBox?.getSize(new Vector3());
       if (!clippedSize || clipped.getAttribute("position").count === 0) continue;
