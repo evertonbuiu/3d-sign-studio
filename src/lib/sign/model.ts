@@ -66,6 +66,10 @@ export interface SignParams {
   maxPrintSpeed: number;
   splitForBuildPlate: boolean;
   splitMargin: number;
+  splitMode: "automatic" | "manual";
+  manualCutAngle: number;
+  manualCutOffset: number;
+  manualCutSeparation: number;
   filamentPrice: number; // R$/kg
   density: number; // g/cm3
   printSpeed: number; // cm3/h
@@ -120,6 +124,10 @@ export const DEFAULT_PARAMS: SignParams = {
   maxPrintSpeed: 500,
   splitForBuildPlate: false,
   splitMargin: 5,
+  splitMode: "automatic",
+  manualCutAngle: 90,
+  manualCutOffset: 0,
+  manualCutSeparation: 20,
   filamentPrice: 120,
   density: 1.24,
   printSpeed: 25,
