@@ -109,18 +109,27 @@ export default function Toolbar() {
     const zip = new JSZip();
     let exportedSegments = 0;
     for (const part of parts) {
-      const segments = editor.params.splitForBuildPlate
-        ? editor.params.splitMode === "manual"
-          ? splitGeometryByPlane(part.geometry, {
-              angle: editor.params.manualCutAngle,
-              offset: editor.params.manualCutOffset,
-            })
-          : splitGeometryForBuildPlate(part.geometry, {
-              width: editor.params.buildWidth,
-              depth: editor.params.buildDepth,
-              margin: editor.params.splitMargin,
-            })
-        : [{ geometry: part.geometry, column: 1, row: 1, index: 1, total: 1 }];
+      let segments;
+      try {
+        segments = editor.params.splitForBuildPlate
+          ? editor.params.splitMode === "manual"
+            ? splitGeometryByPlane(part.geometry, {
+                angle: editor.params.manualCutAngle,
+                offset: editor.params.manualCutOffset,
+              })
+            : splitGeometryForBuildPlate(part.geometry, {
+                width: editor.params.buildWidth,
+                depth: editor.params.buildDepth,
+                margin: editor.params.splitMargin,
+              })
+          : [{ geometry: part.geometry, column: 1, row: 1, index: 1, total: 1 }];
+      } catch (error) {
+        console.error(`Falha ao cortar a peça ${part.name}`, error);
+        toast.error(
+          `Não foi possível cortar a peça ${part.name}. Ajuste o plano e tente novamente.`,
+        );
+        return;
+      }
       for (const segment of segments) {
         exportedSegments += 1;
         const suffix =
