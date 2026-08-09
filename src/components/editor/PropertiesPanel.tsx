@@ -574,10 +574,10 @@ export default function PropertiesPanel() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <Label className="text-sm font-medium text-muted-foreground">
-                      Cortar conforme a mesa
+                      Ferramenta de corte
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      Divide peças grandes ao exportar o ZIP.
+                      Corte automático pela mesa ou plano manual rotacionável.
                     </p>
                   </div>
                   <Switch
@@ -586,7 +586,55 @@ export default function PropertiesPanel() {
                   />
                 </div>
                 {params.splitForBuildPlate ? (
-                  <MoneyField label="Margem da mesa (mm)" keyName="splitMargin" step={1} />
+                  <div className="space-y-3 border-t border-border pt-3">
+                    <Field label="Modo do corte">
+                      <Select
+                        value={params.splitMode}
+                        onValueChange={(value) =>
+                          setParam("splitMode", value as SignParams["splitMode"])
+                        }
+                      >
+                        <SelectTrigger className="h-9 bg-card text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="automatic">Conforme a mesa</SelectItem>
+                          <SelectItem value="manual">Plano manual</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                    {params.splitMode === "automatic" ? (
+                      <MoneyField label="Margem da mesa (mm)" keyName="splitMargin" step={1} />
+                    ) : (
+                      <>
+                        <NumberSlider
+                          label="Rotação do corte (eixo Z)"
+                          keyName="manualCutAngle"
+                          min={-180}
+                          max={180}
+                          step={1}
+                          unit="°"
+                        />
+                        <NumberSlider
+                          label="Posição do plano"
+                          keyName="manualCutOffset"
+                          min={-400}
+                          max={400}
+                          step={1}
+                        />
+                        <NumberSlider
+                          label="Afastar partes na visualização"
+                          keyName="manualCutSeparation"
+                          min={0}
+                          max={100}
+                          step={1}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          A separação é apenas visual. A exportação mantém as coordenadas corretas.
+                        </p>
+                      </>
+                    )}
+                  </div>
                 ) : null}
               </div>
               <MoneyField label="Filamento (R$/kg)" keyName="filamentPrice" />
