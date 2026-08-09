@@ -6,6 +6,7 @@ import { Box2, ShapePath, Vector2 } from "three";
 
 import { buildSign } from "../src/lib/sign/build.ts";
 import { DEFAULT_PARAMS, STYLES, getStyle, paramsForStyle } from "../src/lib/sign/model.ts";
+import { splitGeometryByPlane } from "../src/lib/sign/split.ts";
 
 function glyphShapes(font, text, height) {
   const capUnits = font.tables?.os2?.sCapHeight || font.unitsPerEm * 0.7;
@@ -208,6 +209,19 @@ test("a letra G gera componentes fechados e manifold", () => {
     failures,
     failures.map((item) => ({ ...item, boundary: 0, nonManifold: 0, components: 1 })),
   );
+});
+
+test("plano manual corta todas as malhas reais da letra sem lançar erro", () => {
+  const params = { ...DEFAULT_PARAMS, text: "G", mountHoles: false };
+  const build = buildSign(
+    glyphShapes(archivo, "G", params.letterHeight),
+    params,
+    getStyle("caixa-iluminada"),
+  );
+  for (const part of build.parts) {
+    const pieces = splitGeometryByPlane(part.geometry, { angle: 90, offset: 0 });
+    assert.ok(pieces.length >= 1, `${part.id} não produziu segmentos`);
+  }
 });
 
 test("fundo impresso e laterais formam uma unica peca", () => {
