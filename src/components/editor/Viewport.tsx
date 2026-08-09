@@ -142,11 +142,17 @@ function PartMesh({
         {clippingPlanes.map((clippingPlane, index) => {
           const direction = index === 0 ? -1 : 1;
           const separation = manualCut.separation / 2;
+          const displacement = new Vector3(
+            normal[0] * direction * separation,
+            normal[1] * direction * separation,
+            0,
+          );
+          const displacedPlane = clippingPlane.clone().translate(displacement);
           return (
             <mesh
               key={index}
               geometry={part.geometry}
-              position={[normal[0] * direction * separation, normal[1] * direction * separation, 0]}
+              position={displacement}
               castShadow
               receiveShadow
             >
@@ -156,7 +162,7 @@ function PartMesh({
                 opacity={part.opacity}
                 roughness={0.55}
                 metalness={0.05}
-                clippingPlanes={[clippingPlane]}
+                clippingPlanes={[displacedPlane]}
                 clipShadows
                 side={DoubleSide}
               />
@@ -615,3 +621,4 @@ export default function Viewport() {
     </div>
   );
 }
+
