@@ -117,3 +117,14 @@ test("corta uma peça em duas metades por um plano manual rotacionado", () => {
     assert.ok(piece.geometry.boundingBox.getSize(new Vector3()).z <= 20.001);
   }
 });
+
+test("corte manual aceita malha sem UV e sem normais, como as letras geradas", () => {
+  const geometry = new BoxGeometry(300, 180, 20);
+  geometry.deleteAttribute("uv");
+  geometry.deleteAttribute("normal");
+  const pieces = splitGeometryByPlane(geometry, { angle: 90, offset: 0 });
+  assert.equal(pieces.length, 2);
+  for (const piece of pieces) {
+    assert.ok(piece.geometry.getAttribute("normal"));
+  }
+});
