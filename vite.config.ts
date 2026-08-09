@@ -6,10 +6,23 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
+const stripViewportSourceMarkers = {
+  name: "strip-viewport-source-markers",
+  enforce: "pre" as const,
+  transform(code: string, id: string) {
+    if (!id.replaceAll("\\", "/").endsWith("/src/components/editor/Viewport.tsx")) return;
+    return code.replace(/\sdata-tsd-source=(?:"[^"]*"|'[^']*')/g, "");
+  },
+};
+
 export default defineConfig({
+  vite: {
+    plugins: [stripViewportSourceMarkers],
+  },
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
     server: { entry: "server" },
   },
 });
+
