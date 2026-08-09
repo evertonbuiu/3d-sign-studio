@@ -12,7 +12,7 @@ import {
   PRINTER_PROFILES,
 } from "../src/lib/sign/printers.ts";
 import { geometriesToStl, slugify } from "../src/lib/sign/stl.ts";
-import { splitGeometryForBuildPlate } from "../src/lib/sign/split.ts";
+import { splitGeometryByPlane, splitGeometryForBuildPlate } from "../src/lib/sign/split.ts";
 
 const build = {
   parts: [],
@@ -104,5 +104,16 @@ test("corta uma peça grande conforme a mesa da impressora", () => {
     assert.ok(size.y <= 200.001);
     assert.ok(size.z <= 10.001);
     assert.ok(piece.geometry.getAttribute("position").count > 0);
+  }
+});
+
+test("corta uma peça em duas metades por um plano manual rotacionado", () => {
+  const geometry = new BoxGeometry(300, 180, 20);
+  const pieces = splitGeometryByPlane(geometry, { angle: 35, offset: 0 });
+  assert.equal(pieces.length, 2);
+  for (const piece of pieces) {
+    assert.ok(piece.geometry.getAttribute("position").count > 0);
+    piece.geometry.computeBoundingBox();
+    assert.ok(piece.geometry.boundingBox.getSize(new Vector3()).z <= 20.001);
   }
 });
