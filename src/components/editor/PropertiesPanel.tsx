@@ -654,7 +654,9 @@ export default function PropertiesPanel() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="none">Sem encaixe</SelectItem>
-                              <SelectItem value="male-female">Macho e fêmea</SelectItem>
+                              <SelectItem value="male-female">
+                                Degrau contínuo (macho e fêmea)
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                         </Field>
@@ -692,8 +694,8 @@ export default function PropertiesPanel() {
                               unit="%"
                             />
                             <p className="text-xs leading-relaxed text-muted-foreground">
-                              Ajusta quanto da altura da parede forma o encaixe macho e a
-                              cavidade fêmea correspondente.
+                              Ajusta o degrau contínuo voltado para a frente da parede, como no
+                              modelo de referência, e a cavidade fêmea correspondente.
                             </p>
                             <NumberSlider
                               label="Folga macho/fêmea"
