@@ -145,6 +145,15 @@ test("corte manual cria macho e fêmea complementares com folga", () => {
   pieces[0].geometry.computeBoundingBox();
   pieces[1].geometry.computeBoundingBox();
   assert.ok(pieces[0].geometry.boundingBox.max.x >= 3.99, "o macho deve avançar 4 mm");
+  const malePosition = pieces[0].geometry.getAttribute("position");
+  const extendedY = [];
+  for (let i = 0; i < malePosition.count; i++) {
+    if (malePosition.getX(i) > 0.1) extendedY.push(malePosition.getY(i));
+  }
+  assert.ok(
+    Math.max(...extendedY) - Math.min(...extendedY) >= 59,
+    "o rebaixo deve prolongar todo o perfil cortado da parede",
+  );
   assert.ok(
     pieces[1].geometry.getAttribute("position").count >
       plain[1].geometry.getAttribute("position").count,
