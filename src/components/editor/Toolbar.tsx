@@ -120,6 +120,7 @@ export default function Toolbar() {
                 maleSide: editor.params.cutMaleSide,
                 connectorDepth: editor.params.cutConnectorDepth,
                 connectorWidth: editor.params.cutConnectorWidth,
+                connectorThickness: editor.params.cutConnectorThickness,
                 connectorClearance: editor.params.cutConnectorClearance,
               })
             : splitGeometryForBuildPlate(part.geometry, {
