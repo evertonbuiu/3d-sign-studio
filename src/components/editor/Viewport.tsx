@@ -126,6 +126,7 @@ function PartMesh({
         maleSide: "part-1" | "part-2";
         connectorDepth: number;
         connectorWidth: number;
+        connectorThickness: number;
         connectorClearance: number;
       }
     | undefined;
@@ -147,6 +148,7 @@ function PartMesh({
         maleSide: manualCut.maleSide,
         connectorDepth: manualCut.connectorDepth,
         connectorWidth: manualCut.connectorWidth,
+        connectorThickness: manualCut.connectorThickness,
         connectorClearance: manualCut.connectorClearance,
       });
     } catch (error) {
@@ -176,6 +178,7 @@ function PartMesh({
     manualCut?.maleSide,
     manualCut?.connectorDepth,
     manualCut?.connectorWidth,
+    manualCut?.connectorThickness,
     manualCut?.connectorClearance,
   ]);
 
@@ -458,6 +461,7 @@ function Model({
                     maleSide: params.cutMaleSide,
                     connectorDepth: params.cutConnectorDepth,
                     connectorWidth: params.cutConnectorWidth,
+                    connectorThickness: params.cutConnectorThickness,
                     connectorClearance: params.cutConnectorClearance,
                   }
                 : undefined
