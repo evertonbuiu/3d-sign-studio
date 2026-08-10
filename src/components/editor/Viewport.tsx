@@ -11,13 +11,13 @@ import {
   DoubleSide,
   EdgesGeometry,
   Float32BufferAttribute,
-  Plane,
   Vector3,
   type Group,
 } from "three";
 
 import { useEditor } from "./store";
 import type { SignOutline, SignPart } from "@/lib/sign/build";
+import { splitGeometryByPlane } from "@/lib/sign/split";
 
 const EXPLODE_ORDER: Record<string, number> = {
   poste: -2,
@@ -117,41 +117,58 @@ function PartMesh({
   part: SignPart;
   explode: number;
   wireframe: boolean;
-  manualCut?: { angle: number; offset: number; separation: number } | undefined;
+  manualCut?:
+    | {
+        angle: number;
+        offset: number;
+        separation: number;
+        connector: "none" | "male-female";
+        maleSide: "part-1" | "part-2";
+        connectorDepth: number;
+        connectorWidth: number;
+        connectorClearance: number;
+      }
+    | undefined;
 }) {
   const offset = (EXPLODE_ORDER[part.kind] ?? 0) * explode;
   // Reduzimos o threshold para 1 grau para mostrar as curvas das letras
   // mas ainda ocultar as diagonais internas de superfícies planas.
   const edges = useMemo(() => new EdgesGeometry(part.geometry, 1), [part.geometry]);
-  const clippingPlanes = useMemo(() => {
+  const manualPieces = useMemo(() => {
     if (!manualCut) return null;
-    const radians = (manualCut.angle * Math.PI) / 180;
-    const normal = new Vector3(Math.cos(radians), Math.sin(radians), 0);
-    part.geometry.computeBoundingBox();
-    const center = part.geometry.boundingBox?.getCenter(new Vector3()) ?? new Vector3();
-    center.addScaledVector(normal, manualCut.offset);
-    const positive = new Plane(normal, -normal.dot(center));
-    return [positive, positive.clone().negate()] as const;
+    try {
+      return splitGeometryByPlane(part.geometry, {
+        angle: manualCut.angle,
+        offset: manualCut.offset,
+        connector: manualCut.connector,
+        maleSide: manualCut.maleSide,
+        connectorDepth: manualCut.connectorDepth,
+        connectorWidth: manualCut.connectorWidth,
+        connectorClearance: manualCut.connectorClearance,
+      });
+    } catch (error) {
+      console.error(`Falha ao gerar prévia de corte para ${part.name}`, error);
+      return null;
+    }
   }, [part.geometry, manualCut]);
 
-  if (manualCut && clippingPlanes) {
+  if (manualCut && manualPieces?.length) {
     const radians = (manualCut.angle * Math.PI) / 180;
     const normal: [number, number, number] = [Math.cos(radians), Math.sin(radians), 0];
     return (
       <group position={[0, 0, offset]}>
-        {clippingPlanes.map((clippingPlane, index) => {
-          const direction = index === 0 ? -1 : 1;
+        {manualPieces.map((piece) => {
+          const direction = piece.column === 1 ? -1 : 1;
           const separation = manualCut.separation / 2;
-          const displacement = new Vector3(
+          const displacement: [number, number, number] = [
             normal[0] * direction * separation,
             normal[1] * direction * separation,
             0,
-          );
-          const displacedPlane = clippingPlane.clone().translate(displacement);
+          ];
           return (
             <mesh
-              key={index}
-              geometry={part.geometry}
+              key={piece.index}
+              geometry={piece.geometry}
               position={displacement}
               castShadow
               receiveShadow
@@ -162,8 +179,6 @@ function PartMesh({
                 opacity={part.opacity}
                 roughness={0.55}
                 metalness={0.05}
-                clippingPlanes={[displacedPlane]}
-                clipShadows
                 side={DoubleSide}
               />
             </mesh>
@@ -412,6 +427,11 @@ function Model({
                     angle: params.manualCutAngle,
                     offset: params.manualCutOffset,
                     separation: params.manualCutSeparation,
+                    connector: params.cutConnector,
+                    maleSide: params.cutMaleSide,
+                    connectorDepth: params.cutConnectorDepth,
+                    connectorWidth: params.cutConnectorWidth,
+                    connectorClearance: params.cutConnectorClearance,
                   }
                 : undefined
             }
