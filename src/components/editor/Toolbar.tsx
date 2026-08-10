@@ -116,7 +116,7 @@ export default function Toolbar() {
             ? splitGeometryByPlane(part.geometry, {
                 angle: editor.params.manualCutAngle,
                 offset: editor.params.manualCutOffset,
-                connector: editor.params.cutConnector,
+                connector: part.kind === "laterais" ? editor.params.cutConnector : "none",
                 maleSide: editor.params.cutMaleSide,
                 connectorDepth: editor.params.cutConnectorDepth,
                 connectorWidth: editor.params.cutConnectorWidth,
