@@ -185,4 +185,10 @@ test("tamanho do encaixe controla a altura do perfil macho", () => {
   };
   assert.ok(extendedHeight(small[0]) < extendedHeight(full[0]));
   assert.ok(extendedHeight(full[0]) >= 19.9, "100% deve usar toda a altura da parede");
+  const smallPosition = small[0].geometry.getAttribute("position");
+  const extendedZ = [];
+  for (let i = 0; i < smallPosition.count; i++) {
+    if (smallPosition.getX(i) > 0.1) extendedZ.push(smallPosition.getZ(i));
+  }
+  assert.ok(Math.min(...extendedZ) >= 4.9, "o degrau deve ficar voltado para a frente");
 });
