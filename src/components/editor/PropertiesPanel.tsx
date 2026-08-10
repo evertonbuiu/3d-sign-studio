@@ -684,13 +684,17 @@ export default function PropertiesPanel() {
                               step={0.2}
                             />
                             <NumberSlider
-                              label="Altura do rebaixo na parede"
+                              label="Tamanho do encaixe"
                               keyName="cutConnectorWidth"
                               min={10}
-                              max={90}
+                              max={100}
                               step={5}
                               unit="%"
                             />
+                            <p className="text-xs leading-relaxed text-muted-foreground">
+                              Ajusta quanto da altura da parede forma o encaixe macho e a
+                              cavidade fêmea correspondente.
+                            </p>
                             <NumberSlider
                               label="Folga macho/fêmea"
                               keyName="cutConnectorClearance"
