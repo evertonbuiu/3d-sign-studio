@@ -233,7 +233,7 @@ function PartMesh({
           {([-1, 1] as const).map((direction) => {
             const displacement = normal.clone().multiplyScalar(direction * separation);
             const clippingPlane = new Plane().setFromNormalAndCoplanarPoint(
-              normal.clone().multiplyScalar(-direction),
+              normal.clone().multiplyScalar(direction),
               cutCenter.clone().add(displacement),
             );
             return (
