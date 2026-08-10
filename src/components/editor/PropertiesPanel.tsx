@@ -684,10 +684,10 @@ export default function PropertiesPanel() {
                               step={0.2}
                             />
                             <NumberSlider
-                              label="Largura na face do corte"
+                              label="Altura do rebaixo na parede"
                               keyName="cutConnectorWidth"
                               min={10}
-                              max={100}
+                              max={90}
                               step={5}
                               unit="%"
                             />
