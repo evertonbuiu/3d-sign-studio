@@ -136,7 +136,7 @@ export const DEFAULT_PARAMS: SignParams = {
   cutConnector: "none",
   cutMaleSide: "part-1",
   cutConnectorDepth: 4,
-  cutConnectorWidth: 100,
+  cutConnectorWidth: 60,
   cutConnectorClearance: 0.2,
   filamentPrice: 120,
   density: 1.24,
