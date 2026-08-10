@@ -93,7 +93,7 @@ export function splitGeometryByPlane(
     cutterGeometry.translate(
       center.x + normal.x * side * (extent / 2),
       center.y + normal.y * side * (extent / 2),
-      (bounds.min.z + bounds.max.z) / 2,
+      bounds.max.z - tongueHeight / 2,
     );
     const cutter = new Brush(cutterGeometry);
     cutter.updateMatrixWorld(true);
