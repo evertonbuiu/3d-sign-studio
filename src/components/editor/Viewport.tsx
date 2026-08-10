@@ -148,7 +148,19 @@ function PartMesh({
       });
     } catch (error) {
       console.error(`Falha ao gerar prévia de corte para ${part.name}`, error);
-      return null;
+      try {
+        // O encaixe usa operações CSG mais sensíveis do que o corte plano. Se
+        // ele falhar em uma letra complexa, preserve as metades reais para que
+        // o controle "Afastar partes" continue visível e utilizável.
+        return splitGeometryByPlane(part.geometry, {
+          angle: manualCut.angle,
+          offset: manualCut.offset,
+          connector: "none",
+        });
+      } catch (fallbackError) {
+        console.error(`Falha ao gerar prévia simples de corte para ${part.name}`, fallbackError);
+        return null;
+      }
     }
   }, [part.geometry, manualCut]);
 
