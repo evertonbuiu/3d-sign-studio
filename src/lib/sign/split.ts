@@ -25,6 +25,70 @@ export interface ManualSplitOptions {
   connectorClearance?: number;
 }
 
+/** Recorte visual robusto, sem CSG e sem tampas, usado somente na prévia. */
+export function clipGeometryByPlaneForPreview(
+  geometry: BufferGeometry,
+  options: Pick<ManualSplitOptions, "angle" | "offset">,
+): SplitPiece[] {
+  geometry.computeBoundingBox();
+  const bounds = geometry.boundingBox?.clone();
+  if (!bounds || bounds.isEmpty()) return [];
+  const radians = (options.angle * Math.PI) / 180;
+  const normal = new Vector3(Math.cos(radians), Math.sin(radians), 0);
+  const center = bounds
+    .getCenter(new Vector3())
+    .addScaledVector(normal, options.offset ?? 0);
+  const source = geometry.index ? geometry.toNonIndexed() : geometry;
+  const position = source.getAttribute("position");
+
+  const clipSide = (side: -1 | 1) => {
+    const vertices: number[] = [];
+    const distance = (point: Vector3) => normal.dot(point.clone().sub(center)) * side;
+    for (let i = 0; i + 2 < position.count; i += 3) {
+      let polygon = [
+        new Vector3(position.getX(i), position.getY(i), position.getZ(i)),
+        new Vector3(position.getX(i + 1), position.getY(i + 1), position.getZ(i + 1)),
+        new Vector3(position.getX(i + 2), position.getY(i + 2), position.getZ(i + 2)),
+      ];
+      const clipped: Vector3[] = [];
+      for (let edge = 0; edge < polygon.length; edge++) {
+        const current = polygon[edge]!;
+        const next = polygon[(edge + 1) % polygon.length]!;
+        const currentDistance = distance(current);
+        const nextDistance = distance(next);
+        if (currentDistance >= -1e-6) clipped.push(current.clone());
+        if ((currentDistance >= 0) !== (nextDistance >= 0)) {
+          const t = currentDistance / (currentDistance - nextDistance);
+          clipped.push(current.clone().lerp(next, t));
+        }
+      }
+      polygon = clipped;
+      for (let vertex = 1; vertex + 1 < polygon.length; vertex++) {
+        vertices.push(
+          ...polygon[0]!.toArray(),
+          ...polygon[vertex]!.toArray(),
+          ...polygon[vertex + 1]!.toArray(),
+        );
+      }
+    }
+    const result = new BufferGeometry();
+    result.setAttribute("position", new Float32BufferAttribute(vertices, 3));
+    result.computeVertexNormals();
+    result.computeBoundingBox();
+    return result;
+  };
+
+  return ([-1, 1] as const)
+    .map((side, index) => ({
+      geometry: clipSide(side),
+      column: side < 0 ? 1 : 2,
+      row: 1,
+      index: index + 1,
+      total: 2,
+    }))
+    .filter((piece) => piece.geometry.getAttribute("position").count > 0);
+}
+
 function evaluateGeometry(
   first: BufferGeometry,
   second: BufferGeometry,
