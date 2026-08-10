@@ -11,14 +11,13 @@ import {
   DoubleSide,
   EdgesGeometry,
   Float32BufferAttribute,
-  Plane,
   Vector3,
   type Group,
 } from "three";
 
 import { useEditor } from "./store";
 import type { SignOutline, SignPart } from "@/lib/sign/build";
-import { splitGeometryByPlane } from "@/lib/sign/split";
+import { clipGeometryByPlaneForPreview, splitGeometryByPlane } from "@/lib/sign/split";
 
 const EXPLODE_ORDER: Record<string, number> = {
   poste: -2,
@@ -168,7 +167,10 @@ function PartMesh({
         });
       } catch (fallbackError) {
         console.error(`Falha ao gerar prévia simples de corte para ${part.name}`, fallbackError);
-        return null;
+        return clipGeometryByPlaneForPreview(part.geometry, {
+          angle: manualCut.angle,
+          offset: manualCut.offset,
+        });
       }
     }
   }, [
@@ -216,49 +218,6 @@ function PartMesh({
         })}
       </group>
     );
-  }
-
-  if (manualCut) {
-    part.geometry.computeBoundingBox();
-    const bounds = part.geometry.boundingBox;
-    if (bounds) {
-      const radians = (manualCut.angle * Math.PI) / 180;
-      const normal = new Vector3(Math.cos(radians), Math.sin(radians), 0);
-      const cutCenter = bounds
-        .getCenter(new Vector3())
-        .addScaledVector(normal, manualCut.offset);
-      const separation = manualCut.separation / 2;
-      return (
-        <group position={[0, 0, offset]}>
-          {([-1, 1] as const).map((direction) => {
-            const displacement = normal.clone().multiplyScalar(direction * separation);
-            const clippingPlane = new Plane().setFromNormalAndCoplanarPoint(
-              normal.clone().multiplyScalar(direction),
-              cutCenter.clone().add(displacement),
-            );
-            return (
-              <mesh
-                key={`fallback-${direction}`}
-                geometry={part.geometry}
-                position={displacement.toArray()}
-                castShadow
-                receiveShadow
-              >
-                <meshStandardMaterial
-                  color={part.color}
-                  transparent={part.opacity < 1}
-                  opacity={part.opacity}
-                  roughness={0.55}
-                  metalness={0.05}
-                  side={DoubleSide}
-                  clippingPlanes={[clippingPlane]}
-                />
-              </mesh>
-            );
-          })}
-        </group>
-      );
-    }
   }
 
   return (

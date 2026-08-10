@@ -12,7 +12,11 @@ import {
   PRINTER_PROFILES,
 } from "../src/lib/sign/printers.ts";
 import { geometriesToStl, slugify } from "../src/lib/sign/stl.ts";
-import { splitGeometryByPlane, splitGeometryForBuildPlate } from "../src/lib/sign/split.ts";
+import {
+  clipGeometryByPlaneForPreview,
+  splitGeometryByPlane,
+  splitGeometryForBuildPlate,
+} from "../src/lib/sign/split.ts";
 
 const build = {
   parts: [],
@@ -126,6 +130,16 @@ test("corte manual aceita malha sem UV e sem normais, como as letras geradas", (
   assert.equal(pieces.length, 2);
   for (const piece of pieces) {
     assert.ok(piece.geometry.getAttribute("normal"));
+  }
+});
+
+test("fallback visual recorta duas metades locais sem depender da câmera", () => {
+  const geometry = new BoxGeometry(100, 60, 20);
+  const pieces = clipGeometryByPlaneForPreview(geometry, { angle: 90, offset: 0 });
+  assert.equal(pieces.length, 2);
+  for (const piece of pieces) {
+    piece.geometry.computeBoundingBox();
+    assert.ok(piece.geometry.boundingBox.getSize(new Vector3()).y <= 30.001);
   }
 });
 
