@@ -170,7 +170,16 @@ function PartMesh({
         return null;
       }
     }
-  }, [part.geometry, manualCut]);
+  }, [
+    part.geometry,
+    manualCut?.angle,
+    manualCut?.offset,
+    manualCut?.connector,
+    manualCut?.maleSide,
+    manualCut?.connectorDepth,
+    manualCut?.connectorWidth,
+    manualCut?.connectorClearance,
+  ]);
 
   if (manualCut && manualPieces?.length) {
     const radians = (manualCut.angle * Math.PI) / 180;
