@@ -686,16 +686,15 @@ export default function PropertiesPanel() {
                               step={0.2}
                             />
                             <NumberSlider
-                              label="Tamanho do encaixe"
-                              keyName="cutConnectorWidth"
-                              min={10}
-                              max={100}
-                              step={5}
-                              unit="%"
+                              label="Espessura do rebaixo"
+                              keyName="cutConnectorThickness"
+                              min={0.4}
+                              max={Math.min(params.depth, 30)}
+                              step={0.2}
                             />
                             <p className="text-xs leading-relaxed text-muted-foreground">
-                              Ajusta o degrau contínuo voltado para a frente da parede, como no
-                              modelo de referência, e a cavidade fêmea correspondente.
+                              Cria uma faixa junto à frente da parede, usando o mesmo princípio do
+                              rebaixo que assenta a tampa.
                             </p>
                             <NumberSlider
                               label="Folga macho/fêmea"
