@@ -11,6 +11,7 @@ import {
   DoubleSide,
   EdgesGeometry,
   Float32BufferAttribute,
+  Plane,
   Vector3,
   type Group,
 } from "three";
@@ -215,6 +216,49 @@ function PartMesh({
         })}
       </group>
     );
+  }
+
+  if (manualCut) {
+    part.geometry.computeBoundingBox();
+    const bounds = part.geometry.boundingBox;
+    if (bounds) {
+      const radians = (manualCut.angle * Math.PI) / 180;
+      const normal = new Vector3(Math.cos(radians), Math.sin(radians), 0);
+      const cutCenter = bounds
+        .getCenter(new Vector3())
+        .addScaledVector(normal, manualCut.offset);
+      const separation = manualCut.separation / 2;
+      return (
+        <group position={[0, 0, offset]}>
+          {([-1, 1] as const).map((direction) => {
+            const displacement = normal.clone().multiplyScalar(direction * separation);
+            const clippingPlane = new Plane().setFromNormalAndCoplanarPoint(
+              normal.clone().multiplyScalar(-direction),
+              cutCenter.clone().add(displacement),
+            );
+            return (
+              <mesh
+                key={`fallback-${direction}`}
+                geometry={part.geometry}
+                position={displacement.toArray()}
+                castShadow
+                receiveShadow
+              >
+                <meshStandardMaterial
+                  color={part.color}
+                  transparent={part.opacity < 1}
+                  opacity={part.opacity}
+                  roughness={0.55}
+                  metalness={0.05}
+                  side={DoubleSide}
+                  clippingPlanes={[clippingPlane]}
+                />
+              </mesh>
+            );
+          })}
+        </group>
+      );
+    }
   }
 
   return (
