@@ -59,6 +59,7 @@ export const signParamsSchema = z.object({
   cutMaleSide: z.enum(["part-1", "part-2"]),
   cutConnectorDepth: finite(0.4, 30),
   cutConnectorWidth: finite(10, 100),
+  cutConnectorThickness: finite(0.4, 30),
   cutConnectorClearance: finite(0, 1.5),
   filamentPrice: finite(0, 100_000),
   density: finite(0.1, 30),

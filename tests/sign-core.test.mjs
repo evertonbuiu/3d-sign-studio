@@ -206,3 +206,20 @@ test("tamanho do encaixe controla a altura do perfil macho", () => {
   }
   assert.ok(Math.min(...extendedZ) >= 4.9, "o degrau deve ficar voltado para a frente");
 });
+
+test("encaixe por rebaixo usa espessura em milímetros como a tampa", () => {
+  const geometry = new BoxGeometry(100, 60, 20);
+  const pieces = splitGeometryByPlane(geometry, {
+    angle: 0,
+    connector: "male-female",
+    connectorDepth: 4,
+    connectorThickness: 3,
+  });
+  const position = pieces[0].geometry.getAttribute("position");
+  const extendedZ = [];
+  for (let i = 0; i < position.count; i++) {
+    if (position.getX(i) > 0.1) extendedZ.push(position.getZ(i));
+  }
+  assert.ok(Math.max(...extendedZ) - Math.min(...extendedZ) <= 3.01);
+  assert.ok(Math.min(...extendedZ) >= 6.99, "o rebaixo deve ficar junto à frente");
+});

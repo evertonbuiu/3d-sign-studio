@@ -22,6 +22,7 @@ export interface ManualSplitOptions {
   maleSide?: "part-1" | "part-2";
   connectorDepth?: number;
   connectorWidth?: number;
+  connectorThickness?: number;
   connectorClearance?: number;
 }
 
@@ -189,7 +190,12 @@ export function splitGeometryByPlane(
   // O encaixe é extraído da própria seção das paredes junto ao plano de corte.
   // Assim, a metade macho prolonga o perfil real da parede em vez de receber
   // apenas um pino retangular isolado.
-  const tongueHeight = Math.max(0.4, size.z * widthPercent);
+  // Mesmo princípio do rebaixo da tampa: uma faixa fina junto à frente forma
+  // o macho, enquanto o restante da parede da peça fêmea funciona como apoio.
+  const tongueHeight = Math.min(
+    size.z,
+    Math.max(0.4, options.connectorThickness ?? size.z * widthPercent),
+  );
   const tangent = new Vector3(-normal.y, normal.x, 0);
   const overlap = Math.min(0.5, depth * 0.2);
   const sampleDepth = depth + overlap;

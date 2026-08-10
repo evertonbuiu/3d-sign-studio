@@ -74,6 +74,7 @@ export interface SignParams {
   cutMaleSide: "part-1" | "part-2";
   cutConnectorDepth: number;
   cutConnectorWidth: number;
+  cutConnectorThickness: number;
   cutConnectorClearance: number;
   filamentPrice: number; // R$/kg
   density: number; // g/cm3
@@ -137,6 +138,7 @@ export const DEFAULT_PARAMS: SignParams = {
   cutMaleSide: "part-1",
   cutConnectorDepth: 4,
   cutConnectorWidth: 60,
+  cutConnectorThickness: 3,
   cutConnectorClearance: 0.2,
   filamentPrice: 120,
   density: 1.24,
