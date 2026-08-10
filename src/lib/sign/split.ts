@@ -117,7 +117,7 @@ export function splitGeometryByPlane(
 
   const depth = Math.max(options.connectorDepth ?? 4, 0.4);
   const clearance = Math.max(options.connectorClearance ?? 0.2, 0);
-  const widthPercent = Math.min(Math.max(options.connectorWidth ?? 60, 10), 90) * 0.01;
+  const widthPercent = Math.min(Math.max(options.connectorWidth ?? 60, 10), 100) * 0.01;
   const maleIndex = options.maleSide === "part-2" ? 1 : 0;
   const femaleIndex = maleIndex === 0 ? 1 : 0;
   const direction = normal.clone().multiplyScalar(maleIndex === 0 ? 1 : -1);
