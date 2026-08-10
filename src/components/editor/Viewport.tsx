@@ -136,14 +136,9 @@ function PartMesh({
   const edges = useMemo(() => new EdgesGeometry(part.geometry, 1), [part.geometry]);
   const manualPieces = useMemo(() => {
     if (!manualCut) return null;
-    const position = part.geometry.getAttribute("position");
-    const triangleCount = part.geometry.index
-      ? part.geometry.index.count / 3
-      : position.count / 3;
-    // O encaixe exige três operações CSG e pode bloquear a interface em textos
-    // completos. Para malhas complexas, priorize a prévia instantânea do corte
-    // e do afastamento; a exportação STL continua gerando o encaixe completo.
-    const previewConnector = triangleCount <= 2_000 ? manualCut.connector : "none";
+    // O encaixe pertence às paredes. Frente, fundo e acessórios recebem apenas
+    // o corte, evitando CSG desnecessário e mantendo macho/fêmea na peça certa.
+    const previewConnector = part.kind === "laterais" ? manualCut.connector : "none";
     try {
       return splitGeometryByPlane(part.geometry, {
         angle: manualCut.angle,
