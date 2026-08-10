@@ -1,4 +1,4 @@
-import { Box3, BoxGeometry, BufferGeometry, Vector3 } from "three";
+import { Box3, BoxGeometry, BufferGeometry, Float32BufferAttribute, Vector3 } from "three";
 import { ADDITION, Brush, Evaluator, INTERSECTION, SUBTRACTION } from "three-bvh-csg";
 
 export interface SplitPiece {
@@ -32,14 +32,37 @@ function evaluateGeometry(
 ): BufferGeometry {
   const evaluator = new Evaluator();
   evaluator.attributes = ["position"];
-  const a = new Brush(first.clone());
-  const b = new Brush(second.clone());
+  const a = new Brush(withoutDegenerateTriangles(first));
+  const b = new Brush(withoutDegenerateTriangles(second));
   a.updateMatrixWorld(true);
   b.updateMatrixWorld(true);
   const result = evaluator.evaluate(a, b, operation).geometry.clone();
   result.computeVertexNormals();
   result.computeBoundingBox();
   return result;
+}
+
+function withoutDegenerateTriangles(geometry: BufferGeometry): BufferGeometry {
+  const source = geometry.index ? geometry.toNonIndexed() : geometry.clone();
+  const position = source.getAttribute("position");
+  const vertices: number[] = [];
+  const ab = new Vector3();
+  const ac = new Vector3();
+  const cross = new Vector3();
+  for (let i = 0; i + 2 < position.count; i += 3) {
+    const a = new Vector3(position.getX(i), position.getY(i), position.getZ(i));
+    const b = new Vector3(position.getX(i + 1), position.getY(i + 1), position.getZ(i + 1));
+    const c = new Vector3(position.getX(i + 2), position.getY(i + 2), position.getZ(i + 2));
+    if (![...a.toArray(), ...b.toArray(), ...c.toArray()].every(Number.isFinite)) continue;
+    ab.subVectors(b, a);
+    ac.subVectors(c, a);
+    if (cross.crossVectors(ab, ac).lengthSq() <= 1e-12) continue;
+    vertices.push(...a.toArray(), ...b.toArray(), ...c.toArray());
+  }
+  const cleaned = new BufferGeometry();
+  cleaned.setAttribute("position", new Float32BufferAttribute(vertices, 3));
+  cleaned.computeVertexNormals();
+  return cleaned;
 }
 
 /** Divide uma malha por um plano vertical rotacionado em torno do eixo Z. */
@@ -94,71 +117,94 @@ export function splitGeometryByPlane(
 
   const depth = Math.max(options.connectorDepth ?? 4, 0.4);
   const clearance = Math.max(options.connectorClearance ?? 0.2, 0);
-  const widthPercent = Math.min(Math.max(options.connectorWidth ?? 100, 10), 100) * 0.01;
+  const widthPercent = Math.min(Math.max(options.connectorWidth ?? 60, 10), 90) * 0.01;
   const maleIndex = options.maleSide === "part-2" ? 1 : 0;
   const femaleIndex = maleIndex === 0 ? 1 : 0;
   const direction = normal.clone().multiplyScalar(maleIndex === 0 ? 1 : -1);
 
-  const capGeometry = pieces[maleIndex]!.geometry.index
-    ? pieces[maleIndex]!.geometry.toNonIndexed()
-    : pieces[maleIndex]!.geometry;
-  const position = capGeometry.getAttribute("position");
-  let connectorCenter: Vector3 | null = null;
-  let bestDistance = Infinity;
-  const modelCenter = bounds.getCenter(new Vector3());
-  for (let i = 0; i < position.count; i += 3) {
-    const a = new Vector3(position.getX(i), position.getY(i), position.getZ(i));
-    const b = new Vector3(position.getX(i + 1), position.getY(i + 1), position.getZ(i + 1));
-    const c = new Vector3(position.getX(i + 2), position.getY(i + 2), position.getZ(i + 2));
-    if (
-      Math.abs(normal.dot(a.clone().sub(center))) > 1e-3 ||
-      Math.abs(normal.dot(b.clone().sub(center))) > 1e-3 ||
-      Math.abs(normal.dot(c.clone().sub(center))) > 1e-3
-    ) {
-      continue;
-    }
-    const candidate = a
-      .add(b)
-      .add(c)
-      .multiplyScalar(1 / 3);
-    const distance = candidate.distanceToSquared(modelCenter);
-    if (distance < bestDistance) {
-      bestDistance = distance;
-      connectorCenter = candidate;
-    }
-  }
-  if (!connectorCenter) return pieces.map((piece) => ({ ...piece, total: pieces.length }));
-
-  const connectorWidth = Math.max(1, Math.min(20, size.z * widthPercent));
-  const connectorHeight = Math.max(1, Math.min(20, size.z * widthPercent));
+  // O encaixe é extraído da própria seção das paredes junto ao plano de corte.
+  // Assim, a metade macho prolonga o perfil real da parede em vez de receber
+  // apenas um pino retangular isolado.
+  const tongueHeight = Math.max(0.4, size.z * widthPercent);
+  const tangent = new Vector3(-normal.y, normal.x, 0);
   const overlap = Math.min(0.5, depth * 0.2);
-  const makeConnector = (normalDepth: number, centerOffset: number, extraSize = 0) => {
-    const connector = new BoxGeometry(
-      normalDepth,
-      connectorWidth + extraSize,
-      connectorHeight + extraSize,
-    );
-    connector.rotateZ(radians);
-    connector.translate(
-      connectorCenter.x + direction.x * centerOffset,
-      connectorCenter.y + direction.y * centerOffset,
-      connectorCenter.z,
-    );
-    return connector;
-  };
+  const sampleDepth = depth + overlap;
+  const sectionBox = new BoxGeometry(sampleDepth, extent * 2, tongueHeight);
+  sectionBox.rotateZ(radians);
+  sectionBox.translate(
+    center.x - direction.x * (sampleDepth / 2),
+    center.y - direction.y * (sampleDepth / 2),
+    (bounds.min.z + bounds.max.z) / 2,
+  );
+  let maleConnector: BufferGeometry;
+  try {
+    maleConnector = evaluateGeometry(geometry, sectionBox, INTERSECTION);
+  } catch (error) {
+    throw new Error("Falha ao extrair o perfil das paredes no corte", { cause: error });
+  }
+  if (maleConnector.getAttribute("position").count === 0) {
+    return pieces.map((piece) => ({ ...piece, total: pieces.length }));
+  }
+  maleConnector.translate(direction.x * depth, direction.y * depth, 0);
 
-  const maleConnector = makeConnector(depth + overlap, (depth - overlap) / 2);
-  const femaleDepth = depth + clearance;
-  const femaleCavity = makeConnector(femaleDepth, femaleDepth / 2, clearance * 2);
+  // Expande uma única cópia do perfil nos eixos normal, tangente e Z. Uma
+  // única subtração é mais estável em contornos complexos do que unir ou
+  // subtrair várias cópias quase coincidentes.
+  const femaleCavity = maleConnector.clone();
+  if (clearance > 0) {
+    femaleCavity.computeBoundingBox();
+    const cavityCenter = femaleCavity.boundingBox!.getCenter(new Vector3());
+    const cavityPosition = femaleCavity.getAttribute("position");
+    let tangentExtent = 0;
+    for (let i = 0; i < cavityPosition.count; i++) {
+      const point = new Vector3(
+        cavityPosition.getX(i),
+        cavityPosition.getY(i),
+        cavityPosition.getZ(i),
+      );
+      tangentExtent = Math.max(
+        tangentExtent,
+        Math.abs(tangent.dot(point.clone().sub(cavityCenter))),
+      );
+    }
+    const normalScale = (depth + clearance * 2) / depth;
+    const tangentScale =
+      tangentExtent > 1e-6 ? (tangentExtent + clearance) / tangentExtent : 1;
+    const zScale = (tongueHeight + clearance * 2) / tongueHeight;
+    for (let i = 0; i < cavityPosition.count; i++) {
+      const relative = new Vector3(
+        cavityPosition.getX(i) - cavityCenter.x,
+        cavityPosition.getY(i) - cavityCenter.y,
+        cavityPosition.getZ(i) - cavityCenter.z,
+      );
+      const normalDistance = normal.dot(relative) * normalScale;
+      const tangentDistance = tangent.dot(relative) * tangentScale;
+      cavityPosition.setXYZ(
+        i,
+        cavityCenter.x + normal.x * normalDistance + tangent.x * tangentDistance,
+        cavityCenter.y + normal.y * normalDistance + tangent.y * tangentDistance,
+        cavityCenter.z + relative.z * zScale,
+      );
+    }
+    cavityPosition.needsUpdate = true;
+    femaleCavity.computeVertexNormals();
+  }
 
-  pieces[maleIndex] = {
-    ...pieces[maleIndex]!,
-    geometry: evaluateGeometry(pieces[maleIndex]!.geometry, maleConnector, ADDITION),
-  };
-  pieces[femaleIndex] = {
-    ...pieces[femaleIndex]!,
-    geometry: evaluateGeometry(pieces[femaleIndex]!.geometry, femaleCavity, SUBTRACTION),
-  };
+  try {
+    pieces[maleIndex] = {
+      ...pieces[maleIndex]!,
+      geometry: evaluateGeometry(pieces[maleIndex]!.geometry, maleConnector, ADDITION),
+    };
+  } catch (error) {
+    throw new Error("Falha ao unir o rebaixo prolongado à peça macho", { cause: error });
+  }
+  let femaleGeometry: BufferGeometry;
+  try {
+    femaleGeometry = evaluateGeometry(pieces[femaleIndex]!.geometry, femaleCavity, SUBTRACTION);
+  } catch (error) {
+    throw new Error("Falha ao abrir a cavidade fêmea", { cause: error });
+  }
+  pieces[femaleIndex] = { ...pieces[femaleIndex]!, geometry: femaleGeometry };
   return pieces.map((piece) => ({ ...piece, total: pieces.length }));
 }
 
