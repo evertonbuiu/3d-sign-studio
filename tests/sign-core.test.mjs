@@ -161,3 +161,28 @@ test("corte manual cria macho e fêmea complementares com folga", () => {
   );
 });
 
+test("tamanho do encaixe controla a altura do perfil macho", () => {
+  const geometry = new BoxGeometry(100, 60, 20);
+  const small = splitGeometryByPlane(geometry, {
+    angle: 0,
+    connector: "male-female",
+    connectorDepth: 4,
+    connectorWidth: 25,
+  });
+  const full = splitGeometryByPlane(geometry, {
+    angle: 0,
+    connector: "male-female",
+    connectorDepth: 4,
+    connectorWidth: 100,
+  });
+  const extendedHeight = (piece) => {
+    const position = piece.geometry.getAttribute("position");
+    const z = [];
+    for (let i = 0; i < position.count; i++) {
+      if (position.getX(i) > 0.1) z.push(position.getZ(i));
+    }
+    return Math.max(...z) - Math.min(...z);
+  };
+  assert.ok(extendedHeight(small[0]) < extendedHeight(full[0]));
+  assert.ok(extendedHeight(full[0]) >= 19.9, "100% deve usar toda a altura da parede");
+});
