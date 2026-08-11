@@ -379,6 +379,87 @@ function clipGeometryHalf(
   return clipped;
 }
 
+function extrudeCutSection(
+  geometry: BufferGeometry,
+  planePoint: Vector3,
+  normal: Vector3,
+  direction: Vector3,
+  depth: number,
+  minZ: number,
+  maxZ: number,
+): BufferGeometry {
+  const epsilon = 1e-5;
+  const planeDistance = normal.dot(planePoint);
+  const source = geometry.index ? geometry.toNonIndexed() : geometry;
+  const position = source.getAttribute("position");
+  const surfaceTriangles: Array<[Vector3, Vector3, Vector3]> = [];
+
+  const clipZ = (polygon: Vector3[], limit: number, keepAbove: boolean) => {
+    const clipped: Vector3[] = [];
+    for (let index = 0; index < polygon.length; index++) {
+      const current = polygon[index]!;
+      const next = polygon[(index + 1) % polygon.length]!;
+      const currentInside = keepAbove ? current.z >= limit - epsilon : current.z <= limit + epsilon;
+      const nextInside = keepAbove ? next.z >= limit - epsilon : next.z <= limit + epsilon;
+      if (currentInside) clipped.push(current.clone());
+      if (currentInside !== nextInside) {
+        const ratio = (limit - current.z) / (next.z - current.z);
+        clipped.push(current.clone().lerp(next, ratio));
+      }
+    }
+    return clipped;
+  };
+
+  for (let i = 0; i + 2 < position.count; i += 3) {
+    let polygon = [0, 1, 2].map(
+      (offset) =>
+        new Vector3(position.getX(i + offset), position.getY(i + offset), position.getZ(i + offset)),
+    );
+    if (!polygon.every((point) => Math.abs(normal.dot(point) - planeDistance) <= epsilon)) continue;
+    polygon = clipZ(polygon, minZ, true);
+    polygon = clipZ(polygon, maxZ, false);
+    for (let vertex = 1; vertex + 1 < polygon.length; vertex++) {
+      surfaceTriangles.push([polygon[0]!, polygon[vertex]!, polygon[vertex + 1]!]);
+    }
+  }
+
+  const faces = new Map<string, { vertices: number[]; count: number }>();
+  const addFace = (a: Vector3, b: Vector3, c: Vector3) => {
+    const vertices = [...a.toArray(), ...b.toArray(), ...c.toArray()];
+    const key = [a, b, c]
+      .map((point) => point.toArray().map((value) => Math.round(value * 1e5)).join(","))
+      .sort()
+      .join("|");
+    const existing = faces.get(key);
+    faces.set(key, { vertices, count: (existing?.count ?? 0) + 1 });
+  };
+  const extension = direction.clone().multiplyScalar(depth);
+  for (const [a, b, c] of surfaceTriangles) {
+    const aa = a.clone().add(extension);
+    const bb = b.clone().add(extension);
+    const cc = c.clone().add(extension);
+    addFace(a, c, b);
+    addFace(aa, bb, cc);
+    for (const [start, end, endTop, startTop] of [
+      [a, b, bb, aa],
+      [b, c, cc, bb],
+      [c, a, aa, cc],
+    ] as const) {
+      addFace(start, end, endTop);
+      addFace(start, endTop, startTop);
+    }
+  }
+  const vertices = [...faces.values()]
+    .filter((face) => face.count === 1)
+    .flatMap((face) => face.vertices);
+  const result = new BufferGeometry();
+  result.setAttribute("position", new Float32BufferAttribute(vertices, 3));
+  const welded = mergeVertices(withoutDegenerateTriangles(result), epsilon);
+  welded.computeVertexNormals();
+  welded.computeBoundingBox();
+  return welded;
+}
+
 /** Divide uma malha por um plano vertical rotacionado em torno do eixo Z. */
 export function splitGeometryByPlane(
   geometry: BufferGeometry,
@@ -393,14 +474,6 @@ export function splitGeometryByPlane(
   const radians = (options.angle * Math.PI) / 180;
   const normal = new Vector3(Math.cos(radians), Math.sin(radians), 0);
   center.addScaledVector(normal, options.offset ?? 0);
-  const reach = Math.max(
-    Math.abs(bounds.min.x - center.x),
-    Math.abs(bounds.max.x - center.x),
-    Math.abs(bounds.min.y - center.y),
-    Math.abs(bounds.max.y - center.y),
-  );
-  const extent = Math.max(Math.max(size.x, size.y) * 4, reach * 4) + 10;
-  const zPadding = Math.max(size.z, 1) + 2;
   const pieces: SplitPiece[] = [];
 
   for (const side of [-1, 1] as const) {
@@ -439,26 +512,21 @@ export function splitGeometryByPlane(
     size.z,
     Math.max(0.4, options.connectorThickness ?? size.z * widthPercent),
   );
-  const tangent = new Vector3(-normal.y, normal.x, 0);
   const overlap = Math.min(0.5, depth * 0.2);
-  const sampleDepth = depth + overlap;
-  const sectionBox = new BoxGeometry(sampleDepth, extent * 2, tongueHeight);
-  sectionBox.rotateZ(radians);
-  sectionBox.translate(
-    center.x - direction.x * (sampleDepth / 2),
-    center.y - direction.y * (sampleDepth / 2),
-    (bounds.min.z + bounds.max.z) / 2,
+  const tongueCenterZ = (bounds.min.z + bounds.max.z) / 2;
+  const maleConnector = extrudeCutSection(
+    pieces[maleIndex]!.geometry,
+    center,
+    normal,
+    direction,
+    depth + overlap,
+    tongueCenterZ - tongueHeight / 2,
+    tongueCenterZ + tongueHeight / 2,
   );
-  let maleConnector: BufferGeometry;
-  try {
-    maleConnector = evaluateGeometry(geometry, sectionBox, INTERSECTION);
-  } catch (error) {
-    throw new Error("Falha ao extrair o perfil das paredes no corte", { cause: error });
-  }
   if (maleConnector.getAttribute("position").count === 0) {
     return pieces.map((piece) => ({ ...piece, total: pieces.length }));
   }
-  maleConnector.translate(direction.x * depth, direction.y * depth, 0);
+  maleConnector.translate(-direction.x * overlap, -direction.y * overlap, 0);
 
   // Expande uma única cópia do perfil nos eixos normal, tangente e Z. Uma
   // única subtração é mais estável em contornos complexos do que unir ou
@@ -475,10 +543,8 @@ export function splitGeometryByPlane(
         cavityPosition.getY(i),
         cavityPosition.getZ(i),
       );
-      tangentExtent = Math.max(
-        tangentExtent,
-        Math.abs(tangent.dot(point.clone().sub(cavityCenter))),
-      );
+      const tangent = new Vector3(-normal.y, normal.x, 0);
+      tangentExtent = Math.max(tangentExtent, Math.abs(tangent.dot(point.clone().sub(cavityCenter))));
     }
     const normalScale = (depth + clearance * 2) / depth;
     const tangentScale = tangentExtent > 1e-6 ? (tangentExtent + clearance) / tangentExtent : 1;
@@ -489,6 +555,7 @@ export function splitGeometryByPlane(
         cavityPosition.getY(i) - cavityCenter.y,
         cavityPosition.getZ(i) - cavityCenter.z,
       );
+      const tangent = new Vector3(-normal.y, normal.x, 0);
       const normalDistance = normal.dot(relative) * normalScale;
       const tangentDistance = tangent.dot(relative) * tangentScale;
       cavityPosition.setXYZ(
