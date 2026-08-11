@@ -8,6 +8,14 @@ export interface SplitPiece {
   row: number;
   index: number;
   total: number;
+  /**
+   * Presente somente quando um encaixe macho/fêmea foi solicitado. `true` se o
+   * degrau foi gerado normalmente; `false` se o corte pediu o encaixe mas ele
+   * não pôde ser criado neste ponto (ver `connectorIssue`).
+   */
+  connectorApplied?: boolean;
+  /** Motivo legível para o usuário quando `connectorApplied` é `false`. */
+  connectorIssue?: string;
 }
 
 export interface BuildPlateSplitOptions {
@@ -203,22 +211,51 @@ export function splitGeometryByPlane(
   );
   const tangent = new Vector3(-normal.y, normal.x, 0);
   const overlap = Math.min(0.5, depth * 0.2);
-  const sampleDepth = depth + overlap;
-  const sectionBox = new BoxGeometry(sampleDepth, extent * 2, tongueHeight);
-  sectionBox.rotateZ(radians);
-  sectionBox.translate(
-    center.x - direction.x * (sampleDepth / 2),
-    center.y - direction.y * (sampleDepth / 2),
-    (bounds.min.z + bounds.max.z) / 2,
-  );
-  let maleConnector: BufferGeometry;
-  try {
-    maleConnector = evaluateGeometry(geometry, sectionBox, INTERSECTION);
-  } catch (error) {
-    throw new Error("Falha ao extrair o perfil das paredes no corte", { cause: error });
+  const baseSampleDepth = depth + overlap;
+
+  // Em paredes retas a janela `depth + overlap` já captura a seção da parede.
+  // Em contornos curvos (letras), o plano de corte pode cruzar a parede quase
+  // tangencialmente: a mesma espessura física ocupa uma faixa muito maior na
+  // direção normal do corte. Se a primeira tentativa vier vazia, ampliamos a
+  // janela de captura (sem alterar o avanço `depth` do encaixe) antes de
+  // desistir, em vez de devolver o corte sem encaixe silenciosamente.
+  const sampleMultipliers = [1, 2.5, 5, 10];
+  let maleConnector: BufferGeometry | null = null;
+  let extractionError: unknown = null;
+  for (const multiplier of sampleMultipliers) {
+    const sampleDepth = baseSampleDepth * multiplier;
+    const sectionBox = new BoxGeometry(sampleDepth, extent * 2, tongueHeight);
+    sectionBox.rotateZ(radians);
+    sectionBox.translate(
+      center.x - direction.x * (sampleDepth / 2),
+      center.y - direction.y * (sampleDepth / 2),
+      (bounds.min.z + bounds.max.z) / 2,
+    );
+    try {
+      const candidate = evaluateGeometry(geometry, sectionBox, INTERSECTION);
+      if (candidate.getAttribute("position").count > 0) {
+        maleConnector = candidate;
+        break;
+      }
+    } catch (error) {
+      extractionError = error;
+    }
   }
-  if (maleConnector.getAttribute("position").count === 0) {
-    return pieces.map((piece) => ({ ...piece, total: pieces.length }));
+
+  if (!maleConnector) {
+    console.warn(
+      "[split] Encaixe macho/fêmea não pôde ser gerado neste ponto do corte " +
+        "(a parede provavelmente cruza o plano quase tangencialmente, ex.: dentro " +
+        "de uma curva de letra). Ajuste o ângulo/posição do corte para essa peça.",
+      extractionError,
+    );
+    return pieces.map((piece) => ({
+      ...piece,
+      total: pieces.length,
+      connectorApplied: false,
+      connectorIssue:
+        "Não foi possível gerar o encaixe neste ponto — tente ajustar o ângulo ou a posição do corte.",
+    }));
   }
   maleConnector.translate(direction.x * depth, direction.y * depth, 0);
 
@@ -285,7 +322,7 @@ export function splitGeometryByPlane(
     throw new Error("Falha ao abrir a cavidade fêmea", { cause: error });
   }
   pieces[femaleIndex] = { ...pieces[femaleIndex]!, geometry: femaleGeometry };
-  return pieces.map((piece) => ({ ...piece, total: pieces.length }));
+  return pieces.map((piece) => ({ ...piece, total: pieces.length, connectorApplied: true }));
 }
 
 /** Aplica vários planos sobre as peças resultantes, preservando a origem do modelo. */
