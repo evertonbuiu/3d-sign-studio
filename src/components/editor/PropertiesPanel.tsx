@@ -28,7 +28,7 @@ const MAX_FONT_FILE_BYTES = 5_000_000;
 
 function validateVectorFile(file: File): boolean {
   if (file.size <= MAX_VECTOR_FILE_BYTES) return true;
-  toast.error("O arquivo vetorial deve ter no máximo 2 MB.");
+  toast.error("O arquivo vetorial deve ter no mÃ¡ximo 2 MB.");
   return false;
 }
 
@@ -219,7 +219,7 @@ export default function PropertiesPanel() {
                           const { dxfToShapes } = await import("@/lib/sign/dxf");
                           if (!dxfToShapes(content, 100).length) {
                             toast.error(
-                              "Nenhum contorno fechado encontrado no DXF. Use polilinhas/círculos fechados (sem textos ou hachuras).",
+                              "Nenhum contorno fechado encontrado no DXF. Use polilinhas/cÃ­rculos fechados (sem textos ou hachuras).",
                             );
                             return;
                           }
@@ -268,11 +268,11 @@ export default function PropertiesPanel() {
                       e.target.value = "";
                       if (!file) return;
                       if (file.size > MAX_FONT_FILE_BYTES) {
-                        toast.error("A fonte deve ter no máximo 5 MB.");
+                        toast.error("A fonte deve ter no mÃ¡ximo 5 MB.");
                         return;
                       }
                       if (!/\.(ttf|otf)$/i.test(file.name)) {
-                        toast.error("Selecione uma fonte TTF ou OTF válida.");
+                        toast.error("Selecione uma fonte TTF ou OTF vÃ¡lida.");
                         return;
                       }
                       try {
@@ -283,7 +283,7 @@ export default function PropertiesPanel() {
                         toast.success(`Fonte ${file.name} carregada localmente.`);
                       } catch {
                         toast.error(
-                          "Não foi possível ler essa fonte. Verifique se o arquivo TTF/OTF é válido.",
+                          "NÃ£o foi possÃ­vel ler essa fonte. Verifique se o arquivo TTF/OTF Ã© vÃ¡lido.",
                         );
                       }
                     }}
@@ -306,12 +306,12 @@ export default function PropertiesPanel() {
                 max={800}
                 step={5}
               />
-              <NumberSlider label="Espaçamento" keyName="tracking" min={-10} max={40} step={0.5} />
+              <NumberSlider label="EspaÃ§amento" keyName="tracking" min={-10} max={40} step={0.5} />
             </AccordionContent>
           </AccordionItem>
 
           <AccordionItem value="construcao">
-            <AccordionTrigger className="text-sm">Construção</AccordionTrigger>
+            <AccordionTrigger className="text-sm">ConstruÃ§Ã£o</AccordionTrigger>
             <AccordionContent className="space-y-3 pb-4">
               {style.id !== "neon-flex-fundo-impresso" ? (
                 <NumberSlider label="Profundidade" keyName="depth" min={5} max={200} step={1} />
@@ -341,7 +341,7 @@ export default function PropertiesPanel() {
                   />
                   <p className="text-xs text-muted-foreground">
                     Define a largura livre do canal que acompanha somente o contorno da letra. Este
-                    estilo não gera tampa.
+                    estilo nÃ£o gera tampa.
                   </p>
                   <p className="text-xs font-medium text-muted-foreground">
                     Altura total impressa:{" "}
@@ -406,7 +406,7 @@ export default function PropertiesPanel() {
           </AccordionItem>
 
           <AccordionItem value="led">
-            <AccordionTrigger className="text-sm">Iluminação</AccordionTrigger>
+            <AccordionTrigger className="text-sm">IluminaÃ§Ã£o</AccordionTrigger>
             <AccordionContent className="space-y-3 pb-4">
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium text-muted-foreground">LED ativo</Label>
@@ -434,7 +434,7 @@ export default function PropertiesPanel() {
                 step={0.5}
               />
               <NumberSlider
-                label="Potência da fita"
+                label="PotÃªncia da fita"
                 keyName="ledPowerPerMeter"
                 min={2}
                 max={30}
@@ -502,7 +502,7 @@ export default function PropertiesPanel() {
                 step={0.5}
               />
               <NumberSlider
-                label="Redução por camada"
+                label="ReduÃ§Ã£o por camada"
                 keyName="layerShrink"
                 min={1}
                 max={40}
@@ -516,7 +516,7 @@ export default function PropertiesPanel() {
             <AccordionContent className="space-y-3 pb-4">
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium text-muted-foreground">
-                  Furos de fixação
+                  Furos de fixaÃ§Ã£o
                 </Label>
                 <Switch
                   checked={params.mountHoles}
@@ -524,7 +524,7 @@ export default function PropertiesPanel() {
                 />
               </div>
               <NumberSlider
-                label="Diâmetro do furo"
+                label="DiÃ¢metro do furo"
                 keyName="holeDiameter"
                 min={2}
                 max={20}
@@ -537,7 +537,7 @@ export default function PropertiesPanel() {
           </AccordionItem>
 
           <AccordionItem value="custos">
-            <AccordionTrigger className="text-sm">Custos e produção</AccordionTrigger>
+            <AccordionTrigger className="text-sm">Custos e produÃ§Ã£o</AccordionTrigger>
             <AccordionContent className="space-y-3 pb-4">
               <Field label="Modelo da impressora 3D">
                 <Select value={params.printerId} onValueChange={selectPrinter}>
@@ -547,18 +547,18 @@ export default function PropertiesPanel() {
                   <SelectContent>
                     {PRINTER_PROFILES.map((printer) => (
                       <SelectItem key={printer.id} value={printer.id}>
-                        {printer.manufacturer} — {printer.name}
+                        {printer.manufacturer} â€” {printer.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </Field>
               <div className="rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-                Volume útil: {params.buildWidth} × {params.buildDepth} × {params.buildHeight} mm
+                Volume Ãºtil: {params.buildWidth} Ã— {params.buildDepth} Ã— {params.buildHeight} mm
                 <br />
-                Bico: {params.nozzleDiameter} mm · Filamento: {params.filamentDiameter} mm
+                Bico: {params.nozzleDiameter} mm Â· Filamento: {params.filamentDiameter} mm
                 <br />
-                Velocidade máxima: {params.maxPrintSpeed} mm/s
+                Velocidade mÃ¡xima: {params.maxPrintSpeed} mm/s
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <MoneyField label="Mesa X (mm)" keyName="buildWidth" />
@@ -569,13 +569,13 @@ export default function PropertiesPanel() {
                 <MoneyField label="Bico (mm)" keyName="nozzleDiameter" step={0.1} />
                 <MoneyField label="Filamento (mm)" keyName="filamentDiameter" step={0.05} />
               </div>
-              <MoneyField label="Velocidade máxima (mm/s)" keyName="maxPrintSpeed" />
+              <MoneyField label="Velocidade mÃ¡xima (mm/s)" keyName="maxPrintSpeed" />
               <MoneyField label="Filamento (R$/kg)" keyName="filamentPrice" />
-              <MoneyField label="Densidade (g/cm³)" keyName="density" step={0.01} />
-              <MoneyField label="Velocidade (cm³/h)" keyName="printSpeed" />
-              <MoneyField label="Mão de obra (R$/h)" keyName="hourlyRate" />
+              <MoneyField label="Densidade (g/cmÂ³)" keyName="density" step={0.01} />
+              <MoneyField label="Velocidade (cmÂ³/h)" keyName="printSpeed" />
+              <MoneyField label="MÃ£o de obra (R$/h)" keyName="hourlyRate" />
               <MoneyField label="Energia (R$/kWh)" keyName="energyPrice" step={0.01} />
-              <MoneyField label="Potência da impressora (W)" keyName="printerPower" />
+              <MoneyField label="PotÃªncia da impressora (W)" keyName="printerPower" />
               <MoneyField label="Margem (%)" keyName="margin" />
             </AccordionContent>
           </AccordionItem>
@@ -611,7 +611,7 @@ export default function PropertiesPanel() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="manual">Plano manual</SelectItem>
-                        <SelectItem value="automatic">Automático pela mesa</SelectItem>
+                        <SelectItem value="automatic">AutomÃ¡tico pela mesa</SelectItem>
                       </SelectContent>
                     </Select>
                   </Field>
@@ -620,22 +620,22 @@ export default function PropertiesPanel() {
                   ) : (
                     <>
                       <NumberSlider
-                        label="Rotação do plano (eixo Z)"
+                        label="RotaÃ§Ã£o do plano (eixo Z)"
                         keyName="manualCutAngle"
                         min={-180}
                         max={180}
                         step={1}
-                        unit="°"
+                        unit="Â°"
                       />
                       <NumberSlider
-                        label="Posição do plano"
+                        label="PosiÃ§Ã£o do plano"
                         keyName="manualCutOffset"
                         min={-400}
                         max={400}
                         step={1}
                       />
                       <NumberSlider
-                        label="Afastar partes na prévia"
+                        label="Afastar partes na prÃ©via"
                         keyName="manualCutSeparation"
                         min={0}
                         max={100}
@@ -645,9 +645,12 @@ export default function PropertiesPanel() {
                         <Field label="Encaixe no corte">
                           <Select
                             value={params.cutConnector}
-                            onValueChange={(value) =>
-                              setParam("cutConnector", value as SignParams["cutConnector"])
-                            }
+                            onValueChange={(value) => {
+                              setParam("cutConnector", value as SignParams["cutConnector"]);
+                              if (value === "male-female") {
+                                setParam("cutConnectorThickness", Math.min(params.depth / 2, 30));
+                              }
+                            }}
                           >
                             <SelectTrigger className="h-9 bg-card text-sm">
                               <SelectValue />
@@ -655,7 +658,7 @@ export default function PropertiesPanel() {
                             <SelectContent>
                               <SelectItem value="none">Sem encaixe</SelectItem>
                               <SelectItem value="male-female">
-                                Degrau contínuo (macho e fêmea)
+                                Degrau contÃ­nuo (macho e fÃªmea)
                               </SelectItem>
                             </SelectContent>
                           </Select>
@@ -686,18 +689,18 @@ export default function PropertiesPanel() {
                               step={0.2}
                             />
                             <NumberSlider
-                              label="Espessura do rebaixo"
+                              label="Altura do degrau na parede"
                               keyName="cutConnectorThickness"
                               min={0.4}
                               max={Math.min(params.depth, 30)}
                               step={0.2}
                             />
                             <p className="text-xs leading-relaxed text-muted-foreground">
-                              Cria uma faixa junto à frente da parede, usando o mesmo princípio do
-                              rebaixo que assenta a tampa.
+                              Cria o encaixe de meia parede do modelo de referÃªncia: a faixa frontal
+                              forma o macho e a faixa complementar apoia a peÃ§a fÃªmea.
                             </p>
                             <NumberSlider
-                              label="Folga macho/fêmea"
+                              label="Folga macho/fÃªmea"
                               keyName="cutConnectorClearance"
                               min={0}
                               max={1.5}
@@ -714,7 +717,7 @@ export default function PropertiesPanel() {
           </AccordionItem>
 
           <AccordionItem value="pecas">
-            <AccordionTrigger className="text-sm">Peças do modelo</AccordionTrigger>
+            <AccordionTrigger className="text-sm">PeÃ§as do modelo</AccordionTrigger>
             <AccordionContent className="space-y-3 pb-4">
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium text-muted-foreground">Modo wireframe</Label>
@@ -777,7 +780,7 @@ export default function PropertiesPanel() {
                       {part.name}
                     </span>
                     <span className="flex items-center gap-2 text-muted-foreground">
-                      {part.volumeCm3.toFixed(1)} cm³
+                      {part.volumeCm3.toFixed(1)} cmÂ³
                       {hidden.has(part.id) ? (
                         <EyeOff className="h-3.5 w-3.5" />
                       ) : (
