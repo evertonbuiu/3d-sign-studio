@@ -387,6 +387,7 @@ function extrudeCutSection(
   depth: number,
   minZ: number,
   maxZ: number,
+  wallFraction: number,
 ): BufferGeometry {
   const epsilon = 1e-5;
   const planeDistance = normal.dot(planePoint);
@@ -423,6 +424,70 @@ function extrudeCutSection(
     }
   }
 
+  // Cada ilha da secao representa uma parede atravessada pelo plano. Mantemos
+  // apenas a faixa voltada ao centro do modelo (metade interna da parede).
+  const tangent = new Vector3(-normal.y, normal.x, 0);
+  const modelCenterT = tangent.dot(planePoint);
+  const parent = surfaceTriangles.map((_, index) => index);
+  const find = (value: number): number => {
+    while (parent[value] !== value) {
+      parent[value] = parent[parent[value]!]!;
+      value = parent[value]!;
+    }
+    return value;
+  };
+  const union = (a: number, b: number) => {
+    const rootA = find(a);
+    const rootB = find(b);
+    if (rootA !== rootB) parent[rootA] = rootB;
+  };
+  const vertexOwners = new Map<string, number>();
+  const vertexKey = (point: Vector3) =>
+    point.toArray().map((value) => Math.round(value * 1e5)).join(",");
+  surfaceTriangles.forEach((triangle, triangleIndex) => {
+    for (const point of triangle) {
+      const key = vertexKey(point);
+      const owner = vertexOwners.get(key);
+      if (owner !== undefined) union(triangleIndex, owner);
+      else vertexOwners.set(key, triangleIndex);
+    }
+  });
+  const groups = new Map<number, Array<[Vector3, Vector3, Vector3]>>();
+  surfaceTriangles.forEach((triangle, index) => {
+    const root = find(index);
+    groups.set(root, [...(groups.get(root) ?? []), triangle]);
+  });
+  const connectorTriangles: Array<[Vector3, Vector3, Vector3]> = [];
+  const fraction = Math.min(Math.max(wallFraction, 0.1), 1);
+  for (const triangles of groups.values()) {
+    const coordinates = triangles.flat().map((point) => tangent.dot(point));
+    const minT = Math.min(...coordinates);
+    const maxT = Math.max(...coordinates);
+    const centerT = (minT + maxT) / 2;
+    const keepAbove = centerT < modelCenterT;
+    const limit = keepAbove ? maxT - (maxT - minT) * fraction : minT + (maxT - minT) * fraction;
+    for (const triangle of triangles) {
+      let polygon = triangle.map((point) => point.clone());
+      const clipped: Vector3[] = [];
+      for (let index = 0; index < polygon.length; index++) {
+        const current = polygon[index]!;
+        const next = polygon[(index + 1) % polygon.length]!;
+        const currentT = tangent.dot(current);
+        const nextT = tangent.dot(next);
+        const currentInside = keepAbove ? currentT >= limit - epsilon : currentT <= limit + epsilon;
+        const nextInside = keepAbove ? nextT >= limit - epsilon : nextT <= limit + epsilon;
+        if (currentInside) clipped.push(current.clone());
+        if (currentInside !== nextInside) {
+          clipped.push(current.clone().lerp(next, (limit - currentT) / (nextT - currentT)));
+        }
+      }
+      polygon = clipped;
+      for (let vertex = 1; vertex + 1 < polygon.length; vertex++) {
+        connectorTriangles.push([polygon[0]!, polygon[vertex]!, polygon[vertex + 1]!]);
+      }
+    }
+  }
+
   const faces = new Map<string, { vertices: number[]; count: number }>();
   const addFace = (a: Vector3, b: Vector3, c: Vector3) => {
     const vertices = [...a.toArray(), ...b.toArray(), ...c.toArray()];
@@ -434,7 +499,7 @@ function extrudeCutSection(
     faces.set(key, { vertices, count: (existing?.count ?? 0) + 1 });
   };
   const extension = direction.clone().multiplyScalar(depth);
-  for (const [a, b, c] of surfaceTriangles) {
+  for (const [a, b, c] of connectorTriangles) {
     const aa = a.clone().add(extension);
     const bb = b.clone().add(extension);
     const cc = c.clone().add(extension);
@@ -522,6 +587,7 @@ export function splitGeometryByPlane(
     depth + overlap,
     tongueCenterZ - tongueHeight / 2,
     tongueCenterZ + tongueHeight / 2,
+    widthPercent,
   );
   if (maleConnector.getAttribute("position").count === 0) {
     return pieces.map((piece) => ({ ...piece, total: pieces.length }));

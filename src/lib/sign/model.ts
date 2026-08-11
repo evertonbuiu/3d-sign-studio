@@ -160,7 +160,7 @@ export const DEFAULT_PARAMS: SignParams = {
   cutConnector: "male-female",
   cutMaleSide: "part-1",
   cutConnectorDepth: 4,
-  cutConnectorWidth: 60,
+  cutConnectorWidth: 50,
   // O modelo SKP usa uma lingueta central com 60% da profundidade da parede.
   cutConnectorThickness: 36,
   cutConnectorClearance: 0.2,
