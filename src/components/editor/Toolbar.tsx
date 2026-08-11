@@ -196,7 +196,7 @@ export default function Toolbar() {
       vectorSource:
         row.vector_kind && row.vector_name && row.vector_content
           ? {
-              kind: row.vector_kind as "svg" | "dxf",
+              kind: row.vector_kind,
               name: row.vector_name,
               content: row.vector_content,
             }
