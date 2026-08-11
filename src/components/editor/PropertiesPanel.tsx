@@ -650,7 +650,7 @@ export default function PropertiesPanel() {
                               if (value === "male-female") {
                                 setParam(
                                   "cutConnectorThickness",
-                                  Math.min(params.depth / 2, 30),
+                                  Math.min(params.depth * 0.6, 60),
                                 );
                               }
                             }}
@@ -695,12 +695,12 @@ export default function PropertiesPanel() {
                               label="Altura do degrau na parede"
                               keyName="cutConnectorThickness"
                               min={0.4}
-                              max={Math.min(params.depth, 30)}
+                              max={Math.min(params.depth, 60)}
                               step={0.2}
                             />
                             <p className="text-xs leading-relaxed text-muted-foreground">
-                              Cria o encaixe de meia parede do modelo de referência: a faixa frontal
-                              forma o macho e a faixa complementar apoia a peça fêmea.
+                              Como no modelo SKP: a faixa central forma o macho e mantém dois ombros
+                              de apoio, um junto à frente e outro junto ao fundo.
                             </p>
                             <NumberSlider
                               label="Folga macho/fêmea"
