@@ -4,7 +4,7 @@ import test from "node:test";
 import { BoxGeometry, BufferGeometry, Float32BufferAttribute, Vector3 } from "three";
 
 import { computeCost } from "../src/lib/sign/cost.ts";
-import { DEFAULT_PARAMS } from "../src/lib/sign/model.ts";
+import { DEFAULT_PARAMS, STYLES, paramsForStyle } from "../src/lib/sign/model.ts";
 import {
   DEFAULT_PRINTER,
   getPrinterProfile,
@@ -96,6 +96,56 @@ test("Bambu Lab A1 é a impressora padrão", () => {
       printerPower: 350,
     },
   );
+});
+
+test("todos os estilos ignoram parâmetros geométricos residuais", () => {
+  const contaminated = {
+    ...DEFAULT_PARAMS,
+    depth: 199,
+    wall: 11,
+    faceThickness: 17,
+    backThickness: 13,
+    clearance: 1.4,
+    faceRecess: false,
+    recessLip: 9,
+    backFlangeWidth: 18,
+    backFlangeThickness: 14,
+    neonFlexThickness: 29,
+    led: false,
+    ledChannelWidth: 39,
+    ledChannelHeight: 28,
+    ledOffset: 24,
+    ledColor: "#123456",
+    ledPowerPerMeter: 29,
+    layers: 3,
+    layerThickness: 29,
+    layerShrink: 39,
+    mountHoles: false,
+    holeDiameter: 19,
+    tabs: false,
+    guides: false,
+    bodyMode: "totem",
+    plateMargin: 190,
+    plateThickness: 39,
+    cutout: true,
+    poleHeight: 1900,
+  };
+  const geometryKeys = [
+    "depth", "wall", "faceThickness", "backThickness", "clearance", "faceRecess",
+    "recessLip", "backFlangeWidth", "backFlangeThickness", "neonFlexThickness", "led",
+    "ledChannelWidth", "ledChannelHeight", "ledOffset", "ledColor", "ledPowerPerMeter",
+    "layers", "layerThickness", "layerShrink", "mountHoles", "holeDiameter", "tabs",
+    "guides", "bodyMode", "plateMargin", "plateThickness", "cutout", "poleHeight",
+  ];
+  for (const style of STYLES) {
+    const clean = paramsForStyle(style, DEFAULT_PARAMS);
+    const selectedAfterAnotherStyle = paramsForStyle(style, contaminated);
+    assert.deepEqual(
+      Object.fromEntries(geometryKeys.map((key) => [key, selectedAfterAnotherStyle[key]])),
+      Object.fromEntries(geometryKeys.map((key) => [key, clean[key]])),
+      style.id,
+    );
+  }
 });
 
 test("encaixe padrão usa faixa central de 60% como o modelo SKP", () => {

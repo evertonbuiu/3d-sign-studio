@@ -495,5 +495,39 @@ export function getStyle(id: string): SignStyle {
 }
 
 export function paramsForStyle(style: SignStyle, base: SignParams = DEFAULT_PARAMS): SignParams {
-  return { ...base, ...style.preset };
+  // Parâmetros de geometria pertencem ao estilo, não ao estilo selecionado
+  // anteriormente. Reiniciá-los antes de aplicar o preset evita que um preset
+  // parcial herde rebaixo, aba, LED ou modo de corpo de outra construção.
+  return {
+    ...base,
+    depth: DEFAULT_PARAMS.depth,
+    wall: DEFAULT_PARAMS.wall,
+    faceThickness: DEFAULT_PARAMS.faceThickness,
+    backThickness: DEFAULT_PARAMS.backThickness,
+    clearance: DEFAULT_PARAMS.clearance,
+    faceRecess: DEFAULT_PARAMS.faceRecess,
+    recessLip: DEFAULT_PARAMS.recessLip,
+    backFlangeWidth: DEFAULT_PARAMS.backFlangeWidth,
+    backFlangeThickness: DEFAULT_PARAMS.backFlangeThickness,
+    neonFlexThickness: DEFAULT_PARAMS.neonFlexThickness,
+    led: DEFAULT_PARAMS.led,
+    ledChannelWidth: DEFAULT_PARAMS.ledChannelWidth,
+    ledChannelHeight: DEFAULT_PARAMS.ledChannelHeight,
+    ledOffset: DEFAULT_PARAMS.ledOffset,
+    ledColor: DEFAULT_PARAMS.ledColor,
+    ledPowerPerMeter: DEFAULT_PARAMS.ledPowerPerMeter,
+    layers: DEFAULT_PARAMS.layers,
+    layerThickness: DEFAULT_PARAMS.layerThickness,
+    layerShrink: DEFAULT_PARAMS.layerShrink,
+    mountHoles: DEFAULT_PARAMS.mountHoles,
+    holeDiameter: DEFAULT_PARAMS.holeDiameter,
+    tabs: DEFAULT_PARAMS.tabs,
+    guides: DEFAULT_PARAMS.guides,
+    bodyMode: DEFAULT_PARAMS.bodyMode,
+    plateMargin: DEFAULT_PARAMS.plateMargin,
+    plateThickness: DEFAULT_PARAMS.plateThickness,
+    cutout: DEFAULT_PARAMS.cutout,
+    poleHeight: DEFAULT_PARAMS.poleHeight,
+    ...style.preset,
+  };
 }
