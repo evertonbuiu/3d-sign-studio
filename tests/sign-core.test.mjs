@@ -97,6 +97,10 @@ test("Bambu Lab A1 é a impressora padrão", () => {
   );
 });
 
+test("encaixe padrão usa degrau de meia parede como o modelo de referência", () => {
+  assert.equal(DEFAULT_PARAMS.cutConnectorThickness, DEFAULT_PARAMS.depth / 2);
+});
+
 test("corta uma peça grande conforme a mesa da impressora", () => {
   const geometry = new BoxGeometry(500, 300, 10);
   const pieces = splitGeometryForBuildPlate(geometry, { width: 220, depth: 220, margin: 10 });

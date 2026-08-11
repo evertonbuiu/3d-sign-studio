@@ -645,9 +645,15 @@ export default function PropertiesPanel() {
                         <Field label="Encaixe no corte">
                           <Select
                             value={params.cutConnector}
-                            onValueChange={(value) =>
-                              setParam("cutConnector", value as SignParams["cutConnector"])
-                            }
+                            onValueChange={(value) => {
+                              setParam("cutConnector", value as SignParams["cutConnector"]);
+                              if (value === "male-female") {
+                                setParam(
+                                  "cutConnectorThickness",
+                                  Math.min(params.depth / 2, 30),
+                                );
+                              }
+                            }}
                           >
                             <SelectTrigger className="h-9 bg-card text-sm">
                               <SelectValue />
@@ -686,15 +692,15 @@ export default function PropertiesPanel() {
                               step={0.2}
                             />
                             <NumberSlider
-                              label="Espessura do rebaixo"
+                              label="Altura do degrau na parede"
                               keyName="cutConnectorThickness"
                               min={0.4}
                               max={Math.min(params.depth, 30)}
                               step={0.2}
                             />
                             <p className="text-xs leading-relaxed text-muted-foreground">
-                              Cria uma faixa junto à frente da parede, usando o mesmo princípio do
-                              rebaixo que assenta a tampa.
+                              Cria o encaixe de meia parede do modelo de referência: a faixa frontal
+                              forma o macho e a faixa complementar apoia a peça fêmea.
                             </p>
                             <NumberSlider
                               label="Folga macho/fêmea"

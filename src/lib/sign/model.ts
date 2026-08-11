@@ -138,7 +138,9 @@ export const DEFAULT_PARAMS: SignParams = {
   cutMaleSide: "part-1",
   cutConnectorDepth: 4,
   cutConnectorWidth: 60,
-  cutConnectorThickness: 3,
+  // Meia profundidade da parede padrão: produz o degrau longitudinal usado
+  // no modelo de referência em vez de uma lingueta frontal muito fina.
+  cutConnectorThickness: 30,
   cutConnectorClearance: 0.2,
   filamentPrice: 120,
   density: 1.24,
