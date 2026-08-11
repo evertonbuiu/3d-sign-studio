@@ -756,13 +756,6 @@ export default function PropertiesPanel() {
                               step={0.2}
                             />
                             <NumberSlider
-                              label="Altura do degrau na parede"
-                              keyName="cutConnectorThickness"
-                              min={0.4}
-                              max={Math.min(params.depth, 60)}
-                              step={0.2}
-                            />
-                            <NumberSlider
                               label="Largura na espessura da parede"
                               keyName="cutConnectorWidth"
                               min={10}
@@ -771,8 +764,8 @@ export default function PropertiesPanel() {
                               unit="%"
                             />
                             <p className="text-xs leading-relaxed text-muted-foreground">
-                              O macho ocupa a faixa interna da espessura da parede. Em 50%, a metade
-                              externa permanece como ombro de apoio, sem fechar o interior.
+                              O macho percorre toda a parede, do fundo até a frente. Em 50%, ocupa a
+                              metade interna e mantém a metade externa como ombro de apoio.
                             </p>
                             <NumberSlider
                               label="Folga macho/fêmea"
