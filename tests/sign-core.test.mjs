@@ -260,6 +260,33 @@ test("corte manual cria macho e fêmea complementares com folga", () => {
   );
 });
 
+test("parte femea deixa aberta a metade interna do rebaixo", () => {
+  const geometry = new BoxGeometry(100, 60, 20);
+  const pieces = splitGeometryByPlane(geometry, {
+    angle: 0,
+    connector: "male-female",
+    connectorDepth: 4,
+    connectorWidth: 50,
+    connectorClearance: 0.2,
+  });
+  const source = pieces[1].geometry.index ? pieces[1].geometry.toNonIndexed() : pieces[1].geometry;
+  const position = source.getAttribute("position");
+  const sampleY = -15;
+  const sampleZ = 0;
+  let covered = false;
+  for (let index = 0; index + 2 < position.count; index += 3) {
+    if (![0, 1, 2].every((offset) => Math.abs(position.getX(index + offset)) < 1e-4)) continue;
+    const ay = position.getY(index), az = position.getZ(index);
+    const by = position.getY(index + 1), bz = position.getZ(index + 1);
+    const cy = position.getY(index + 2), cz = position.getZ(index + 2);
+    const d1 = (sampleY - by) * (az - bz) - (ay - by) * (sampleZ - bz);
+    const d2 = (sampleY - cy) * (bz - cz) - (by - cy) * (sampleZ - cz);
+    const d3 = (sampleY - ay) * (cz - az) - (cy - ay) * (sampleZ - az);
+    if (!((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0))) covered = true;
+  }
+  assert.equal(covered, false, "a cavidade da parte femea nao pode receber uma face de fechamento");
+});
+
 test("largura do encaixe controla a metade interna da parede", () => {
   const geometry = new BoxGeometry(100, 60, 20);
   const small = splitGeometryByPlane(geometry, {
