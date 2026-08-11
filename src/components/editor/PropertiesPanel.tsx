@@ -1,6 +1,7 @@
 import { toast } from "sonner";
-import { Eye, EyeOff, Upload, X } from "lucide-react";
+import { Eye, EyeOff, Scissors, Trash2, Upload, X } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -19,7 +20,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { FONTS, type FontId } from "@/lib/sign/fonts";
-import type { SignParams } from "@/lib/sign/model";
+import type { PartKind, SignParams } from "@/lib/sign/model";
 import { PRINTER_PROFILES } from "@/lib/sign/printers";
 import { useEditor } from "./store";
 
@@ -619,6 +620,26 @@ export default function PropertiesPanel() {
                     <MoneyField label="Margem da mesa (mm)" keyName="splitMargin" step={1} />
                   ) : (
                     <>
+                      <Field label="Aplicar em">
+                        <Select
+                          value={params.manualCutTarget}
+                          onValueChange={(value) =>
+                            setParam("manualCutTarget", value as PartKind | "all")
+                          }
+                        >
+                          <SelectTrigger className="h-9 bg-card text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Todas as peças</SelectItem>
+                            {Array.from(new Set(style.parts)).map((kind) => (
+                              <SelectItem key={kind} value={kind}>
+                                {kind === "laterais" ? "Somente paredes" : `Somente ${kind}`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </Field>
                       <NumberSlider
                         label="Rotação do plano (eixo Z)"
                         keyName="manualCutAngle"
@@ -648,10 +669,7 @@ export default function PropertiesPanel() {
                             onValueChange={(value) => {
                               setParam("cutConnector", value as SignParams["cutConnector"]);
                               if (value === "male-female") {
-                                setParam(
-                                  "cutConnectorThickness",
-                                  Math.min(params.depth * 0.6, 60),
-                                );
+                                setParam("cutConnectorThickness", Math.min(params.depth * 0.6, 60));
                               }
                             }}
                           >
@@ -710,6 +728,76 @@ export default function PropertiesPanel() {
                               step={0.05}
                             />
                           </>
+                        ) : null}
+                      </div>
+                      <div className="space-y-3 rounded-md border border-border bg-background/40 p-3">
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            className="flex-1"
+                            onClick={() => {
+                              const nextCut = {
+                                id: `${Date.now()}-${params.manualCuts.length + 1}`,
+                                angle: params.manualCutAngle,
+                                offset: params.manualCutOffset,
+                                target: params.manualCutTarget,
+                                connector: params.cutConnector,
+                                maleSide: params.cutMaleSide,
+                                connectorDepth: params.cutConnectorDepth,
+                                connectorWidth: params.cutConnectorWidth,
+                                connectorThickness: params.cutConnectorThickness,
+                                connectorClearance: params.cutConnectorClearance,
+                              };
+                              setParam("manualCuts", [...params.manualCuts, nextCut]);
+                              toast.success(`Corte ${params.manualCuts.length + 1} aplicado`);
+                            }}
+                          >
+                            <Scissors className="mr-2 h-4 w-4" />
+                            Aplicar corte
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled={!params.manualCuts.length}
+                            onClick={() => setParam("manualCuts", [])}
+                            aria-label="Limpar cortes"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Arraste/ajuste o plano, aplique e repita para dividir a peça em três ou
+                          mais segmentos. Os cortes aplicados são mantidos na exportação.
+                        </p>
+                        {params.manualCuts.length ? (
+                          <div className="space-y-1">
+                            {params.manualCuts.map((cut, index) => (
+                              <div
+                                key={cut.id}
+                                className="flex items-center justify-between rounded border border-border px-2 py-1 text-xs"
+                              >
+                                <span>
+                                  #{index + 1} · {cut.target === "all" ? "todas" : cut.target} ·{" "}
+                                  {cut.angle}°
+                                </span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={() =>
+                                    setParam(
+                                      "manualCuts",
+                                      params.manualCuts.filter((item) => item.id !== cut.id),
+                                    )
+                                  }
+                                  aria-label={`Remover corte ${index + 1}`}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
                         ) : null}
                       </div>
                     </>
@@ -800,4 +888,3 @@ export default function PropertiesPanel() {
     </div>
   );
 }
-

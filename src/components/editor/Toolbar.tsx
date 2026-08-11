@@ -34,7 +34,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
 import { geometriesToStl, downloadBlob, slugify } from "@/lib/sign/stl";
-import { splitGeometryByPlane, splitGeometryForBuildPlate } from "@/lib/sign/split";
+import {
+  splitGeometryByPlane,
+  splitGeometryByPlanes,
+  splitGeometryForBuildPlate,
+} from "@/lib/sign/split";
 import {
   deleteSignProject,
   getSignProject,
@@ -113,16 +117,34 @@ export default function Toolbar() {
       try {
         segments = editor.params.splitForBuildPlate
           ? editor.params.splitMode === "manual"
-            ? splitGeometryByPlane(part.geometry, {
-                angle: editor.params.manualCutAngle,
-                offset: editor.params.manualCutOffset,
-                connector: part.kind === "laterais" ? editor.params.cutConnector : "none",
-                maleSide: editor.params.cutMaleSide,
-                connectorDepth: editor.params.cutConnectorDepth,
-                connectorWidth: editor.params.cutConnectorWidth,
-                connectorThickness: editor.params.cutConnectorThickness,
-                connectorClearance: editor.params.cutConnectorClearance,
-              })
+            ? editor.params.manualCuts.length
+              ? (() => {
+                  const cuts = editor.params.manualCuts
+                    .filter((cut) => cut.target === "all" || cut.target === part.kind)
+                    .map((cut) => ({
+                      angle: cut.angle,
+                      offset: cut.offset,
+                      connector: part.kind === "laterais" ? cut.connector : "none" as const,
+                      maleSide: cut.maleSide,
+                      connectorDepth: cut.connectorDepth,
+                      connectorWidth: cut.connectorWidth,
+                      connectorThickness: cut.connectorThickness,
+                      connectorClearance: cut.connectorClearance,
+                    }));
+                  return cuts.length
+                    ? splitGeometryByPlanes(part.geometry, cuts)
+                    : [{ geometry: part.geometry, column: 1, row: 1, index: 1, total: 1 }];
+                })()
+              : splitGeometryByPlane(part.geometry, {
+                  angle: editor.params.manualCutAngle,
+                  offset: editor.params.manualCutOffset,
+                  connector: part.kind === "laterais" ? editor.params.cutConnector : "none",
+                  maleSide: editor.params.cutMaleSide,
+                  connectorDepth: editor.params.cutConnectorDepth,
+                  connectorWidth: editor.params.cutConnectorWidth,
+                  connectorThickness: editor.params.cutConnectorThickness,
+                  connectorClearance: editor.params.cutConnectorClearance,
+                })
             : splitGeometryForBuildPlate(part.geometry, {
                 width: editor.params.buildWidth,
                 depth: editor.params.buildDepth,
@@ -317,4 +339,3 @@ export default function Toolbar() {
     </header>
   );
 }
-

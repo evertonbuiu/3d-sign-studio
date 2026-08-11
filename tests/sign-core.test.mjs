@@ -15,6 +15,7 @@ import { geometriesToStl, slugify } from "../src/lib/sign/stl.ts";
 import {
   clipGeometryByPlaneForPreview,
   splitGeometryByPlane,
+  splitGeometryByPlanes,
   splitGeometryForBuildPlate,
 } from "../src/lib/sign/split.ts";
 
@@ -124,6 +125,16 @@ test("corta uma peça em duas metades por um plano manual rotacionado", () => {
     piece.geometry.computeBoundingBox();
     assert.ok(piece.geometry.boundingBox.getSize(new Vector3()).z <= 20.001);
   }
+});
+
+test("acumula cortes manuais sucessivos usando a mesma origem", () => {
+  const geometry = new BoxGeometry(120, 80, 20);
+  const pieces = splitGeometryByPlanes(geometry, [
+    { angle: 0, offset: -20, connector: "none" },
+    { angle: 0, offset: 20, connector: "none" },
+  ]);
+  assert.equal(pieces.length, 3);
+  assert.deepEqual(pieces.map((piece) => piece.total), [3, 3, 3]);
 });
 
 test("corte manual aceita malha sem UV e sem normais, como as letras geradas", () => {

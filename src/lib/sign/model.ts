@@ -13,6 +13,19 @@ export type PartKind =
 
 export type BodyMode = "letras" | "placa" | "totem";
 
+export interface ManualCutPlan {
+  id: string;
+  angle: number;
+  offset: number;
+  target: PartKind | "all";
+  connector: "none" | "male-female";
+  maleSide: "part-1" | "part-2";
+  connectorDepth: number;
+  connectorWidth: number;
+  connectorThickness: number;
+  connectorClearance: number;
+}
+
 export interface SignParams {
   /** conteúdo */
   text: string;
@@ -70,6 +83,8 @@ export interface SignParams {
   manualCutAngle: number;
   manualCutOffset: number;
   manualCutSeparation: number;
+  manualCutTarget: PartKind | "all";
+  manualCuts: ManualCutPlan[];
   cutConnector: "none" | "male-female";
   cutMaleSide: "part-1" | "part-2";
   cutConnectorDepth: number;
@@ -134,6 +149,8 @@ export const DEFAULT_PARAMS: SignParams = {
   manualCutAngle: 90,
   manualCutOffset: 0,
   manualCutSeparation: 20,
+  manualCutTarget: "all",
+  manualCuts: [],
   cutConnector: "none",
   cutMaleSide: "part-1",
   cutConnectorDepth: 4,
@@ -480,4 +497,3 @@ export function getStyle(id: string): SignStyle {
 export function paramsForStyle(style: SignStyle, base: SignParams = DEFAULT_PARAMS): SignParams {
   return { ...base, ...style.preset };
 }
-

@@ -17,7 +17,12 @@ import {
 
 import { useEditor } from "./store";
 import type { SignOutline, SignPart } from "@/lib/sign/build";
-import { clipGeometryByPlaneForPreview, splitGeometryByPlane } from "@/lib/sign/split";
+import {
+  clipGeometryByPlaneForPreview,
+  splitGeometryByPlane,
+  splitGeometryByPlanes,
+  type SequentialSplitOptions,
+} from "@/lib/sign/split";
 
 const EXPLODE_ORDER: Record<string, number> = {
   poste: -2,
@@ -128,6 +133,7 @@ function PartMesh({
         connectorWidth: number;
         connectorThickness: number;
         connectorClearance: number;
+        cuts: SequentialSplitOptions[];
       }
     | undefined;
 }) {
@@ -141,6 +147,15 @@ function PartMesh({
     // o corte, evitando CSG desnecessário e mantendo macho/fêmea na peça certa.
     const previewConnector = part.kind === "laterais" ? manualCut.connector : "none";
     try {
+      if (manualCut.cuts.length) {
+        return splitGeometryByPlanes(
+          part.geometry,
+          manualCut.cuts.map((cut) => ({
+            ...cut,
+            connector: part.kind === "laterais" ? (cut.connector ?? "none") : "none",
+          })),
+        );
+      }
       return splitGeometryByPlane(part.geometry, {
         angle: manualCut.angle,
         offset: manualCut.offset,
@@ -180,19 +195,27 @@ function PartMesh({
     manualCut?.connectorWidth,
     manualCut?.connectorThickness,
     manualCut?.connectorClearance,
+    manualCut?.cuts,
   ]);
 
   if (manualCut && manualPieces?.length) {
-    const radians = (manualCut.angle * Math.PI) / 180;
-    const normal: [number, number, number] = [Math.cos(radians), Math.sin(radians), 0];
+    part.geometry.computeBoundingBox();
+    const sourceCenter = part.geometry.boundingBox?.getCenter(new Vector3()) ?? new Vector3();
     return (
       <group position={[0, 0, offset]}>
         {manualPieces.map((piece) => {
-          const direction = piece.column === 1 ? -1 : 1;
           const separation = manualCut.separation / 2;
+          piece.geometry.computeBoundingBox();
+          const pieceCenter = piece.geometry.boundingBox?.getCenter(new Vector3()) ?? sourceCenter;
+          const radial = pieceCenter.clone().sub(sourceCenter);
+          radial.z = 0;
+          if (radial.lengthSq() < 1e-8) {
+            const radians = (manualCut.angle * Math.PI) / 180;
+            radial.set(Math.cos(radians) * (piece.column === 1 ? -1 : 1), Math.sin(radians), 0);
+          } else radial.normalize();
           const displacement: [number, number, number] = [
-            normal[0] * direction * separation,
-            normal[1] * direction * separation,
+            radial.x * separation,
+            radial.y * separation,
             0,
           ];
           return (
@@ -463,6 +486,18 @@ function Model({
                     connectorWidth: params.cutConnectorWidth,
                     connectorThickness: params.cutConnectorThickness,
                     connectorClearance: params.cutConnectorClearance,
+                    cuts: params.manualCuts
+                      .filter((cut) => cut.target === "all" || cut.target === part.kind)
+                      .map((cut) => ({
+                        angle: cut.angle,
+                        offset: cut.offset,
+                        connector: cut.connector,
+                        maleSide: cut.maleSide,
+                        connectorDepth: cut.connectorDepth,
+                        connectorWidth: cut.connectorWidth,
+                        connectorThickness: cut.connectorThickness,
+                        connectorClearance: cut.connectorClearance,
+                      })),
                   }
                 : undefined
             }
@@ -672,4 +707,3 @@ export default function Viewport() {
     </div>
   );
 }
-

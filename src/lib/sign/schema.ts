@@ -55,6 +55,25 @@ export const signParamsSchema = z.object({
   manualCutAngle: finite(-180, 180),
   manualCutOffset: finite(-2_000, 2_000),
   manualCutSeparation: finite(0, 200),
+  manualCutTarget: z.enum([
+    "all", "fundo", "laterais", "frente", "canal-led", "furos",
+    "camada-2", "camada-3", "placa", "poste",
+  ]),
+  manualCuts: z.array(z.object({
+    id: z.string().min(1).max(100),
+    angle: finite(-180, 180),
+    offset: finite(-2_000, 2_000),
+    target: z.enum([
+      "all", "fundo", "laterais", "frente", "canal-led", "furos",
+      "camada-2", "camada-3", "placa", "poste",
+    ]),
+    connector: z.enum(["none", "male-female"]),
+    maleSide: z.enum(["part-1", "part-2"]),
+    connectorDepth: finite(0.4, 30),
+    connectorWidth: finite(10, 100),
+    connectorThickness: finite(0.4, 60),
+    connectorClearance: finite(0, 1.5),
+  })).max(20),
   cutConnector: z.enum(["none", "male-female"]),
   cutMaleSide: z.enum(["part-1", "part-2"]),
   cutConnectorDepth: finite(0.4, 30),
@@ -79,4 +98,3 @@ export const vectorSourceSchema = z
     content: z.string().min(1).max(2_000_000),
   })
   .nullable();
-
