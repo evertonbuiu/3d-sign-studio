@@ -762,9 +762,17 @@ export default function PropertiesPanel() {
                               max={Math.min(params.depth, 60)}
                               step={0.2}
                             />
+                            <NumberSlider
+                              label="Largura na espessura da parede"
+                              keyName="cutConnectorWidth"
+                              min={10}
+                              max={100}
+                              step={5}
+                              unit="%"
+                            />
                             <p className="text-xs leading-relaxed text-muted-foreground">
-                              O rebaixo acompanha somente a seção real das paredes. A faixa central
-                              forma o macho e mantém dois ombros de apoio, sem fechar o interior.
+                              O macho ocupa a faixa interna da espessura da parede. Em 50%, a metade
+                              externa permanece como ombro de apoio, sem fechar o interior.
                             </p>
                             <NumberSlider
                               label="Folga macho/fêmea"
