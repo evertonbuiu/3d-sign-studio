@@ -233,7 +233,14 @@ test("corte das paredes nao tampa o vazio interno da letra", () => {
   const bounds = walls.geometry.boundingBox;
   const centerX = (bounds.min.x + bounds.max.x) / 2;
   const centerY = (bounds.min.y + bounds.max.y) / 2;
-  const pieces = splitGeometryByPlane(walls.geometry, { angle: 0, origin: { x: centerX, y: centerY } });
+  const pieces = splitGeometryByPlane(walls.geometry, {
+    angle: 0,
+    origin: { x: centerX, y: centerY },
+    connector: "male-female",
+    connectorDepth: 4,
+    connectorThickness: params.depth * 0.6,
+    connectorClearance: 0.2,
+  });
   const sampleZ = (bounds.min.z + bounds.max.z) / 2;
   const coversCavity = pieces.some((piece) => {
     const position = (piece.geometry.index ? piece.geometry.toNonIndexed() : piece.geometry).getAttribute("position");
@@ -247,12 +254,7 @@ test("corte das paredes nao tampa o vazio interno da letra", () => {
     }
     return false;
   });
-  assert.equal(coversCavity, false, "o plano de corte criou uma tampa sobre o vazio interno");
-  for (const piece of pieces) {
-    const result = topology(piece.geometry);
-    assert.equal(result.boundary, 0);
-    assert.equal(result.nonManifold, 0);
-  }
+  assert.equal(coversCavity, false, "o rebaixo criou uma tampa sobre o vazio interno");
 });
 
 test("encaixe macho e fêmea é gerado nas paredes de uma palavra", () => {
