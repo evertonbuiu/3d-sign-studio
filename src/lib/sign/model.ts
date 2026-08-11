@@ -14,12 +14,12 @@ export type PartKind =
 export type BodyMode = "letras" | "placa" | "totem";
 
 export interface SignParams {
-  /** conteúdo */
+  /** conteÃºdo */
   text: string;
   fontId: FontId;
   letterHeight: number; // mm (altura de caixa alta)
   tracking: number; // mm entre letras
-  /** construção */
+  /** construÃ§Ã£o */
   depth: number; // profundidade total da caixa (mm)
   wall: number; // espessura da parede lateral (mm)
   faceThickness: number; // espessura da frente (mm)
@@ -27,20 +27,20 @@ export interface SignParams {
   clearance: number; // folga de encaixe (mm)
   faceRecess: boolean; // parede interna com rebaixo para a frente
   recessLip: number; // largura da aba externa que segura a frente (mm)
-  backFlangeWidth: number; // avanço da aba traseira para dentro (mm)
+  backFlangeWidth: number; // avanÃ§o da aba traseira para dentro (mm)
   backFlangeThickness: number; // espessura da aba traseira no eixo Z (mm)
   neonFlexThickness: number; // largura livre do canal de contorno para o Neon Flex (mm)
-  /** iluminação */
+  /** iluminaÃ§Ã£o */
   led: boolean;
   ledChannelWidth: number;
   ledChannelHeight: number;
-  ledOffset: number; // distância da parede até o canal
+  ledOffset: number; // distÃ¢ncia da parede atÃ© o canal
   ledColor: string;
   ledPowerPerMeter: number; // W/m
   /** camadas */
   layers: 1 | 2 | 3;
   layerThickness: number;
-  layerShrink: number; // redução por camada (mm)
+  layerShrink: number; // reduÃ§Ã£o por camada (mm)
   /** montagem */
   mountHoles: boolean;
   holeDiameter: number;
@@ -52,7 +52,7 @@ export interface SignParams {
   plateThickness: number;
   cutout: boolean; // letras vazadas na placa
   poleHeight: number; // totem
-  /** aparência */
+  /** aparÃªncia */
   faceColor: string;
   bodyColor: string;
   backColor: string;
@@ -79,7 +79,7 @@ export interface SignParams {
   filamentPrice: number; // R$/kg
   density: number; // g/cm3
   printSpeed: number; // cm3/h
-  hourlyRate: number; // R$/h de máquina + mão de obra
+  hourlyRate: number; // R$/h de mÃ¡quina + mÃ£o de obra
   energyPrice: number; // R$/kWh
   printerPower: number; // W
   margin: number; // %
@@ -138,7 +138,9 @@ export const DEFAULT_PARAMS: SignParams = {
   cutMaleSide: "part-1",
   cutConnectorDepth: 4,
   cutConnectorWidth: 60,
-  cutConnectorThickness: 3,
+  // Meia profundidade da parede padrÃ£o: produz o degrau longitudinal usado
+  // no modelo de referÃªncia em vez de uma lingueta frontal muito fina.
+  cutConnectorThickness: 30,
   cutConnectorClearance: 0.2,
   filamentPrice: 120,
   density: 1.24,
@@ -150,14 +152,14 @@ export const DEFAULT_PARAMS: SignParams = {
 };
 
 export type StyleGroup =
-  "Neon Flex" | "Acrílico & Impresso" | "Iluminação" | "Letras" | "Placas & Totem" | "Logotipo";
+  "Neon Flex" | "AcrÃ­lico & Impresso" | "IluminaÃ§Ã£o" | "Letras" | "Placas & Totem" | "Logotipo";
 
 export interface SignStyle {
   id: string;
   name: string;
   group: StyleGroup;
   description: string;
-  /** peças ativas neste estilo */
+  /** peÃ§as ativas neste estilo */
   parts: PartKind[];
   preset: Partial<SignParams>;
   /** dica visual da miniatura */
@@ -176,27 +178,27 @@ const boxParts: PartKind[] = ["fundo", "laterais", "frente", "canal-led", "furos
 export const STYLES: SignStyle[] = [
   {
     id: "fundo-impresso-frente-acrilica",
-    name: "Fundo Impresso + Frente Acrílica",
-    group: "Acrílico & Impresso",
-    description: "Corpo impresso e frente em acrílico encaixada no rebaixo.",
+    name: "Fundo Impresso + Frente AcrÃ­lica",
+    group: "AcrÃ­lico & Impresso",
+    description: "Corpo impresso e frente em acrÃ­lico encaixada no rebaixo.",
     parts: boxParts,
     preset: { depth: 50, faceThickness: 3 },
     thumb: { face: "#cfe0f2", body: "#3f4a5a", glow: "front" },
   },
   {
     id: "fundo-acrilico-frente-acrilica",
-    name: "Fundo Acrílico + Frente Acrílica",
-    group: "Acrílico & Impresso",
-    description: "Fundo e frente em acrílico com laterais impressas.",
+    name: "Fundo AcrÃ­lico + Frente AcrÃ­lica",
+    group: "AcrÃ­lico & Impresso",
+    description: "Fundo e frente em acrÃ­lico com laterais impressas.",
     parts: boxParts,
     preset: { depth: 45, backThickness: 3, faceThickness: 3 },
     thumb: { face: "#e6f0fb", body: "#5b6a7d", glow: "both" },
   },
   {
     id: "fundo-acrilico-frente-acrilica-aba",
-    name: "Fundo Acrílico + Frente Acrílica com Aba",
-    group: "Acrílico & Impresso",
-    description: "Frente acrílica em rebaixo e fundo acrílico apoiado por aba interna.",
+    name: "Fundo AcrÃ­lico + Frente AcrÃ­lica com Aba",
+    group: "AcrÃ­lico & Impresso",
+    description: "Frente acrÃ­lica em rebaixo e fundo acrÃ­lico apoiado por aba interna.",
     parts: boxParts,
     preset: {
       depth: 45,
@@ -214,9 +216,9 @@ export const STYLES: SignStyle[] = [
   },
   {
     id: "fundo-acrilico-frente-impressa",
-    name: "Fundo Acrílico + Frente Impressa",
-    group: "Acrílico & Impresso",
-    description: "Frente impressa opaca sobre fundo translúcido.",
+    name: "Fundo AcrÃ­lico + Frente Impressa",
+    group: "AcrÃ­lico & Impresso",
+    description: "Frente impressa opaca sobre fundo translÃºcido.",
     parts: boxParts,
     preset: { depth: 45, faceThickness: 2.4, led: true },
     thumb: { face: "#8f9db0", body: "#39424f", glow: "halo" },
@@ -224,9 +226,9 @@ export const STYLES: SignStyle[] = [
   {
     id: "fundo-impresso-frente-impressa-aba",
     name: "Fundo Impresso + Frente Impressa com Aba",
-    group: "Acrílico & Impresso",
+    group: "AcrÃ­lico & Impresso",
     description:
-      "Frente e paredes impressas em uma peça, com fundo impresso separado e aba interna de encaixe.",
+      "Frente e paredes impressas em uma peÃ§a, com fundo impresso separado e aba interna de encaixe.",
     parts: ["fundo", "laterais", "frente"],
     preset: {
       depth: 45,
@@ -244,10 +246,10 @@ export const STYLES: SignStyle[] = [
   },
   {
     id: "neon-flex-fundo-impresso",
-    name: "Neon Flex — Fundo Impresso sem Tampa",
+    name: "Neon Flex â€” Fundo Impresso sem Tampa",
     group: "Neon Flex",
     description:
-      "Canal aberto acompanhando somente o contorno das letras, com fundo e paredes impressos em uma peça.",
+      "Canal aberto acompanhando somente o contorno das letras, com fundo e paredes impressos em uma peÃ§a.",
     parts: ["fundo", "laterais"],
     preset: {
       depth: 11,
@@ -263,7 +265,7 @@ export const STYLES: SignStyle[] = [
   {
     id: "face-lit",
     name: "Face Lit",
-    group: "Iluminação",
+    group: "IluminaÃ§Ã£o",
     description: "Luz frontal difusa em toda a face da letra.",
     parts: boxParts,
     preset: { led: true, depth: 55, ledChannelWidth: 14 },
@@ -272,7 +274,7 @@ export const STYLES: SignStyle[] = [
   {
     id: "halo-light",
     name: "Halo Light",
-    group: "Iluminação",
+    group: "IluminaÃ§Ã£o",
     description: "Letra opaca com halo de luz projetado na parede.",
     parts: ["laterais", "frente", "canal-led", "furos"],
     preset: { led: true, depth: 45, faceThickness: 4, ledOffset: 6 },
@@ -281,8 +283,8 @@ export const STYLES: SignStyle[] = [
   {
     id: "back-light",
     name: "Back Light",
-    group: "Iluminação",
-    description: "Iluminação traseira com fundo aberto.",
+    group: "IluminaÃ§Ã£o",
+    description: "IluminaÃ§Ã£o traseira com fundo aberto.",
     parts: ["laterais", "frente", "canal-led", "furos"],
     preset: { led: true, depth: 50, backThickness: 2 },
     thumb: { face: "#6f7c8f", body: "#2f3742", glow: "back" },
@@ -290,7 +292,7 @@ export const STYLES: SignStyle[] = [
   {
     id: "front-light",
     name: "Front Light",
-    group: "Iluminação",
+    group: "IluminaÃ§Ã£o",
     description: "Somente a frente acende, laterais opacas.",
     parts: boxParts,
     preset: { led: true, depth: 48 },
@@ -299,8 +301,8 @@ export const STYLES: SignStyle[] = [
   {
     id: "front-back-light",
     name: "Front + Back Light",
-    group: "Iluminação",
-    description: "Luz na frente e halo traseiro simultâneos.",
+    group: "IluminaÃ§Ã£o",
+    description: "Luz na frente e halo traseiro simultÃ¢neos.",
     parts: ["laterais", "frente", "canal-led", "furos"],
     preset: { led: true, depth: 60, ledChannelWidth: 16 },
     thumb: { face: "#ffe9ad", body: "#333c48", glow: "both" },
@@ -308,17 +310,17 @@ export const STYLES: SignStyle[] = [
   {
     id: "edge-lit",
     name: "Edge Lit",
-    group: "Iluminação",
-    description: "Luz nas bordas com acrílico gravado.",
+    group: "IluminaÃ§Ã£o",
+    description: "Luz nas bordas com acrÃ­lico gravado.",
     parts: boxParts,
     preset: { led: true, depth: 30, ledChannelWidth: 8, ledOffset: 1.5 },
     thumb: { face: "#d5ecff", body: "#2f3742", glow: "edge" },
   },
   {
     id: "caixa-sem-iluminacao",
-    name: "Caixa sem iluminação",
+    name: "Caixa sem iluminaÃ§Ã£o",
     group: "Letras",
-    description: "Caixa oca econômica, sem LED.",
+    description: "Caixa oca econÃ´mica, sem LED.",
     parts: ["fundo", "laterais", "frente", "furos"],
     preset: { led: false, depth: 35 },
     thumb: { face: "#c9d3e0", body: "#4a5567", glow: "none" },
@@ -334,9 +336,9 @@ export const STYLES: SignStyle[] = [
   },
   {
     id: "letras-macicas",
-    name: "Letras Maciças",
+    name: "Letras MaciÃ§as",
     group: "Letras",
-    description: "Letra sólida extrudada, máxima resistência.",
+    description: "Letra sÃ³lida extrudada, mÃ¡xima resistÃªncia.",
     parts: ["frente", "furos"],
     preset: { led: false, depth: 25, faceThickness: 25 },
     thumb: { face: "#8ea3bd", body: "#5a6a80", glow: "none" },
@@ -345,7 +347,7 @@ export const STYLES: SignStyle[] = [
     id: "letras-ocas",
     name: "Letras Ocas",
     group: "Letras",
-    description: "Casca oca com paredes finas, leve e rápida.",
+    description: "Casca oca com paredes finas, leve e rÃ¡pida.",
     parts: ["laterais", "frente"],
     preset: { led: false, depth: 30, wall: 2 },
     thumb: { face: "#b9c7da", body: "#4a5567", glow: "none" },
@@ -372,7 +374,7 @@ export const STYLES: SignStyle[] = [
     id: "letras-tripla-camada",
     name: "Letras Tripla Camada",
     group: "Letras",
-    description: "Três níveis com profundidade escalonada.",
+    description: "TrÃªs nÃ­veis com profundidade escalonada.",
     parts: ["frente", "camada-2", "camada-3", "furos"],
     preset: { layers: 3, depth: 26, faceThickness: 8, layerThickness: 6 },
     thumb: { face: "#ffffff", body: "#3b82f6", layers: 3 },
@@ -380,8 +382,8 @@ export const STYLES: SignStyle[] = [
   {
     id: "neon-flex",
     name: "Neon Flex",
-    group: "Iluminação",
-    description: "Canal contínuo para mangueira de neon flex.",
+    group: "IluminaÃ§Ã£o",
+    description: "Canal contÃ­nuo para mangueira de neon flex.",
     parts: ["placa", "canal-led", "furos"],
     preset: {
       bodyMode: "placa",
@@ -396,7 +398,7 @@ export const STYLES: SignStyle[] = [
   {
     id: "neon-led",
     name: "Neon LED",
-    group: "Iluminação",
+    group: "IluminaÃ§Ã£o",
     description: "Perfil neon LED com canal estreito.",
     parts: ["placa", "canal-led", "furos"],
     preset: {
@@ -440,7 +442,7 @@ export const STYLES: SignStyle[] = [
     id: "logotipo-3d",
     name: "Logotipo 3D",
     group: "Logotipo",
-    description: "Volume único com face chanfrada para logotipos.",
+    description: "Volume Ãºnico com face chanfrada para logotipos.",
     parts: ["frente", "furos"],
     preset: { depth: 30, faceThickness: 30, led: false },
     thumb: { face: "#9fb3cc", body: "#3b4757" },
@@ -465,8 +467,8 @@ export const STYLES: SignStyle[] = [
 
 export const STYLE_GROUPS: StyleGroup[] = [
   "Neon Flex",
-  "Acrílico & Impresso",
-  "Iluminação",
+  "AcrÃ­lico & Impresso",
+  "IluminaÃ§Ã£o",
   "Letras",
   "Placas & Totem",
   "Logotipo",
