@@ -1,5 +1,5 @@
 import { toast } from "sonner";
-import { Eye, EyeOff, Scissors, Trash2, Undo2, Upload, X } from "lucide-react";
+import { Eye, EyeOff, RotateCcw, Scissors, Trash2, Undo2, Upload, X } from "lucide-react";
 import { Box3, Vector3 } from "three";
 
 import { Button } from "@/components/ui/button";
@@ -408,6 +408,75 @@ export default function PropertiesPanel() {
             </AccordionContent>
           </AccordionItem>
 
+          <AccordionItem value="transformacao">
+            <AccordionTrigger className="text-sm">Rotação e espelho</AccordionTrigger>
+            <AccordionContent className="space-y-3 pb-4">
+              <NumberSlider
+                label="Rotação do modelo"
+                keyName="modelRotation"
+                min={-180}
+                max={180}
+                step={1}
+                unit="°"
+              />
+              <div className="grid grid-cols-5 gap-1">
+                {[0, 45, 90, 135].map((angle) => (
+                  <Button
+                    key={angle}
+                    type="button"
+                    size="sm"
+                    variant={params.modelRotation === angle ? "default" : "outline"}
+                    onClick={() => setParam("modelRotation", angle)}
+                  >
+                    {angle}°
+                  </Button>
+                ))}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setParam("modelRotation", 0)}
+                  aria-label="Restaurar rotação"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+              <div className="flex items-center justify-between gap-3 rounded border border-border p-2">
+                <Label className="text-sm font-medium text-muted-foreground">
+                  Espelho horizontal
+                </Label>
+                <Switch
+                  checked={params.mirrorHorizontal}
+                  onCheckedChange={(value) => setParam("mirrorHorizontal", value)}
+                />
+              </div>
+              <div className="flex items-center justify-between gap-3 rounded border border-border p-2">
+                <Label className="text-sm font-medium text-muted-foreground">
+                  Espelho vertical
+                </Label>
+                <Switch
+                  checked={params.mirrorVertical}
+                  onCheckedChange={(value) => setParam("mirrorVertical", value)}
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  setParam("modelRotation", 0);
+                  setParam("mirrorHorizontal", false);
+                  setParam("mirrorVertical", false);
+                }}
+              >
+                Restaurar orientação
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                A orientação é aplicada na visualização, nos cortes e nos arquivos STL exportados.
+              </p>
+            </AccordionContent>
+          </AccordionItem>
+
           <AccordionItem value="led">
             <AccordionTrigger className="text-sm">Iluminação</AccordionTrigger>
             <AccordionContent className="space-y-3 pb-4">
@@ -449,95 +518,7 @@ export default function PropertiesPanel() {
           </AccordionItem>
 
           <AccordionItem value="corpo">
-            <AccordionTrigger className="text-sm">Placa, totem e camadas</AccordionTrigger>
-            <AccordionContent className="space-y-3 pb-4">
-              <Field label="Modo do corpo">
-                <Select
-                  value={params.bodyMode}
-                  onValueChange={(v) => setParam("bodyMode", v as SignParams["bodyMode"])}
-                >
-                  <SelectTrigger className="h-9 bg-card text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="letras" className="text-sm">
-                      Letras soltas
-                    </SelectItem>
-                    <SelectItem value="placa" className="text-sm">
-                      Placa
-                    </SelectItem>
-                    <SelectItem value="totem" className="text-sm">
-                      Totem
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </Field>
-              <NumberSlider
-                label="Margem da placa"
-                keyName="plateMargin"
-                min={5}
-                max={200}
-                step={1}
-              />
-              <NumberSlider
-                label="Espessura da placa"
-                keyName="plateThickness"
-                min={2}
-                max={40}
-                step={0.5}
-              />
-              <NumberSlider
-                label="Altura do poste"
-                keyName="poleHeight"
-                min={100}
-                max={2000}
-                step={10}
-              />
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium text-muted-foreground">Letras vazadas</Label>
-                <Switch checked={params.cutout} onCheckedChange={(v) => setParam("cutout", v)} />
-              </div>
-              <NumberSlider
-                label="Espessura da camada"
-                keyName="layerThickness"
-                min={1}
-                max={30}
-                step={0.5}
-              />
-              <NumberSlider
-                label="Redução por camada"
-                keyName="layerShrink"
-                min={1}
-                max={40}
-                step={0.5}
-              />
-            </AccordionContent>
-          </AccordionItem>
-
-          <AccordionItem value="montagem">
-            <AccordionTrigger className="text-sm">Montagem</AccordionTrigger>
-            <AccordionContent className="space-y-3 pb-4">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium text-muted-foreground">
-                  Furos de fixação
-                </Label>
-                <Switch
-                  checked={params.mountHoles}
-                  onCheckedChange={(v) => setParam("mountHoles", v)}
-                />
-              </div>
-              <NumberSlider
-                label="Diâmetro do furo"
-                keyName="holeDiameter"
-                min={2}
-                max={20}
-                step={0.5}
-              />
-              <ColorField label="Cor da frente" keyName="faceColor" />
-              <ColorField label="Cor do corpo" keyName="bodyColor" />
-              <ColorField label="Cor do fundo" keyName="backColor" />
-            </AccordionContent>
-          </AccordionItem>
+            <AccordionTrigger className="text-sm">Placa, totem e camadas…833 tokens truncated…ordionItem>
 
           <AccordionItem value="custos">
             <AccordionTrigger className="text-sm">Custos e produção</AccordionTrigger>
