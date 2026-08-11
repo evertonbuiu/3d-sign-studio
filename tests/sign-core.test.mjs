@@ -97,8 +97,8 @@ test("Bambu Lab A1 é a impressora padrão", () => {
   );
 });
 
-test("encaixe padrão usa degrau de meia parede como o modelo de referência", () => {
-  assert.equal(DEFAULT_PARAMS.cutConnectorThickness, DEFAULT_PARAMS.depth / 2);
+test("encaixe padrão usa faixa central de 60% como o modelo SKP", () => {
+  assert.equal(DEFAULT_PARAMS.cutConnectorThickness, DEFAULT_PARAMS.depth * 0.6);
 });
 
 test("corta uma peça grande conforme a mesa da impressora", () => {
@@ -208,10 +208,11 @@ test("tamanho do encaixe controla a altura do perfil macho", () => {
   for (let i = 0; i < smallPosition.count; i++) {
     if (smallPosition.getX(i) > 0.1) extendedZ.push(smallPosition.getZ(i));
   }
-  assert.ok(Math.min(...extendedZ) >= 4.9, "o degrau deve ficar voltado para a frente");
+  assert.ok(Math.min(...extendedZ) >= -2.51, "a faixa deve ficar centralizada na parede");
+  assert.ok(Math.max(...extendedZ) <= 2.51, "a faixa deve deixar ombros simétricos");
 });
 
-test("encaixe por rebaixo usa espessura em milímetros como a tampa", () => {
+test("encaixe por rebaixo usa espessura em milímetros no centro da parede", () => {
   const geometry = new BoxGeometry(100, 60, 20);
   const pieces = splitGeometryByPlane(geometry, {
     angle: 0,
@@ -225,5 +226,27 @@ test("encaixe por rebaixo usa espessura em milímetros como a tampa", () => {
     if (position.getX(i) > 0.1) extendedZ.push(position.getZ(i));
   }
   assert.ok(Math.max(...extendedZ) - Math.min(...extendedZ) <= 3.01);
-  assert.ok(Math.min(...extendedZ) >= 6.99, "o rebaixo deve ficar junto à frente");
+  assert.ok(Math.min(...extendedZ) >= -1.51);
+  assert.ok(Math.max(...extendedZ) <= 1.51);
+});
+
+test("encaixe reproduz as medidas extraídas do modelo c.skp", () => {
+  const geometry = new BoxGeometry(100, 60, 45);
+  geometry.translate(0, 0, 22.5);
+  const pieces = splitGeometryByPlane(geometry, {
+    angle: 0,
+    connector: "male-female",
+    connectorDepth: 4,
+    connectorThickness: 27,
+    connectorClearance: 0.2,
+  });
+  const position = pieces[0].geometry.getAttribute("position");
+  const extendedZ = [];
+  for (let i = 0; i < position.count; i++) {
+    if (position.getX(i) > 0.1) extendedZ.push(position.getZ(i));
+  }
+  assert.ok(Math.abs(Math.min(...extendedZ) - 9) < 0.01);
+  assert.ok(Math.abs(Math.max(...extendedZ) - 36) < 0.01);
+  pieces[0].geometry.computeBoundingBox();
+  assert.ok(pieces[0].geometry.boundingBox.max.x >= 3.99);
 });
