@@ -224,9 +224,9 @@ function contains(outer: Pt[], p: Pt): boolean {
 
 /**
  * Converte o conteúdo de um arquivo DXF em contornos (THREE.Shape),
- * fechando linhas soltas, detectando furos e escalando para a altura em mm.
+ * fechando linhas soltas, detectando furos e preservando as unidades originais.
  */
-export function dxfToShapes(dxfText: string, targetHeight: number): Shape[] {
+export function dxfToShapes(dxfText: string): Shape[] {
   const parser = new DxfParser();
   let dxf: any = null;
   try {
@@ -283,8 +283,7 @@ export function dxfToShapes(dxfText: string, targetHeight: number): Shape[] {
       maxY = Math.max(maxY, p.y);
     }
   }
-  const height = maxY - minY || 1;
-  const scale = targetHeight / height;
+  const scale = dxfMillimetersPerUnit(dxf.header?.$INSUNITS);
   const cx = (minX + maxX) / 2;
   const cy = (minY + maxY) / 2;
   const map = (p: Pt): Pt => ({ x: (p.x - cx) * scale, y: (p.y - cy) * scale });
@@ -319,4 +318,29 @@ export function dxfToShapes(dxfText: string, targetHeight: number): Shape[] {
   });
 
   return shapes;
+}
+
+/** Conversão dos códigos INSUNITS do AutoCAD para milímetros. */
+export function dxfMillimetersPerUnit(insUnits: unknown): number {
+  const factors: Record<number, number> = {
+    0: 1,
+    1: 25.4,
+    2: 304.8,
+    3: 1_609_344,
+    4: 1,
+    5: 10,
+    6: 1_000,
+    7: 1_000_000,
+    8: 0.0000254,
+    9: 0.0254,
+    10: 914.4,
+    11: 1e-7,
+    12: 1e-6,
+    13: 0.001,
+    14: 100,
+    15: 10_000,
+    16: 100_000,
+    17: 1_000_000_000,
+  };
+  return factors[Number(insUnits)] ?? 1;
 }
