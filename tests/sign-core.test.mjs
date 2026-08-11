@@ -36,7 +36,7 @@ test("calcula custo, LED e margem", () => {
   assert.ok(Math.abs(result.total - result.subtotal * 1.45) < 1e-9);
 });
 
-test("gera STL binário com a contagem correta", () => {
+test("gera STL binÃ¡rio com a contagem correta", () => {
   const geometry = new BufferGeometry();
   geometry.setAttribute("position", new Float32BufferAttribute([0, 0, 0, 1, 0, 0, 0, 1, 0], 3));
   const result = geometriesToStl([geometry]);
@@ -45,11 +45,11 @@ test("gera STL binário com a contagem correta", () => {
 });
 
 test("normaliza nomes de arquivo", () => {
-  assert.equal(slugify("Letra São João!"), "letra-sao-joao");
+  assert.equal(slugify("Letra SÃ£o JoÃ£o!"), "letra-sao-joao");
   assert.equal(slugify("***"), "projeto");
 });
 
-test("selecionar impressora carrega todos os parâmetros do perfil", () => {
+test("selecionar impressora carrega todos os parÃ¢metros do perfil", () => {
   const selected = getPrinterProfile("bambu-x1c");
   const params = paramsForPrinter("bambu-x1c", {
     ...DEFAULT_PARAMS,
@@ -74,7 +74,7 @@ test("selecionar impressora carrega todos os parâmetros do perfil", () => {
   );
 });
 
-test("Bambu Lab A1 é a impressora padrão", () => {
+test("Bambu Lab A1 Ã© a impressora padrÃ£o", () => {
   assert.equal(DEFAULT_PRINTER.id, "bambu-a1");
   assert.equal(DEFAULT_PARAMS.printerId, "bambu-a1");
   assert.deepEqual(
@@ -97,7 +97,11 @@ test("Bambu Lab A1 é a impressora padrão", () => {
   );
 });
 
-test("corta uma peça grande conforme a mesa da impressora", () => {
+test("encaixe padrÃ£o usa degrau de meia parede como o modelo de referÃªncia", () => {
+  assert.equal(DEFAULT_PARAMS.cutConnectorThickness, DEFAULT_PARAMS.depth / 2);
+});
+
+test("corta uma peÃ§a grande conforme a mesa da impressora", () => {
   const geometry = new BoxGeometry(500, 300, 10);
   const pieces = splitGeometryForBuildPlate(geometry, { width: 220, depth: 220, margin: 10 });
   assert.equal(pieces.length, 6);
@@ -111,7 +115,7 @@ test("corta uma peça grande conforme a mesa da impressora", () => {
   }
 });
 
-test("corta uma peça em duas metades por um plano manual rotacionado", () => {
+test("corta uma peÃ§a em duas metades por um plano manual rotacionado", () => {
   const geometry = new BoxGeometry(300, 180, 20);
   const pieces = splitGeometryByPlane(geometry, { angle: 35, offset: 0 });
   assert.equal(pieces.length, 2);
@@ -133,7 +137,7 @@ test("corte manual aceita malha sem UV e sem normais, como as letras geradas", (
   }
 });
 
-test("fallback visual recorta duas metades locais sem depender da câmera", () => {
+test("fallback visual recorta duas metades locais sem depender da cÃ¢mera", () => {
   const geometry = new BoxGeometry(100, 60, 20);
   const pieces = clipGeometryByPlaneForPreview(geometry, { angle: 90, offset: 0 });
   assert.equal(pieces.length, 2);
@@ -143,7 +147,7 @@ test("fallback visual recorta duas metades locais sem depender da câmera", () =
   }
 });
 
-test("corte manual cria macho e fêmea complementares com folga", () => {
+test("corte manual cria macho e fÃªmea complementares com folga", () => {
   const geometry = new BoxGeometry(100, 60, 20);
   const plain = splitGeometryByPlane(geometry, { angle: 0, offset: 0 });
   const pieces = splitGeometryByPlane(geometry, {
@@ -158,7 +162,7 @@ test("corte manual cria macho e fêmea complementares com folga", () => {
   assert.equal(pieces.length, 2);
   pieces[0].geometry.computeBoundingBox();
   pieces[1].geometry.computeBoundingBox();
-  assert.ok(pieces[0].geometry.boundingBox.max.x >= 3.99, "o macho deve avançar 4 mm");
+  assert.ok(pieces[0].geometry.boundingBox.max.x >= 3.99, "o macho deve avanÃ§ar 4 mm");
   const malePosition = pieces[0].geometry.getAttribute("position");
   const extendedY = [];
   for (let i = 0; i < malePosition.count; i++) {
@@ -171,7 +175,7 @@ test("corte manual cria macho e fêmea complementares com folga", () => {
   assert.ok(
     pieces[1].geometry.getAttribute("position").count >
       plain[1].geometry.getAttribute("position").count,
-    "a fêmea deve conter a cavidade com folga",
+    "a fÃªmea deve conter a cavidade com folga",
   );
 });
 
@@ -207,7 +211,7 @@ test("tamanho do encaixe controla a altura do perfil macho", () => {
   assert.ok(Math.min(...extendedZ) >= 4.9, "o degrau deve ficar voltado para a frente");
 });
 
-test("encaixe por rebaixo usa espessura em milímetros como a tampa", () => {
+test("encaixe por rebaixo usa espessura em milÃ­metros como a tampa", () => {
   const geometry = new BoxGeometry(100, 60, 20);
   const pieces = splitGeometryByPlane(geometry, {
     angle: 0,
@@ -221,5 +225,6 @@ test("encaixe por rebaixo usa espessura em milímetros como a tampa", () => {
     if (position.getX(i) > 0.1) extendedZ.push(position.getZ(i));
   }
   assert.ok(Math.max(...extendedZ) - Math.min(...extendedZ) <= 3.01);
-  assert.ok(Math.min(...extendedZ) >= 6.99, "o rebaixo deve ficar junto à frente");
+  assert.ok(Math.min(...extendedZ) >= 6.99, "o rebaixo deve ficar junto Ã  frente");
 });
+
