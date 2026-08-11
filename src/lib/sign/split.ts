@@ -1,5 +1,13 @@
-import { Box3, BoxGeometry, BufferGeometry, Float32BufferAttribute, Vector3 } from "three";
-import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
+import {
+  Box3,
+  BoxGeometry,
+  BufferGeometry,
+  Float32BufferAttribute,
+  ShapeUtils,
+  Vector2,
+  Vector3,
+} from "three";
+import { mergeGeometries, mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
 import { Brush, Evaluator, INTERSECTION, SUBTRACTION } from "three-bvh-csg";
 
 export interface SplitPiece {
@@ -139,6 +147,7 @@ function withoutDegenerateTriangles(geometry: BufferGeometry): BufferGeometry {
   const ab = new Vector3();
   const ac = new Vector3();
   const cross = new Vector3();
+  const seen = new Set<string>();
   for (let i = 0; i + 2 < position.count; i += 3) {
     const a = new Vector3(position.getX(i), position.getY(i), position.getZ(i));
     const b = new Vector3(position.getX(i + 1), position.getY(i + 1), position.getZ(i + 1));
@@ -147,12 +156,227 @@ function withoutDegenerateTriangles(geometry: BufferGeometry): BufferGeometry {
     ab.subVectors(b, a);
     ac.subVectors(c, a);
     if (cross.crossVectors(ab, ac).lengthSq() <= 1e-12) continue;
+    const triangleKey = [a, b, c]
+      .map((point) =>
+        point
+          .toArray()
+          .map((value) => Math.round(value * 1e5))
+          .join(","),
+      )
+      .sort()
+      .join("|");
+    if (seen.has(triangleKey)) continue;
+    seen.add(triangleKey);
     vertices.push(...a.toArray(), ...b.toArray(), ...c.toArray());
   }
   const cleaned = new BufferGeometry();
   cleaned.setAttribute("position", new Float32BufferAttribute(vertices, 3));
   cleaned.computeVertexNormals();
   return cleaned;
+}
+
+function pointInPolygon(point: Vector2, polygon: Vector2[]): boolean {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const a = polygon[i]!;
+    const b = polygon[j]!;
+    if (
+      a.y > point.y !== b.y > point.y &&
+      point.x < ((b.x - a.x) * (point.y - a.y)) / (b.y - a.y) + a.x
+    ) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+/**
+ * Substitui a tampa plana criada pelo CSG por uma triangulacao da secao real.
+ * Isso impede que vazios internos de letras (O, A, B etc.) sejam preenchidos.
+ */
+function rebuildCutCap(
+  result: BufferGeometry,
+  planePoint: Vector3,
+  normal: Vector3,
+  side: -1 | 1,
+): BufferGeometry {
+  const epsilon = 1e-5;
+  const tangent = new Vector3(-normal.y, normal.x, 0);
+  const planeDistance = normal.dot(planePoint);
+  const resultSource = result.index ? result.toNonIndexed() : result;
+  const resultPosition = resultSource.getAttribute("position");
+  const nodes = new Map<string, Vector3>();
+  const edgeCandidates = new Map<string, { edge: [string, string]; count: number }>();
+  const keyFor = (point: Vector3) =>
+    `${Math.round(point.x / epsilon)},${Math.round(point.y / epsilon)},${Math.round(point.z / epsilon)}`;
+
+  for (let i = 0; i + 2 < resultPosition.count; i += 3) {
+    const triangle = [0, 1, 2].map(
+      (offset) =>
+        new Vector3(
+          resultPosition.getX(i + offset),
+          resultPosition.getY(i + offset),
+          resultPosition.getZ(i + offset),
+        ),
+    );
+    for (let edge = 0; edge < 3; edge++) {
+      const a = triangle[edge]!;
+      const b = triangle[(edge + 1) % 3]!;
+      const da = normal.dot(a) - planeDistance;
+      const db = normal.dot(b) - planeDistance;
+      if (Math.abs(da) > epsilon || Math.abs(db) > epsilon) continue;
+      const aKey = keyFor(a);
+      const bKey = keyFor(b);
+      if (aKey === bKey) continue;
+      nodes.set(aKey, a);
+      nodes.set(bKey, b);
+      const edgeKey = aKey < bKey ? `${aKey}|${bKey}` : `${bKey}|${aKey}`;
+      const candidate = edgeCandidates.get(edgeKey);
+      edgeCandidates.set(edgeKey, { edge: [aKey, bKey], count: (candidate?.count ?? 0) + 1 });
+    }
+  }
+  const edges = new Map(
+    [...edgeCandidates.entries()]
+      .filter(([, candidate]) => candidate.count === 1)
+      .map(([key, candidate]) => [key, candidate.edge]),
+  );
+
+  const adjacency = new Map<string, string[]>();
+  for (const [a, b] of edges.values()) {
+    adjacency.set(a, [...(adjacency.get(a) ?? []), b]);
+    adjacency.set(b, [...(adjacency.get(b) ?? []), a]);
+  }
+  const unused = new Set(edges.keys());
+  const loops: Vector2[][] = [];
+  for (const [startA, startB] of edges.values()) {
+    const initialKey = startA < startB ? `${startA}|${startB}` : `${startB}|${startA}`;
+    if (!unused.has(initialKey)) continue;
+    const loopKeys = [startA];
+    let previous = startA;
+    let current = startB;
+    unused.delete(initialKey);
+    while (current !== startA && loopKeys.length <= edges.size + 1) {
+      loopKeys.push(current);
+      const next = (adjacency.get(current) ?? []).find((candidate) => {
+        if (candidate === previous) return false;
+        const key = current < candidate ? `${current}|${candidate}` : `${candidate}|${current}`;
+        return unused.has(key);
+      });
+      if (!next) break;
+      const key = current < next ? `${current}|${next}` : `${next}|${current}`;
+      unused.delete(key);
+      previous = current;
+      current = next;
+    }
+    if (current !== startA || loopKeys.length < 3) continue;
+    loops.push(loopKeys.map((key) => new Vector2(tangent.dot(nodes.get(key)!), nodes.get(key)!.z)));
+  }
+
+  const loopInfo = loops
+    .map((points, index) => ({ points, index, area: Math.abs(ShapeUtils.area(points)), parent: -1 }))
+    .filter((loop) => loop.area > epsilon * epsilon);
+  for (const loop of loopInfo) {
+    let parentArea = Number.POSITIVE_INFINITY;
+    for (const candidate of loopInfo) {
+      if (candidate.index === loop.index || candidate.area <= loop.area) continue;
+      if (pointInPolygon(loop.points[0]!, candidate.points) && candidate.area < parentArea) {
+        loop.parent = candidate.index;
+        parentArea = candidate.area;
+      }
+    }
+  }
+  const depthOf = (loop: (typeof loopInfo)[number]) => {
+    let depth = 0;
+    let parent = loop.parent;
+    while (parent >= 0) {
+      depth++;
+      parent = loopInfo.find((candidate) => candidate.index === parent)?.parent ?? -1;
+    }
+    return depth;
+  };
+  const capVertices: number[] = [];
+  for (const outer of loopInfo.filter((loop) => depthOf(loop) % 2 === 0)) {
+    const holes = loopInfo
+      .filter((loop) => loop.parent === outer.index && depthOf(loop) % 2 === 1)
+      .map((loop) => loop.points);
+    const allPoints = [...outer.points, ...holes.flat()];
+    for (const face of ShapeUtils.triangulateShape(outer.points, holes)) {
+      const ordered = side < 0 ? face : [face[0]!, face[2]!, face[1]!];
+      for (const index of ordered) {
+        if (index === undefined) continue;
+        const point = allPoints[index]!;
+        capVertices.push(
+          tangent.x * point.x + normal.x * planeDistance,
+          tangent.y * point.x + normal.y * planeDistance,
+          point.y,
+        );
+      }
+    }
+  }
+
+  const kept: number[] = [];
+  for (let i = 0; i + 2 < resultPosition.count; i += 3) {
+    const distances = [0, 1, 2].map(
+      (offset) =>
+        normal.x * resultPosition.getX(i + offset) +
+        normal.y * resultPosition.getY(i + offset) -
+        planeDistance,
+    );
+    if (distances.every((distance) => Math.abs(distance) <= epsilon)) continue;
+    for (const offset of [0, 1, 2]) {
+      kept.push(
+        resultPosition.getX(i + offset),
+        resultPosition.getY(i + offset),
+        resultPosition.getZ(i + offset),
+      );
+    }
+  }
+  const rebuilt = new BufferGeometry();
+  rebuilt.setAttribute("position", new Float32BufferAttribute([...kept, ...capVertices], 3));
+  const welded = mergeVertices(withoutDegenerateTriangles(rebuilt), epsilon);
+  welded.computeVertexNormals();
+  welded.computeBoundingBox();
+  return welded;
+}
+
+function clipGeometryHalf(
+  geometry: BufferGeometry,
+  planePoint: Vector3,
+  normal: Vector3,
+  side: -1 | 1,
+): BufferGeometry {
+  const source = geometry.index ? geometry.toNonIndexed() : geometry;
+  const position = source.getAttribute("position");
+  const vertices: number[] = [];
+  const distance = (point: Vector3) => normal.dot(point.clone().sub(planePoint)) * side;
+  for (let i = 0; i + 2 < position.count; i += 3) {
+    let polygon = [0, 1, 2].map(
+      (offset) =>
+        new Vector3(
+          position.getX(i + offset),
+          position.getY(i + offset),
+          position.getZ(i + offset),
+        ),
+    );
+    const clipped: Vector3[] = [];
+    for (let edge = 0; edge < polygon.length; edge++) {
+      const current = polygon[edge]!;
+      const next = polygon[(edge + 1) % polygon.length]!;
+      const currentDistance = distance(current);
+      const nextDistance = distance(next);
+      if (currentDistance >= -1e-7) clipped.push(current.clone());
+      if (currentDistance >= 0 !== nextDistance >= 0) {
+        clipped.push(current.clone().lerp(next, currentDistance / (currentDistance - nextDistance)));
+      }
+    }
+    polygon = clipped;
+    for (let vertex = 1; vertex + 1 < polygon.length; vertex++) {
+      vertices.push(...polygon[0]!.toArray(), ...polygon[vertex]!.toArray(), ...polygon[vertex + 1]!.toArray());
+    }
+  }
+  const clipped = new BufferGeometry();
+  clipped.setAttribute("position", new Float32BufferAttribute(vertices, 3));
+  return clipped;
 }
 
 /** Divide uma malha por um plano vertical rotacionado em torno do eixo Z. */
@@ -177,24 +401,11 @@ export function splitGeometryByPlane(
   );
   const extent = Math.max(Math.max(size.x, size.y) * 4, reach * 4) + 10;
   const zPadding = Math.max(size.z, 1) + 2;
-  const sourceGeometry = geometry.clone();
-  const source = new Brush(sourceGeometry);
-  source.updateMatrixWorld(true);
-  const evaluator = new Evaluator();
-  evaluator.attributes = ["position"];
   const pieces: SplitPiece[] = [];
 
   for (const side of [-1, 1] as const) {
-    const cutterGeometry = new BoxGeometry(extent, extent * 2, zPadding);
-    cutterGeometry.rotateZ(radians);
-    cutterGeometry.translate(
-      center.x + normal.x * side * (extent / 2),
-      center.y + normal.y * side * (extent / 2),
-      (bounds.min.z + bounds.max.z) / 2,
-    );
-    const cutter = new Brush(cutterGeometry);
-    cutter.updateMatrixWorld(true);
-    const result = evaluator.evaluate(source, cutter, INTERSECTION).geometry.clone();
+    let result = clipGeometryHalf(geometry, center, normal, side);
+    result = rebuildCutCap(result, center, normal, side);
     result.computeVertexNormals();
     result.computeBoundingBox();
     const resultSize = result.boundingBox?.getSize(new Vector3());
