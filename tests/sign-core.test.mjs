@@ -14,6 +14,7 @@ import {
 import { geometriesToStl, slugify } from "../src/lib/sign/stl.ts";
 import {
   clipGeometryByPlaneForPreview,
+  geometryCrossesCutPlane,
   splitGeometryByPlane,
   splitGeometryByPlanes,
   splitGeometryForBuildPlate,
@@ -185,6 +186,23 @@ test("acumula cortes manuais sucessivos usando a mesma origem", () => {
   ]);
   assert.equal(pieces.length, 3);
   assert.deepEqual(pieces.map((piece) => piece.total), [3, 3, 3]);
+});
+
+test("plano manual usa a origem global do modelo em todas as peças", () => {
+  const geometry = new BoxGeometry(20, 20, 10);
+  geometry.translate(100, 0, 0);
+  assert.equal(
+    geometryCrossesCutPlane(geometry, { angle: 0, offset: 0, origin: { x: 0, y: 0 } }),
+    false,
+  );
+  assert.equal(
+    geometryCrossesCutPlane(geometry, { angle: 0, offset: 100, origin: { x: 0, y: 0 } }),
+    true,
+  );
+  assert.equal(
+    splitGeometryByPlane(geometry, { angle: 0, offset: 0, origin: { x: 0, y: 0 } }).length,
+    1,
+  );
 });
 
 test("corte manual aceita malha sem UV e sem normais, como as letras geradas", () => {
