@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import type { User } from "@supabase/supabase-js";
+import { Box3, Vector3 } from "three";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -104,6 +105,13 @@ export default function Toolbar() {
       return;
     }
     const base = slugify(editor.params.text || editor.projectName);
+    const cutBounds = new Box3();
+    for (const part of parts) {
+      part.geometry.computeBoundingBox();
+      if (part.geometry.boundingBox) cutBounds.union(part.geometry.boundingBox);
+    }
+    const cutCenter = cutBounds.getCenter(new Vector3());
+    const cutOrigin = { x: cutCenter.x, y: cutCenter.y };
     if (mode === "unico" && !editor.params.splitForBuildPlate) {
       const buffer = geometriesToStl(parts.map((p) => p.geometry));
       downloadBlob(buffer, `${base}.stl`, "model/stl");
@@ -112,7 +120,6 @@ export default function Toolbar() {
     }
     const zip = new JSZip();
     let exportedSegments = 0;
-    const connectorWarnings = new Set<string>();
     for (const part of parts) {
       let segments;
       try {
@@ -133,7 +140,7 @@ export default function Toolbar() {
                       connectorClearance: cut.connectorClearance,
                     }));
                   return cuts.length
-                    ? splitGeometryByPlanes(part.geometry, cuts)
+                    ? splitGeometryByPlanes(part.geometry, cuts, cutOrigin)
                     : [{ geometry: part.geometry, column: 1, row: 1, index: 1, total: 1 }];
                 })()
               : splitGeometryByPlane(part.geometry, {
@@ -145,6 +152,7 @@ export default function Toolbar() {
                   connectorWidth: editor.params.cutConnectorWidth,
                   connectorThickness: editor.params.cutConnectorThickness,
                   connectorClearance: editor.params.cutConnectorClearance,
+                  origin: cutOrigin,
                 })
             : splitGeometryForBuildPlate(part.geometry, {
                 width: editor.params.buildWidth,
@@ -161,7 +169,6 @@ export default function Toolbar() {
       }
       for (const segment of segments) {
         exportedSegments += 1;
-        if (segment.connectorApplied === false) connectorWarnings.add(part.name);
         const suffix =
           segment.total > 1
             ? `-segmento-${String(segment.index).padStart(2, "0")}-x${segment.column}-y${segment.row}`
@@ -176,12 +183,6 @@ export default function Toolbar() {
           ? `${exportedSegments} segmentos cortados e exportados em ZIP`
           : "Peças exportadas em ZIP",
       );
-      if (connectorWarnings.size) {
-        toast.warning(
-          `Encaixe macho/fêmea não pôde ser gerado em: ${Array.from(connectorWarnings).join(", ")}. ` +
-            "Ajuste o ângulo ou a posição do corte nessas peças e tente novamente.",
-        );
-      }
     });
   }
 
@@ -196,7 +197,7 @@ export default function Toolbar() {
       vectorSource:
         row.vector_kind && row.vector_name && row.vector_content
           ? {
-              kind: row.vector_kind as "svg" | "dxf",
+              kind: row.vector_kind,
               name: row.vector_name,
               content: row.vector_content,
             }
