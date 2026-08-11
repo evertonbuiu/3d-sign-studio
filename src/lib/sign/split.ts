@@ -1,5 +1,6 @@
 import { Box3, BoxGeometry, BufferGeometry, Float32BufferAttribute, Vector3 } from "three";
-import { ADDITION, Brush, Evaluator, INTERSECTION, SUBTRACTION } from "three-bvh-csg";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
+import { Brush, Evaluator, INTERSECTION, SUBTRACTION } from "three-bvh-csg";
 
 export interface SplitPiece {
   geometry: BufferGeometry;
@@ -26,7 +27,7 @@ export interface ManualSplitOptions {
   connectorClearance?: number;
 }
 
-/** Recorte visual robusto, sem CSG e sem tampas, usado somente na prévia. */
+/** Recorte visual robusto, sem CSG e sem tampas, usado somente na prÃ©via. */
 export function clipGeometryByPlaneForPreview(
   geometry: BufferGeometry,
   options: Pick<ManualSplitOptions, "angle" | "offset">,
@@ -36,9 +37,7 @@ export function clipGeometryByPlaneForPreview(
   if (!bounds || bounds.isEmpty()) return [];
   const radians = (options.angle * Math.PI) / 180;
   const normal = new Vector3(Math.cos(radians), Math.sin(radians), 0);
-  const center = bounds
-    .getCenter(new Vector3())
-    .addScaledVector(normal, options.offset ?? 0);
+  const center = bounds.getCenter(new Vector3()).addScaledVector(normal, options.offset ?? 0);
   const source = geometry.index ? geometry.toNonIndexed() : geometry;
   const position = source.getAttribute("position");
 
@@ -58,7 +57,7 @@ export function clipGeometryByPlaneForPreview(
         const currentDistance = distance(current);
         const nextDistance = distance(next);
         if (currentDistance >= -1e-6) clipped.push(current.clone());
-        if ((currentDistance >= 0) !== (nextDistance >= 0)) {
+        if (currentDistance >= 0 !== nextDistance >= 0) {
           const t = currentDistance / (currentDistance - nextDistance);
           clipped.push(current.clone().lerp(next, t));
         }
@@ -158,7 +157,7 @@ export function splitGeometryByPlane(
     cutterGeometry.translate(
       center.x + normal.x * side * (extent / 2),
       center.y + normal.y * side * (extent / 2),
-      bounds.max.z - tongueHeight / 2,
+      (bounds.min.z + bounds.max.z) / 2,
     );
     const cutter = new Brush(cutterGeometry);
     cutter.updateMatrixWorld(true);
@@ -187,11 +186,11 @@ export function splitGeometryByPlane(
   const femaleIndex = maleIndex === 0 ? 1 : 0;
   const direction = normal.clone().multiplyScalar(maleIndex === 0 ? 1 : -1);
 
-  // O encaixe é extraído da própria seção das paredes junto ao plano de corte.
+  // O encaixe Ã© extraÃ­do da prÃ³pria seÃ§Ã£o das paredes junto ao plano de corte.
   // Assim, a metade macho prolonga o perfil real da parede em vez de receber
   // apenas um pino retangular isolado.
-  // Mesmo princípio do rebaixo da tampa: uma faixa fina junto à frente forma
-  // o macho, enquanto o restante da parede da peça fêmea funciona como apoio.
+  // Mesmo princÃ­pio do rebaixo da tampa: uma faixa fina junto Ã  frente forma
+  // o macho, enquanto o restante da parede da peÃ§a fÃªmea funciona como apoio.
   const tongueHeight = Math.min(
     size.z,
     Math.max(0.4, options.connectorThickness ?? size.z * widthPercent),
@@ -204,7 +203,7 @@ export function splitGeometryByPlane(
   sectionBox.translate(
     center.x - direction.x * (sampleDepth / 2),
     center.y - direction.y * (sampleDepth / 2),
-    (bounds.min.z + bounds.max.z) / 2,
+    bounds.max.z - tongueHeight / 2,
   );
   let maleConnector: BufferGeometry;
   try {
@@ -217,9 +216,9 @@ export function splitGeometryByPlane(
   }
   maleConnector.translate(direction.x * depth, direction.y * depth, 0);
 
-  // Expande uma única cópia do perfil nos eixos normal, tangente e Z. Uma
-  // única subtração é mais estável em contornos complexos do que unir ou
-  // subtrair várias cópias quase coincidentes.
+  // Expande uma Ãºnica cÃ³pia do perfil nos eixos normal, tangente e Z. Uma
+  // Ãºnica subtraÃ§Ã£o Ã© mais estÃ¡vel em contornos complexos do que unir ou
+  // subtrair vÃ¡rias cÃ³pias quase coincidentes.
   const femaleCavity = maleConnector.clone();
   if (clearance > 0) {
     femaleCavity.computeBoundingBox();
@@ -238,8 +237,7 @@ export function splitGeometryByPlane(
       );
     }
     const normalScale = (depth + clearance * 2) / depth;
-    const tangentScale =
-      tangentExtent > 1e-6 ? (tangentExtent + clearance) / tangentExtent : 1;
+    const tangentScale = tangentExtent > 1e-6 ? (tangentExtent + clearance) / tangentExtent : 1;
     const zScale = (tongueHeight + clearance * 2) / tongueHeight;
     for (let i = 0; i < cavityPosition.count; i++) {
       const relative = new Vector3(
@@ -260,25 +258,31 @@ export function splitGeometryByPlane(
     femaleCavity.computeVertexNormals();
   }
 
-  try {
-    pieces[maleIndex] = {
-      ...pieces[maleIndex]!,
-      geometry: evaluateGeometry(pieces[maleIndex]!.geometry, maleConnector, ADDITION),
-    };
-  } catch (error) {
-    throw new Error("Falha ao unir o rebaixo prolongado à peça macho", { cause: error });
-  }
+  // A lingueta jÃ¡ penetra a parede pelo `overlap`. Concatenar as duas cascas
+  // preserva esse volume sobreposto para o fatiador e evita a uniÃ£o CSG entre
+  // faces coplanares, que criava pontas/triÃ¢ngulos atravessando letras inteiras.
+  const mergedMale = mergeGeometries(
+    [
+      withoutDegenerateTriangles(pieces[maleIndex]!.geometry),
+      withoutDegenerateTriangles(maleConnector),
+    ],
+    false,
+  );
+  if (!mergedMale) throw new Error("Falha ao montar o rebaixo prolongado da peÃ§a macho");
+  mergedMale.computeVertexNormals();
+  mergedMale.computeBoundingBox();
+  pieces[maleIndex] = { ...pieces[maleIndex]!, geometry: mergedMale };
   let femaleGeometry: BufferGeometry;
   try {
     femaleGeometry = evaluateGeometry(pieces[femaleIndex]!.geometry, femaleCavity, SUBTRACTION);
   } catch (error) {
-    throw new Error("Falha ao abrir a cavidade fêmea", { cause: error });
+    throw new Error("Falha ao abrir a cavidade fÃªmea", { cause: error });
   }
   pieces[femaleIndex] = { ...pieces[femaleIndex]!, geometry: femaleGeometry };
   return pieces.map((piece) => ({ ...piece, total: pieces.length }));
 }
 
-/** Divide uma malha em blocos fechados que cabem na área útil XY da impressora. */
+/** Divide uma malha em blocos fechados que cabem na Ã¡rea Ãºtil XY da impressora. */
 export function splitGeometryForBuildPlate(
   geometry: BufferGeometry,
   options: BuildPlateSplitOptions,
@@ -287,7 +291,7 @@ export function splitGeometryForBuildPlate(
   const usableWidth = options.width - margin * 2;
   const usableDepth = options.depth - margin * 2;
   if (usableWidth <= 0 || usableDepth <= 0) {
-    throw new Error("A margem de corte é maior que a mesa de impressão.");
+    throw new Error("A margem de corte Ã© maior que a mesa de impressÃ£o.");
   }
   geometry.computeBoundingBox();
   const bounds = geometry.boundingBox?.clone();

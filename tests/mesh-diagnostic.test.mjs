@@ -211,7 +211,7 @@ test("a letra G gera componentes fechados e manifold", () => {
   );
 });
 
-test("plano manual corta todas as malhas reais da letra sem lançar erro", () => {
+test("plano manual corta todas as malhas reais da letra sem lanÃ§ar erro", () => {
   const params = { ...DEFAULT_PARAMS, text: "G", mountHoles: false };
   const build = buildSign(
     glyphShapes(archivo, "G", params.letterHeight),
@@ -220,27 +220,37 @@ test("plano manual corta todas as malhas reais da letra sem lançar erro", () =>
   );
   for (const part of build.parts) {
     const pieces = splitGeometryByPlane(part.geometry, { angle: 90, offset: 0 });
-    assert.ok(pieces.length >= 1, `${part.id} não produziu segmentos`);
+    assert.ok(pieces.length >= 1, `${part.id} nÃ£o produziu segmentos`);
   }
 });
 
-test("encaixe macho e fêmea é gerado na malha real da letra", () => {
-  const params = { ...DEFAULT_PARAMS, text: "G", mountHoles: false };
+test("encaixe macho e fÃªmea Ã© gerado nas paredes de uma palavra", () => {
+  const params = { ...DEFAULT_PARAMS, text: "LUMINA", mountHoles: false };
   const build = buildSign(
-    glyphShapes(archivo, "G", params.letterHeight),
+    glyphShapes(archivo, params.text, params.letterHeight),
     params,
     getStyle("caixa-iluminada"),
   );
-  const target = build.parts.find((part) => part.kind === "fundo") ?? build.parts[0];
+  const target = build.parts.find((part) => part.kind === "laterais");
+  assert.ok(target);
+  const plainPieces = splitGeometryByPlane(target.geometry, { angle: 90 });
   const pieces = splitGeometryByPlane(target.geometry, {
     angle: 90,
     connector: "male-female",
     maleSide: "part-1",
     connectorDepth: 4,
     connectorWidth: 100,
+    connectorThickness: 3,
     connectorClearance: 0.2,
   });
   assert.equal(pieces.length, 2);
+  assert.equal(plainPieces.length, 2);
+  plainPieces[0].geometry.computeBoundingBox();
+  pieces[0].geometry.computeBoundingBox();
+  assert.ok(
+    pieces[0].geometry.boundingBox.max.y >= plainPieces[0].geometry.boundingBox.max.y + 3.9,
+    "a lingueta macho deve avanÃ§ar pela profundidade configurada",
+  );
   for (const piece of pieces) {
     const position = piece.geometry.getAttribute("position");
     assert.ok(position.count > 0);
@@ -304,7 +314,7 @@ test("frente acrilica e fundo impresso preservam os vazados internos", () => {
 
 test("Neon Flex gera fundo e paredes unidos sem tampa", () => {
   const style = getStyle("neon-flex-fundo-impresso");
-  assert.equal(style.name, "Neon Flex — Fundo Impresso sem Tampa");
+  assert.equal(style.name, "Neon Flex â€” Fundo Impresso sem Tampa");
   const params = {
     ...DEFAULT_PARAMS,
     ...style.preset,
@@ -480,7 +490,7 @@ test("frente e fundo acrilicos ficam separados com rebaixo duplo", () => {
 
 test("novo estilo usa fundo acrilico apoiado por aba interna", () => {
   const style = getStyle("fundo-acrilico-frente-acrilica-aba");
-  assert.equal(style.name, "Fundo Acrílico + Frente Acrílica com Aba");
+  assert.equal(style.name, "Fundo AcrÃ­lico + Frente AcrÃ­lica com Aba");
   const params = {
     ...DEFAULT_PARAMS,
     ...style.preset,
