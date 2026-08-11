@@ -388,6 +388,8 @@ function extrudeCutSection(
   minZ: number,
   maxZ: number,
   wallFraction: number,
+  selectInner = true,
+  capOnly = false,
 ): BufferGeometry {
   const epsilon = 1e-5;
   const planeDistance = normal.dot(planePoint);
@@ -459,7 +461,8 @@ function extrudeCutSection(
     groups.set(root, [...(groups.get(root) ?? []), triangle]);
   });
   const connectorTriangles: Array<[Vector3, Vector3, Vector3]> = [];
-  const fraction = Math.min(Math.max(wallFraction, 0.1), 1);
+  const fraction = Math.min(Math.max(wallFraction, 0), 1);
+  if (fraction <= 1e-6) return new BufferGeometry();
   const sections = [...groups.values()]
     .map((triangles) => {
       const coordinates = triangles.flat().map((point) => tangent.dot(point));
@@ -470,9 +473,10 @@ function extrudeCutSection(
     .sort((a, b) => a.centerT - b.centerT);
   for (const [sectionIndex, section] of sections.entries()) {
     const { triangles, minT, maxT, centerT } = section;
-    const keepAbove = sections.length % 2 === 0
+    const innerAbove = sections.length % 2 === 0
       ? sectionIndex % 2 === 0
       : centerT < tangent.dot(planePoint);
+    const keepAbove = selectInner ? innerAbove : !innerAbove;
     const limit = keepAbove ? maxT - (maxT - minT) * fraction : minT + (maxT - minT) * fraction;
     for (const triangle of triangles) {
       let polygon = triangle.map((point) => point.clone());
@@ -494,6 +498,18 @@ function extrudeCutSection(
         connectorTriangles.push([polygon[0]!, polygon[vertex]!, polygon[vertex + 1]!]);
       }
     }
+  }
+
+  if (capOnly) {
+    const cap = new BufferGeometry();
+    cap.setAttribute(
+      "position",
+      new Float32BufferAttribute(
+        connectorTriangles.flatMap((triangle) => triangle.flatMap((point) => point.toArray())),
+        3,
+      ),
+    );
+    return cap;
   }
 
   const faces = new Map<string, { vertices: number[]; count: number }>();
@@ -525,6 +541,53 @@ function extrudeCutSection(
   const vertices = [...faces.values()]
     .filter((face) => face.count === 1)
     .flatMap((face) => face.vertices);
+  const result = new BufferGeometry();
+  result.setAttribute("position", new Float32BufferAttribute(vertices, 3));
+  const welded = mergeVertices(withoutDegenerateTriangles(result), epsilon);
+  welded.computeVertexNormals();
+  welded.computeBoundingBox();
+  return welded;
+}
+
+function replacePlanarCutCap(
+  geometry: BufferGeometry,
+  replacement: BufferGeometry,
+  planePoint: Vector3,
+  normal: Vector3,
+): BufferGeometry {
+  const epsilon = 1e-5;
+  const planeDistance = normal.dot(planePoint);
+  const source = geometry.index ? geometry.toNonIndexed() : geometry;
+  const position = source.getAttribute("position");
+  const vertices: number[] = [];
+  for (let index = 0; index + 2 < position.count; index += 3) {
+    const planar = [0, 1, 2].every(
+      (offset) =>
+        Math.abs(
+          normal.x * position.getX(index + offset) +
+            normal.y * position.getY(index + offset) -
+            planeDistance,
+        ) <= epsilon,
+    );
+    if (planar) continue;
+    for (const offset of [0, 1, 2]) {
+      vertices.push(
+        position.getX(index + offset),
+        position.getY(index + offset),
+        position.getZ(index + offset),
+      );
+    }
+  }
+  const replacementPosition = replacement.getAttribute("position");
+  if (replacementPosition) {
+    for (let index = 0; index < replacementPosition.count; index++) {
+      vertices.push(
+        replacementPosition.getX(index),
+        replacementPosition.getY(index),
+        replacementPosition.getZ(index),
+      );
+    }
+  }
   const result = new BufferGeometry();
   result.setAttribute("position", new Float32BufferAttribute(vertices, 3));
   const welded = mergeVertices(withoutDegenerateTriangles(result), epsilon);
@@ -658,6 +721,19 @@ export function splitGeometryByPlane(
   } catch (error) {
     throw new Error("Falha ao abrir a cavidade fêmea", { cause: error });
   }
+  const outerCap = extrudeCutSection(
+    pieces[femaleIndex]!.geometry,
+    center,
+    normal,
+    direction,
+    0,
+    bounds.min.z,
+    bounds.max.z,
+    1 - widthPercent,
+    false,
+    true,
+  );
+  femaleGeometry = replacePlanarCutCap(femaleGeometry, outerCap, center, normal);
   pieces[femaleIndex] = { ...pieces[femaleIndex]!, geometry: femaleGeometry };
   return pieces.map((piece) => ({ ...piece, total: pieces.length }));
 }
