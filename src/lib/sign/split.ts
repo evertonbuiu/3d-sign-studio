@@ -8,14 +8,6 @@ export interface SplitPiece {
   row: number;
   index: number;
   total: number;
-  /**
-   * Presente somente quando um encaixe macho/fêmea foi solicitado. `true` se o
-   * degrau foi gerado normalmente; `false` se o corte pediu o encaixe mas ele
-   * não pôde ser criado neste ponto (ver `connectorIssue`).
-   */
-  connectorApplied?: boolean;
-  /** Motivo legível para o usuário quando `connectorApplied` é `false`. */
-  connectorIssue?: string;
 }
 
 export interface BuildPlateSplitOptions {
@@ -38,6 +30,27 @@ export interface ManualSplitOptions {
 
 export interface SequentialSplitOptions extends ManualSplitOptions {
   id?: string;
+}
+
+export function geometryCrossesCutPlane(
+  geometry: BufferGeometry,
+  options: Pick<ManualSplitOptions, "angle" | "offset" | "origin">,
+): boolean {
+  geometry.computeBoundingBox();
+  const bounds = geometry.boundingBox;
+  if (!bounds || bounds.isEmpty()) return false;
+  const fallback = bounds.getCenter(new Vector3());
+  const origin = new Vector3(options.origin?.x ?? fallback.x, options.origin?.y ?? fallback.y, 0);
+  const radians = (options.angle * Math.PI) / 180;
+  const normal = new Vector3(Math.cos(radians), Math.sin(radians), 0);
+  origin.addScaledVector(normal, options.offset ?? 0);
+  const distances = [
+    new Vector3(bounds.min.x, bounds.min.y, 0),
+    new Vector3(bounds.min.x, bounds.max.y, 0),
+    new Vector3(bounds.max.x, bounds.min.y, 0),
+    new Vector3(bounds.max.x, bounds.max.y, 0),
+  ].map((corner) => normal.dot(corner.sub(origin)));
+  return Math.min(...distances) < -1e-5 && Math.max(...distances) > 1e-5;
 }
 
 /** Recorte visual robusto, sem CSG e sem tampas, usado somente na prévia. */
@@ -156,7 +169,13 @@ export function splitGeometryByPlane(
   const radians = (options.angle * Math.PI) / 180;
   const normal = new Vector3(Math.cos(radians), Math.sin(radians), 0);
   center.addScaledVector(normal, options.offset ?? 0);
-  const extent = Math.max(size.x, size.y) * 4 + Math.abs(options.offset ?? 0) * 2 + 10;
+  const reach = Math.max(
+    Math.abs(bounds.min.x - center.x),
+    Math.abs(bounds.max.x - center.x),
+    Math.abs(bounds.min.y - center.y),
+    Math.abs(bounds.max.y - center.y),
+  );
+  const extent = Math.max(Math.max(size.x, size.y) * 4, reach * 4) + 10;
   const zPadding = Math.max(size.z, 1) + 2;
   const sourceGeometry = geometry.clone();
   const source = new Brush(sourceGeometry);
@@ -211,51 +230,22 @@ export function splitGeometryByPlane(
   );
   const tangent = new Vector3(-normal.y, normal.x, 0);
   const overlap = Math.min(0.5, depth * 0.2);
-  const baseSampleDepth = depth + overlap;
-
-  // Em paredes retas a janela `depth + overlap` já captura a seção da parede.
-  // Em contornos curvos (letras), o plano de corte pode cruzar a parede quase
-  // tangencialmente: a mesma espessura física ocupa uma faixa muito maior na
-  // direção normal do corte. Se a primeira tentativa vier vazia, ampliamos a
-  // janela de captura (sem alterar o avanço `depth` do encaixe) antes de
-  // desistir, em vez de devolver o corte sem encaixe silenciosamente.
-  const sampleMultipliers = [1, 2.5, 5, 10];
-  let maleConnector: BufferGeometry | null = null;
-  let extractionError: unknown = null;
-  for (const multiplier of sampleMultipliers) {
-    const sampleDepth = baseSampleDepth * multiplier;
-    const sectionBox = new BoxGeometry(sampleDepth, extent * 2, tongueHeight);
-    sectionBox.rotateZ(radians);
-    sectionBox.translate(
-      center.x - direction.x * (sampleDepth / 2),
-      center.y - direction.y * (sampleDepth / 2),
-      (bounds.min.z + bounds.max.z) / 2,
-    );
-    try {
-      const candidate = evaluateGeometry(geometry, sectionBox, INTERSECTION);
-      if (candidate.getAttribute("position").count > 0) {
-        maleConnector = candidate;
-        break;
-      }
-    } catch (error) {
-      extractionError = error;
-    }
+  const sampleDepth = depth + overlap;
+  const sectionBox = new BoxGeometry(sampleDepth, extent * 2, tongueHeight);
+  sectionBox.rotateZ(radians);
+  sectionBox.translate(
+    center.x - direction.x * (sampleDepth / 2),
+    center.y - direction.y * (sampleDepth / 2),
+    (bounds.min.z + bounds.max.z) / 2,
+  );
+  let maleConnector: BufferGeometry;
+  try {
+    maleConnector = evaluateGeometry(geometry, sectionBox, INTERSECTION);
+  } catch (error) {
+    throw new Error("Falha ao extrair o perfil das paredes no corte", { cause: error });
   }
-
-  if (!maleConnector) {
-    console.warn(
-      "[split] Encaixe macho/fêmea não pôde ser gerado neste ponto do corte " +
-        "(a parede provavelmente cruza o plano quase tangencialmente, ex.: dentro " +
-        "de uma curva de letra). Ajuste o ângulo/posição do corte para essa peça.",
-      extractionError,
-    );
-    return pieces.map((piece) => ({
-      ...piece,
-      total: pieces.length,
-      connectorApplied: false,
-      connectorIssue:
-        "Não foi possível gerar o encaixe neste ponto — tente ajustar o ângulo ou a posição do corte.",
-    }));
+  if (maleConnector.getAttribute("position").count === 0) {
+    return pieces.map((piece) => ({ ...piece, total: pieces.length }));
   }
   maleConnector.translate(direction.x * depth, direction.y * depth, 0);
 
@@ -322,18 +312,20 @@ export function splitGeometryByPlane(
     throw new Error("Falha ao abrir a cavidade fêmea", { cause: error });
   }
   pieces[femaleIndex] = { ...pieces[femaleIndex]!, geometry: femaleGeometry };
-  return pieces.map((piece) => ({ ...piece, total: pieces.length, connectorApplied: true }));
+  return pieces.map((piece) => ({ ...piece, total: pieces.length }));
 }
 
 /** Aplica vários planos sobre as peças resultantes, preservando a origem do modelo. */
 export function splitGeometryByPlanes(
   geometry: BufferGeometry,
   cuts: SequentialSplitOptions[],
+  origin?: { x: number; y: number },
 ): SplitPiece[] {
   geometry.computeBoundingBox();
   const bounds = geometry.boundingBox?.clone();
   if (!bounds || bounds.isEmpty()) return [];
   const center = bounds.getCenter(new Vector3());
+  if (origin) center.set(origin.x, origin.y, center.z);
   let geometries = [geometry.clone()];
   for (const cut of cuts) {
     const next: BufferGeometry[] = [];

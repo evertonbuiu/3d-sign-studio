@@ -1,5 +1,6 @@
 import { toast } from "sonner";
-import { Eye, EyeOff, Scissors, Trash2, Upload, X } from "lucide-react";
+import { Eye, EyeOff, Scissors, Trash2, Undo2, Upload, X } from "lucide-react";
+import { Box3, Vector3 } from "three";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,7 @@ import {
 import { FONTS, type FontId } from "@/lib/sign/fonts";
 import type { PartKind, SignParams } from "@/lib/sign/model";
 import { PRINTER_PROFILES } from "@/lib/sign/printers";
+import { geometryCrossesCutPlane } from "@/lib/sign/split";
 import { useEditor } from "./store";
 
 const MAX_VECTOR_FILE_BYTES = 2_000_000;
@@ -736,6 +738,40 @@ export default function PropertiesPanel() {
                             type="button"
                             className="flex-1"
                             onClick={() => {
+                              const targets = (build?.parts ?? []).filter(
+                                (part) =>
+                                  !hidden.has(part.id) &&
+                                  (params.manualCutTarget === "all" ||
+                                    part.kind === params.manualCutTarget),
+                              );
+                              const bounds = new Box3();
+                              for (const part of targets) {
+                                part.geometry.computeBoundingBox();
+                                if (part.geometry.boundingBox) bounds.union(part.geometry.boundingBox);
+                              }
+                              const center = bounds.getCenter(new Vector3());
+                              const origin = { x: center.x, y: center.y };
+                              const crosses = targets.some((part) =>
+                                geometryCrossesCutPlane(part.geometry, {
+                                  angle: params.manualCutAngle,
+                                  offset: params.manualCutOffset,
+                                  origin,
+                                }),
+                              );
+                              if (!targets.length || !crosses) {
+                                toast.error("O plano não atravessa nenhuma peça do alvo selecionado.");
+                                return;
+                              }
+                              const duplicate = params.manualCuts.some(
+                                (cut) =>
+                                  cut.target === params.manualCutTarget &&
+                                  Math.abs(cut.angle - params.manualCutAngle) < 0.01 &&
+                                  Math.abs(cut.offset - params.manualCutOffset) < 0.01,
+                              );
+                              if (duplicate) {
+                                toast.error("Este corte já foi aplicado.");
+                                return;
+                              }
                               const nextCut = {
                                 id: `${Date.now()}-${params.manualCuts.length + 1}`,
                                 angle: params.manualCutAngle,
@@ -754,6 +790,17 @@ export default function PropertiesPanel() {
                           >
                             <Scissors className="mr-2 h-4 w-4" />
                             Aplicar corte
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled={!params.manualCuts.length}
+                            onClick={() =>
+                              setParam("manualCuts", params.manualCuts.slice(0, -1))
+                            }
+                            aria-label="Desfazer último corte"
+                          >
+                            <Undo2 className="h-4 w-4" />
                           </Button>
                           <Button
                             type="button"
