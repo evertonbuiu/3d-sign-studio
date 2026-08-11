@@ -25,9 +25,14 @@ export interface ManualSplitOptions {
   connectorWidth?: number;
   connectorThickness?: number;
   connectorClearance?: number;
+  origin?: { x: number; y: number };
 }
 
-/** Recorte visual robusto, sem CSG e sem tampas, usado somente na prÃ©via. */
+export interface SequentialSplitOptions extends ManualSplitOptions {
+  id?: string;
+}
+
+/** Recorte visual robusto, sem CSG e sem tampas, usado somente na prévia. */
 export function clipGeometryByPlaneForPreview(
   geometry: BufferGeometry,
   options: Pick<ManualSplitOptions, "angle" | "offset">,
@@ -139,6 +144,7 @@ export function splitGeometryByPlane(
   if (!bounds || bounds.isEmpty()) return [];
   const size = bounds.getSize(new Vector3());
   const center = bounds.getCenter(new Vector3());
+  if (options.origin) center.set(options.origin.x, options.origin.y, center.z);
   const radians = (options.angle * Math.PI) / 180;
   const normal = new Vector3(Math.cos(radians), Math.sin(radians), 0);
   center.addScaledVector(normal, options.offset ?? 0);
@@ -186,10 +192,11 @@ export function splitGeometryByPlane(
   const femaleIndex = maleIndex === 0 ? 1 : 0;
   const direction = normal.clone().multiplyScalar(maleIndex === 0 ? 1 : -1);
 
-  // O encaixe Ã© extraÃ­do da prÃ³pria seÃ§Ã£o das paredes junto ao plano de corte.
+  // O encaixe é extraído da própria seção das paredes junto ao plano de corte.
   // Assim, a metade macho prolonga o perfil real da parede em vez de receber
   // apenas um pino retangular isolado.
-  // Perfil medido no SKP: faixa central com apoios simetricos na frente e no fundo.
+  // Perfil medido no modelo SKP de referência: a faixa central forma o macho
+  // e deixa ombros de apoio simétricos na frente e no fundo da parede.
   const tongueHeight = Math.min(
     size.z,
     Math.max(0.4, options.connectorThickness ?? size.z * widthPercent),
@@ -215,9 +222,9 @@ export function splitGeometryByPlane(
   }
   maleConnector.translate(direction.x * depth, direction.y * depth, 0);
 
-  // Expande uma Ãºnica cÃ³pia do perfil nos eixos normal, tangente e Z. Uma
-  // Ãºnica subtraÃ§Ã£o Ã© mais estÃ¡vel em contornos complexos do que unir ou
-  // subtrair vÃ¡rias cÃ³pias quase coincidentes.
+  // Expande uma única cópia do perfil nos eixos normal, tangente e Z. Uma
+  // única subtração é mais estável em contornos complexos do que unir ou
+  // subtrair várias cópias quase coincidentes.
   const femaleCavity = maleConnector.clone();
   if (clearance > 0) {
     femaleCavity.computeBoundingBox();
@@ -257,9 +264,9 @@ export function splitGeometryByPlane(
     femaleCavity.computeVertexNormals();
   }
 
-  // A lingueta jÃ¡ penetra a parede pelo `overlap`. Concatenar as duas cascas
-  // preserva esse volume sobreposto para o fatiador e evita a uniÃ£o CSG entre
-  // faces coplanares, que criava pontas/triÃ¢ngulos atravessando letras inteiras.
+  // A lingueta já penetra a parede pelo `overlap`. Concatenar as duas cascas
+  // preserva esse volume sobreposto para o fatiador e evita a união CSG entre
+  // faces coplanares, que criava pontas/triângulos atravessando letras inteiras.
   const mergedMale = mergeGeometries(
     [
       withoutDegenerateTriangles(pieces[maleIndex]!.geometry),
@@ -267,7 +274,7 @@ export function splitGeometryByPlane(
     ],
     false,
   );
-  if (!mergedMale) throw new Error("Falha ao montar o rebaixo prolongado da peÃ§a macho");
+  if (!mergedMale) throw new Error("Falha ao montar o rebaixo prolongado da peça macho");
   mergedMale.computeVertexNormals();
   mergedMale.computeBoundingBox();
   pieces[maleIndex] = { ...pieces[maleIndex]!, geometry: mergedMale };
@@ -275,13 +282,44 @@ export function splitGeometryByPlane(
   try {
     femaleGeometry = evaluateGeometry(pieces[femaleIndex]!.geometry, femaleCavity, SUBTRACTION);
   } catch (error) {
-    throw new Error("Falha ao abrir a cavidade fÃªmea", { cause: error });
+    throw new Error("Falha ao abrir a cavidade fêmea", { cause: error });
   }
   pieces[femaleIndex] = { ...pieces[femaleIndex]!, geometry: femaleGeometry };
   return pieces.map((piece) => ({ ...piece, total: pieces.length }));
 }
 
-/** Divide uma malha em blocos fechados que cabem na Ã¡rea Ãºtil XY da impressora. */
+/** Aplica vários planos sobre as peças resultantes, preservando a origem do modelo. */
+export function splitGeometryByPlanes(
+  geometry: BufferGeometry,
+  cuts: SequentialSplitOptions[],
+): SplitPiece[] {
+  geometry.computeBoundingBox();
+  const bounds = geometry.boundingBox?.clone();
+  if (!bounds || bounds.isEmpty()) return [];
+  const center = bounds.getCenter(new Vector3());
+  let geometries = [geometry.clone()];
+  for (const cut of cuts) {
+    const next: BufferGeometry[] = [];
+    for (const candidate of geometries) {
+      const split = splitGeometryByPlane(candidate, {
+        ...cut,
+        origin: { x: center.x, y: center.y },
+      });
+      if (split.length === 2) next.push(...split.map((piece) => piece.geometry));
+      else next.push(candidate);
+    }
+    geometries = next;
+  }
+  return geometries.map((piece, index) => ({
+    geometry: piece,
+    column: index + 1,
+    row: 1,
+    index: index + 1,
+    total: geometries.length,
+  }));
+}
+
+/** Divide uma malha em blocos fechados que cabem na área útil XY da impressora. */
 export function splitGeometryForBuildPlate(
   geometry: BufferGeometry,
   options: BuildPlateSplitOptions,
@@ -290,7 +328,7 @@ export function splitGeometryForBuildPlate(
   const usableWidth = options.width - margin * 2;
   const usableDepth = options.depth - margin * 2;
   if (usableWidth <= 0 || usableDepth <= 0) {
-    throw new Error("A margem de corte Ã© maior que a mesa de impressÃ£o.");
+    throw new Error("A margem de corte é maior que a mesa de impressão.");
   }
   geometry.computeBoundingBox();
   const bounds = geometry.boundingBox?.clone();
@@ -340,4 +378,3 @@ export function splitGeometryForBuildPlate(
   }
   return pieces.map((piece) => ({ ...piece, total: pieces.length }));
 }
-
