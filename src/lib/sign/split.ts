@@ -571,22 +571,17 @@ export function splitGeometryByPlane(
   // O encaixe é extraído da própria seção das paredes junto ao plano de corte.
   // Assim, a metade macho prolonga o perfil real da parede em vez de receber
   // apenas um pino retangular isolado.
-  // Perfil medido no modelo SKP de referência: a faixa central forma o macho
-  // e deixa ombros de apoio simétricos na frente e no fundo da parede.
-  const tongueHeight = Math.min(
-    size.z,
-    Math.max(0.4, options.connectorThickness ?? size.z * widthPercent),
-  );
+  // O macho usa a metade interna da espessura e percorre toda a parede,
+  // desde o fundo ate a frente. A metade externa permanece como ombro.
   const overlap = Math.min(0.5, depth * 0.2);
-  const tongueCenterZ = (bounds.min.z + bounds.max.z) / 2;
   const maleConnector = extrudeCutSection(
     pieces[maleIndex]!.geometry,
     center,
     normal,
     direction,
     depth + overlap,
-    tongueCenterZ - tongueHeight / 2,
-    tongueCenterZ + tongueHeight / 2,
+    bounds.min.z,
+    bounds.max.z,
     widthPercent,
   );
   if (maleConnector.getAttribute("position").count === 0) {
@@ -614,7 +609,7 @@ export function splitGeometryByPlane(
     }
     const normalScale = (depth + clearance * 2) / depth;
     const tangentScale = tangentExtent > 1e-6 ? (tangentExtent + clearance) / tangentExtent : 1;
-    const zScale = (tongueHeight + clearance * 2) / tongueHeight;
+    const zScale = (size.z + clearance * 2) / size.z;
     for (let i = 0; i < cavityPosition.count; i++) {
       const relative = new Vector3(
         cavityPosition.getX(i) - cavityCenter.x,
