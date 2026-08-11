@@ -111,8 +111,8 @@ export function useEditorState(): EditorState {
     try {
       const shapes = svg
         ? svg.kind === "dxf"
-          ? dxfToShapes(svg.content, deferredParams.letterHeight)
-          : svgToShapes(svg.content, deferredParams.letterHeight)
+          ? dxfToShapes(svg.content)
+          : svgToShapes(svg.content)
         : (customFont ?? font)
           ? textToShapes(
               (customFont ?? font)!,

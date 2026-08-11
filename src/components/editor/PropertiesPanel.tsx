@@ -1,5 +1,5 @@
 import { toast } from "sonner";
-import { Eye, EyeOff, Upload, X } from "lucide-react";
+import { Eye, EyeOff, Scissors, Trash2, Upload, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,10 +20,9 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { FONTS, type FontId } from "@/lib/sign/fonts";
-import type { SignParams } from "@/lib/sign/model";
+import type { PartKind, SignParams } from "@/lib/sign/model";
 import { PRINTER_PROFILES } from "@/lib/sign/printers";
 import { useEditor } from "./store";
-import CutTool from "./CutTool";
 
 const MAX_VECTOR_FILE_BYTES = 2_000_000;
 const MAX_FONT_FILE_BYTES = 5_000_000;
@@ -34,7 +33,7 @@ function validateVectorFile(file: File): boolean {
   return false;
 }
 
-export function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
       <Label className="text-sm font-medium text-muted-foreground">{label}</Label>
@@ -43,7 +42,7 @@ export function Field({ label, children }: { label: string; children: React.Reac
   );
 }
 
-export function NumberSlider({
+function NumberSlider({
   label,
   keyName,
   min,
@@ -94,7 +93,7 @@ function ColorField({ label, keyName }: { label: string; keyName: keyof SignPara
   );
 }
 
-export function MoneyField({
+function MoneyField({
   label,
   keyName,
   step = 1,
@@ -152,7 +151,6 @@ export default function PropertiesPanel() {
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <CutTool />
         <Accordion type="multiple" defaultValue={["texto", "construcao", "led"]} className="px-3">
           <AccordionItem value="texto">
             <AccordionTrigger className="text-sm">Texto e fonte</AccordionTrigger>
@@ -220,7 +218,7 @@ export default function PropertiesPanel() {
                           const content = await file.text();
                           e.target.value = "";
                           const { dxfToShapes } = await import("@/lib/sign/dxf");
-                          if (!dxfToShapes(content, 100).length) {
+                          if (!dxfToShapes(content).length) {
                             toast.error(
                               "Nenhum contorno fechado encontrado no DXF. Use polilinhas/círculos fechados (sem textos ou hachuras).",
                             );
@@ -580,6 +578,232 @@ export default function PropertiesPanel() {
               <MoneyField label="Energia (R$/kWh)" keyName="energyPrice" step={0.01} />
               <MoneyField label="Potência da impressora (W)" keyName="printerPower" />
               <MoneyField label="Margem (%)" keyName="margin" />
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="corte">
+            <AccordionTrigger className="text-sm">Corte e encaixe</AccordionTrigger>
+            <AccordionContent className="space-y-4 pb-4">
+              <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-background/40 p-3">
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">
+                    Ativar ferramenta de corte
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Configure o plano e o encaixe antes de exportar.
+                  </p>
+                </div>
+                <Switch
+                  checked={params.splitForBuildPlate}
+                  onCheckedChange={(value) => setParam("splitForBuildPlate", value)}
+                />
+              </div>
+              {params.splitForBuildPlate ? (
+                <>
+                  <Field label="Modo do corte">
+                    <Select
+                      value={params.splitMode}
+                      onValueChange={(value) =>
+                        setParam("splitMode", value as SignParams["splitMode"])
+                      }
+                    >
+                      <SelectTrigger className="h-9 bg-card text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="manual">Plano manual</SelectItem>
+                        <SelectItem value="automatic">Automático pela mesa</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  {params.splitMode === "automatic" ? (
+                    <MoneyField label="Margem da mesa (mm)" keyName="splitMargin" step={1} />
+                  ) : (
+                    <>
+                      <Field label="Aplicar em">
+                        <Select
+                          value={params.manualCutTarget}
+                          onValueChange={(value) =>
+                            setParam("manualCutTarget", value as PartKind | "all")
+                          }
+                        >
+                          <SelectTrigger className="h-9 bg-card text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Todas as peças</SelectItem>
+                            {Array.from(new Set(style.parts)).map((kind) => (
+                              <SelectItem key={kind} value={kind}>
+                                {kind === "laterais" ? "Somente paredes" : `Somente ${kind}`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </Field>
+                      <NumberSlider
+                        label="Rotação do plano (eixo Z)"
+                        keyName="manualCutAngle"
+                        min={-180}
+                        max={180}
+                        step={1}
+                        unit="°"
+                      />
+                      <NumberSlider
+                        label="Posição do plano"
+                        keyName="manualCutOffset"
+                        min={-400}
+                        max={400}
+                        step={1}
+                      />
+                      <NumberSlider
+                        label="Afastar partes na prévia"
+                        keyName="manualCutSeparation"
+                        min={0}
+                        max={100}
+                        step={1}
+                      />
+                      <div className="space-y-3 rounded-md border border-border bg-background/40 p-3">
+                        <Field label="Encaixe no corte">
+                          <Select
+                            value={params.cutConnector}
+                            onValueChange={(value) => {
+                              setParam("cutConnector", value as SignParams["cutConnector"]);
+                              if (value === "male-female") {
+                                setParam("cutConnectorThickness", Math.min(params.depth * 0.6, 60));
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="h-9 bg-card text-sm">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Sem encaixe</SelectItem>
+                              <SelectItem value="male-female">
+                                Degrau contínuo (macho e fêmea)
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </Field>
+                        {params.cutConnector === "male-female" ? (
+                          <>
+                            <Field label="Lado macho">
+                              <Select
+                                value={params.cutMaleSide}
+                                onValueChange={(value) =>
+                                  setParam("cutMaleSide", value as SignParams["cutMaleSide"])
+                                }
+                              >
+                                <SelectTrigger className="h-9 bg-card text-sm">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="part-1">Parte 1</SelectItem>
+                                  <SelectItem value="part-2">Parte 2</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </Field>
+                            <NumberSlider
+                              label="Profundidade do encaixe"
+                              keyName="cutConnectorDepth"
+                              min={0.4}
+                              max={20}
+                              step={0.2}
+                            />
+                            <NumberSlider
+                              label="Altura do degrau na parede"
+                              keyName="cutConnectorThickness"
+                              min={0.4}
+                              max={Math.min(params.depth, 60)}
+                              step={0.2}
+                            />
+                            <p className="text-xs leading-relaxed text-muted-foreground">
+                              Como no modelo SKP: a faixa central forma o macho e mantém dois ombros
+                              de apoio, um junto à frente e outro junto ao fundo.
+                            </p>
+                            <NumberSlider
+                              label="Folga macho/fêmea"
+                              keyName="cutConnectorClearance"
+                              min={0}
+                              max={1.5}
+                              step={0.05}
+                            />
+                          </>
+                        ) : null}
+                      </div>
+                      <div className="space-y-3 rounded-md border border-border bg-background/40 p-3">
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            className="flex-1"
+                            onClick={() => {
+                              const nextCut = {
+                                id: `${Date.now()}-${params.manualCuts.length + 1}`,
+                                angle: params.manualCutAngle,
+                                offset: params.manualCutOffset,
+                                target: params.manualCutTarget,
+                                connector: params.cutConnector,
+                                maleSide: params.cutMaleSide,
+                                connectorDepth: params.cutConnectorDepth,
+                                connectorWidth: params.cutConnectorWidth,
+                                connectorThickness: params.cutConnectorThickness,
+                                connectorClearance: params.cutConnectorClearance,
+                              };
+                              setParam("manualCuts", [...params.manualCuts, nextCut]);
+                              toast.success(`Corte ${params.manualCuts.length + 1} aplicado`);
+                            }}
+                          >
+                            <Scissors className="mr-2 h-4 w-4" />
+                            Aplicar corte
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled={!params.manualCuts.length}
+                            onClick={() => setParam("manualCuts", [])}
+                            aria-label="Limpar cortes"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Arraste/ajuste o plano, aplique e repita para dividir a peça em três ou
+                          mais segmentos. Os cortes aplicados são mantidos na exportação.
+                        </p>
+                        {params.manualCuts.length ? (
+                          <div className="space-y-1">
+                            {params.manualCuts.map((cut, index) => (
+                              <div
+                                key={cut.id}
+                                className="flex items-center justify-between rounded border border-border px-2 py-1 text-xs"
+                              >
+                                <span>
+                                  #{index + 1} · {cut.target === "all" ? "todas" : cut.target} ·{" "}
+                                  {cut.angle}°
+                                </span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={() =>
+                                    setParam(
+                                      "manualCuts",
+                                      params.manualCuts.filter((item) => item.id !== cut.id),
+                                    )
+                                  }
+                                  aria-label={`Remover corte ${index + 1}`}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    </>
+                  )}
+                </>
+              ) : null}
             </AccordionContent>
           </AccordionItem>
 
