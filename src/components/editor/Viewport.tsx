@@ -23,6 +23,10 @@ import {
   splitGeometryByPlanes,
   type SequentialSplitOptions,
 } from "@/lib/sign/split";
+import {
+  transformGeometryForPlacement,
+  transformPlacementPoint,
+} from "@/lib/sign/placement";
 
 const EXPLODE_ORDER: Record<string, number> = {
   poste: -2,
@@ -446,10 +450,49 @@ function Model({
   const { build, explode, hidden, wireframe, showOutlines, params } = useEditor();
   const groupRef = useRef<Group>(null);
 
+  const placement = useMemo(
+    () => ({
+      rotation: params.modelRotation,
+      mirrorX: params.mirrorHorizontal,
+      mirrorY: params.mirrorVertical,
+    }),
+    [params.modelRotation, params.mirrorHorizontal, params.mirrorVertical],
+  );
+
+  const sourceCenter = useMemo(() => {
+    const box = new Box3();
+    for (const part of build?.parts ?? []) {
+      part.geometry.computeBoundingBox();
+      if (part.geometry.boundingBox) box.union(part.geometry.boundingBox);
+    }
+    return box.isEmpty() ? new Vector3() : box.getCenter(new Vector3());
+  }, [build]);
+
+  const displayParts = useMemo(
+    () =>
+      (build?.parts ?? []).map((part) => ({
+        ...part,
+        geometry: transformGeometryForPlacement(part.geometry, placement, sourceCenter),
+      })),
+    [build, placement, sourceCenter],
+  );
+
+  const displayOutlines = useMemo(
+    () =>
+      (build?.outlines ?? []).map((outline) => ({
+        ...outline,
+        points: outline.points.map(([x, y]) => {
+          const point = transformPlacementPoint({ x, y }, placement, sourceCenter);
+          return [point.x, point.y] as [number, number];
+        }),
+      })),
+    [build, placement, sourceCenter],
+  );
+
   const { scale, center } = useMemo(() => {
     const box = new Box3();
-    if (build) {
-      for (const part of build.parts) {
+    if (displayParts.length) {
+      for (const part of displayParts) {
         part.geometry.computeBoundingBox();
         const bb = part.geometry.boundingBox;
         if (bb && Number.isFinite(bb.min.x) && Number.isFinite(bb.max.x)) box.union(bb);
@@ -463,11 +506,11 @@ function Model({
       scale: Number.isFinite(s) ? s : 0.01,
       center: box.getCenter(new Vector3()),
     };
-  }, [build]);
+  }, [displayParts]);
 
   if (!build) return null;
 
-  const visible = build.parts.filter((part) => !hidden.has(part.id));
+  const visible = displayParts.filter((part) => !hidden.has(part.id));
 
   return (
     <group ref={groupRef} scale={scale} rotation={[-0.05, 0, 0]}>
@@ -541,7 +584,7 @@ function Model({
         {edgeSelect &&
           selected.map((edge) => <EdgeHighlight key={edge.key} edge={edge} color="#f97316" />)}
         {showOutlines &&
-          build.outlines.map((outline) => <OutlineLine key={outline.id} outline={outline} />)}
+          displayOutlines.map((outline) => <OutlineLine key={outline.id} outline={outline} />)}
       </group>
     </group>
   );

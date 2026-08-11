@@ -69,6 +69,9 @@ export interface SignParams {
   faceColor: string;
   bodyColor: string;
   backColor: string;
+  modelRotation: number;
+  mirrorHorizontal: boolean;
+  mirrorVertical: boolean;
   /** custos */
   printerId: string;
   buildWidth: number;
@@ -136,6 +139,9 @@ export const DEFAULT_PARAMS: SignParams = {
   faceColor: "#f4f6fa",
   bodyColor: "#3f4a5a",
   backColor: "#2c333d",
+  modelRotation: 0,
+  mirrorHorizontal: false,
+  mirrorVertical: false,
   printerId: "bambu-a1",
   buildWidth: 256,
   buildDepth: 256,

@@ -40,6 +40,7 @@ import {
   splitGeometryByPlanes,
   splitGeometryForBuildPlate,
 } from "@/lib/sign/split";
+import { transformGeometryForPlacement } from "@/lib/sign/placement";
 import {
   deleteSignProject,
   getSignProject,
@@ -99,11 +100,26 @@ export default function Toolbar() {
   function exportStl(mode: "unico" | "pecas") {
     const build = editor.build;
     if (!build) return;
-    const parts = build.parts.filter((p) => !editor.hidden.has(p.id));
-    if (!parts.length) {
+    const sourceParts = build.parts.filter((p) => !editor.hidden.has(p.id));
+    if (!sourceParts.length) {
       toast.error("Nenhuma peça visível para exportar");
       return;
     }
+    const sourceBounds = new Box3();
+    for (const part of sourceParts) {
+      part.geometry.computeBoundingBox();
+      if (part.geometry.boundingBox) sourceBounds.union(part.geometry.boundingBox);
+    }
+    const sourceCenter = sourceBounds.getCenter(new Vector3());
+    const placement = {
+      rotation: editor.params.modelRotation,
+      mirrorX: editor.params.mirrorHorizontal,
+      mirrorY: editor.params.mirrorVertical,
+    };
+    const parts = sourceParts.map((part) => ({
+      ...part,
+      geometry: transformGeometryForPlacement(part.geometry, placement, sourceCenter),
+    }));
     const base = slugify(editor.params.text || editor.projectName);
     const cutBounds = new Box3();
     for (const part of parts) {
