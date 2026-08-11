@@ -424,10 +424,11 @@ function extrudeCutSection(
     }
   }
 
-  // Cada ilha da secao representa uma parede atravessada pelo plano. Mantemos
-  // apenas a faixa voltada ao centro do modelo (metade interna da parede).
+  // Cada ilha da secao representa uma parede atravessada pelo plano. As ilhas
+  // sao pareadas na ordem transversal e as metades ficam voltadas uma para a
+  // outra. Isso identifica o interior local de cada letra, sem usar o centro
+  // global da palavra (que invertia paredes em letras deslocadas).
   const tangent = new Vector3(-normal.y, normal.x, 0);
-  const modelCenterT = tangent.dot(planePoint);
   const parent = surfaceTriangles.map((_, index) => index);
   const find = (value: number): number => {
     while (parent[value] !== value) {
@@ -459,12 +460,19 @@ function extrudeCutSection(
   });
   const connectorTriangles: Array<[Vector3, Vector3, Vector3]> = [];
   const fraction = Math.min(Math.max(wallFraction, 0.1), 1);
-  for (const triangles of groups.values()) {
-    const coordinates = triangles.flat().map((point) => tangent.dot(point));
-    const minT = Math.min(...coordinates);
-    const maxT = Math.max(...coordinates);
-    const centerT = (minT + maxT) / 2;
-    const keepAbove = centerT < modelCenterT;
+  const sections = [...groups.values()]
+    .map((triangles) => {
+      const coordinates = triangles.flat().map((point) => tangent.dot(point));
+      const minT = Math.min(...coordinates);
+      const maxT = Math.max(...coordinates);
+      return { triangles, minT, maxT, centerT: (minT + maxT) / 2 };
+    })
+    .sort((a, b) => a.centerT - b.centerT);
+  for (const [sectionIndex, section] of sections.entries()) {
+    const { triangles, minT, maxT, centerT } = section;
+    const keepAbove = sections.length % 2 === 0
+      ? sectionIndex % 2 === 0
+      : centerT < tangent.dot(planePoint);
     const limit = keepAbove ? maxT - (maxT - minT) * fraction : minT + (maxT - minT) * fraction;
     for (const triangle of triangles) {
       let polygon = triangle.map((point) => point.clone());
