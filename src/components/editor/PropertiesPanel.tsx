@@ -725,7 +725,7 @@ export default function PropertiesPanel() {
                             <SelectContent>
                               <SelectItem value="none">Sem encaixe</SelectItem>
                               <SelectItem value="male-female">
-                                Degrau contínuo (macho e fêmea)
+                                Rebaixo nas paredes (macho e fêmea)
                               </SelectItem>
                             </SelectContent>
                           </Select>
@@ -763,8 +763,8 @@ export default function PropertiesPanel() {
                               step={0.2}
                             />
                             <p className="text-xs leading-relaxed text-muted-foreground">
-                              Como no modelo SKP: a faixa central forma o macho e mantém dois ombros
-                              de apoio, um junto à frente e outro junto ao fundo.
+                              O rebaixo acompanha somente a seção real das paredes. A faixa central
+                              forma o macho e mantém dois ombros de apoio, sem fechar o interior.
                             </p>
                             <NumberSlider
                               label="Folga macho/fêmea"

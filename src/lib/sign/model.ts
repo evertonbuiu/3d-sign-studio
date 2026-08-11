@@ -157,7 +157,7 @@ export const DEFAULT_PARAMS: SignParams = {
   manualCutSeparation: 20,
   manualCutTarget: "all",
   manualCuts: [],
-  cutConnector: "none",
+  cutConnector: "male-female",
   cutMaleSide: "part-1",
   cutConnectorDepth: 4,
   cutConnectorWidth: 60,
