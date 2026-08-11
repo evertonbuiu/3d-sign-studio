@@ -310,6 +310,24 @@ test("encaixe por rebaixo usa espessura em milímetros no centro da parede", () 
   assert.ok(Math.max(...extendedZ) <= 1.51);
 });
 
+test("rebaixo ocupa somente metade interna da espessura da parede", () => {
+  const geometry = new BoxGeometry(100, 60, 20);
+  const pieces = splitGeometryByPlane(geometry, {
+    angle: 0,
+    connector: "male-female",
+    connectorDepth: 4,
+    connectorThickness: 20,
+    connectorWidth: 50,
+  });
+  const position = pieces[0].geometry.getAttribute("position");
+  const extendedY = [];
+  for (let index = 0; index < position.count; index++) {
+    if (position.getX(index) > 0.1) extendedY.push(position.getY(index));
+  }
+  assert.ok(Math.max(...extendedY) - Math.min(...extendedY) <= 30.01);
+  assert.ok(Math.max(...extendedY) <= 0.01, "o macho deve permanecer na metade interna selecionada");
+});
+
 test("encaixe reproduz as medidas extraídas do modelo c.skp", () => {
   const geometry = new BoxGeometry(100, 60, 45);
   geometry.translate(0, 0, 22.5);
