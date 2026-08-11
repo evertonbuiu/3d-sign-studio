@@ -211,7 +211,7 @@ test("a letra G gera componentes fechados e manifold", () => {
   );
 });
 
-test("plano manual corta todas as malhas reais da letra sem lanÃ§ar erro", () => {
+test("plano manual corta todas as malhas reais da letra sem lançar erro", () => {
   const params = { ...DEFAULT_PARAMS, text: "G", mountHoles: false };
   const build = buildSign(
     glyphShapes(archivo, "G", params.letterHeight),
@@ -220,11 +220,42 @@ test("plano manual corta todas as malhas reais da letra sem lanÃ§ar erro", () 
   );
   for (const part of build.parts) {
     const pieces = splitGeometryByPlane(part.geometry, { angle: 90, offset: 0 });
-    assert.ok(pieces.length >= 1, `${part.id} nÃ£o produziu segmentos`);
+    assert.ok(pieces.length >= 1, `${part.id} não produziu segmentos`);
   }
 });
 
-test("encaixe macho e fÃªmea Ã© gerado nas paredes de uma palavra", () => {
+test("corte das paredes nao tampa o vazio interno da letra", () => {
+  const params = { ...DEFAULT_PARAMS, text: "O", mountHoles: false };
+  const build = buildSign(glyphShapes(archivo, "O", params.letterHeight), params, getStyle("caixa-iluminada"));
+  const walls = build.parts.find((part) => part.kind === "laterais");
+  assert.ok(walls);
+  walls.geometry.computeBoundingBox();
+  const bounds = walls.geometry.boundingBox;
+  const centerX = (bounds.min.x + bounds.max.x) / 2;
+  const centerY = (bounds.min.y + bounds.max.y) / 2;
+  const pieces = splitGeometryByPlane(walls.geometry, { angle: 0, origin: { x: centerX, y: centerY } });
+  const sampleZ = (bounds.min.z + bounds.max.z) / 2;
+  const coversCavity = pieces.some((piece) => {
+    const position = (piece.geometry.index ? piece.geometry.toNonIndexed() : piece.geometry).getAttribute("position");
+    for (let i = 0; i + 2 < position.count; i += 3) {
+      if (![position.getX(i), position.getX(i + 1), position.getX(i + 2)].every((x) => Math.abs(x - centerX) < 1e-4)) continue;
+      const ay = position.getY(i), az = position.getZ(i), by = position.getY(i + 1), bz = position.getZ(i + 1), cy = position.getY(i + 2), cz = position.getZ(i + 2);
+      const d1 = (centerY - by) * (az - bz) - (ay - by) * (sampleZ - bz);
+      const d2 = (centerY - cy) * (bz - cz) - (by - cy) * (sampleZ - cz);
+      const d3 = (centerY - ay) * (cz - az) - (cy - ay) * (sampleZ - az);
+      if (!((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0))) return true;
+    }
+    return false;
+  });
+  assert.equal(coversCavity, false, "o plano de corte criou uma tampa sobre o vazio interno");
+  for (const piece of pieces) {
+    const result = topology(piece.geometry);
+    assert.equal(result.boundary, 0);
+    assert.equal(result.nonManifold, 0);
+  }
+});
+
+test("encaixe macho e fêmea é gerado nas paredes de uma palavra", () => {
   const params = { ...DEFAULT_PARAMS, text: "LUMINA", mountHoles: false };
   const build = buildSign(
     glyphShapes(archivo, params.text, params.letterHeight),
@@ -249,7 +280,7 @@ test("encaixe macho e fÃªmea Ã© gerado nas paredes de uma palavra", () => {
   pieces[0].geometry.computeBoundingBox();
   assert.ok(
     pieces[0].geometry.boundingBox.max.y >= plainPieces[0].geometry.boundingBox.max.y + 3.9,
-    "a lingueta macho deve avanÃ§ar pela profundidade configurada",
+    "a lingueta macho deve avançar pela profundidade configurada",
   );
   for (const piece of pieces) {
     const position = piece.geometry.getAttribute("position");
@@ -314,7 +345,7 @@ test("frente acrilica e fundo impresso preservam os vazados internos", () => {
 
 test("Neon Flex gera fundo e paredes unidos sem tampa", () => {
   const style = getStyle("neon-flex-fundo-impresso");
-  assert.equal(style.name, "Neon Flex â€” Fundo Impresso sem Tampa");
+  assert.equal(style.name, "Neon Flex — Fundo Impresso sem Tampa");
   const params = {
     ...DEFAULT_PARAMS,
     ...style.preset,
@@ -490,7 +521,7 @@ test("frente e fundo acrilicos ficam separados com rebaixo duplo", () => {
 
 test("novo estilo usa fundo acrilico apoiado por aba interna", () => {
   const style = getStyle("fundo-acrilico-frente-acrilica-aba");
-  assert.equal(style.name, "Fundo AcrÃ­lico + Frente AcrÃ­lica com Aba");
+  assert.equal(style.name, "Fundo Acrílico + Frente Acrílica com Aba");
   const params = {
     ...DEFAULT_PARAMS,
     ...style.preset,
@@ -576,4 +607,3 @@ test("estilo acrilico com aba tem preset completo e estilos removidos nao retorn
     },
   );
 });
-
