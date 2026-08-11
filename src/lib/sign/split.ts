@@ -189,8 +189,7 @@ export function splitGeometryByPlane(
   // O encaixe Ã© extraÃ­do da prÃ³pria seÃ§Ã£o das paredes junto ao plano de corte.
   // Assim, a metade macho prolonga o perfil real da parede em vez de receber
   // apenas um pino retangular isolado.
-  // Mesmo princÃ­pio do rebaixo da tampa: uma faixa fina junto Ã  frente forma
-  // o macho, enquanto o restante da parede da peÃ§a fÃªmea funciona como apoio.
+  // Perfil medido no SKP: faixa central com apoios simetricos na frente e no fundo.
   const tongueHeight = Math.min(
     size.z,
     Math.max(0.4, options.connectorThickness ?? size.z * widthPercent),
@@ -203,7 +202,7 @@ export function splitGeometryByPlane(
   sectionBox.translate(
     center.x - direction.x * (sampleDepth / 2),
     center.y - direction.y * (sampleDepth / 2),
-    bounds.max.z - tongueHeight / 2,
+    (bounds.min.z + bounds.max.z) / 2,
   );
   let maleConnector: BufferGeometry;
   try {

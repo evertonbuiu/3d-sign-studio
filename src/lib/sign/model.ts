@@ -138,9 +138,8 @@ export const DEFAULT_PARAMS: SignParams = {
   cutMaleSide: "part-1",
   cutConnectorDepth: 4,
   cutConnectorWidth: 60,
-  // Meia profundidade da parede padrão: produz o degrau longitudinal usado
-  // no modelo de referência em vez de uma lingueta frontal muito fina.
-  cutConnectorThickness: 30,
+  // O modelo SKP usa uma lingueta central com 60% da profundidade da parede.
+  cutConnectorThickness: 36,
   cutConnectorClearance: 0.2,
   filamentPrice: 120,
   density: 1.24,
