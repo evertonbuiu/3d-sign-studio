@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { BoxGeometry, BufferGeometry, Float32BufferAttribute, Vector3 } from "three";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 import { computeCost } from "../src/lib/sign/cost.ts";
 import { DEFAULT_PARAMS, STYLES, paramsForStyle } from "../src/lib/sign/model.ts";
@@ -319,6 +320,31 @@ test("rebaixo ocupa somente metade interna da espessura da parede", () => {
   }
   assert.ok(Math.max(...extendedY) - Math.min(...extendedY) <= 30.01);
   assert.ok(Math.max(...extendedY) <= 0.01, "o macho deve permanecer na metade interna selecionada");
+});
+
+test("paredes fora do centro global mantem o encaixe voltado para dentro", () => {
+  const first = new BoxGeometry(100, 20, 20).translate(0, 100, 0);
+  const second = new BoxGeometry(100, 20, 20).translate(0, 140, 0);
+  const geometry = mergeGeometries([first, second], false);
+  assert.ok(geometry);
+  const pieces = splitGeometryByPlane(geometry, {
+    angle: 0,
+    origin: { x: 0, y: 0 },
+    connector: "male-female",
+    connectorDepth: 4,
+    connectorWidth: 50,
+  });
+  const position = pieces[0].geometry.getAttribute("position");
+  const extendedY = [];
+  for (let index = 0; index < position.count; index++) {
+    if (position.getX(index) > 0.1) extendedY.push(position.getY(index));
+  }
+  assert.ok(extendedY.some((y) => y >= 100 && y <= 110.01));
+  assert.ok(extendedY.some((y) => y >= 129.99 && y <= 140));
+  assert.ok(
+    extendedY.every((y) => (y >= 99.99 && y <= 110.01) || (y >= 129.99 && y <= 140.01)),
+    "nenhum encaixe pode ocupar a metade externa das paredes",
+  );
 });
 
 test("encaixe reproduz as medidas extraídas do modelo c.skp", () => {
