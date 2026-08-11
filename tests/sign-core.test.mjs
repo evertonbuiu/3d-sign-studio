@@ -150,6 +150,7 @@ test("todos os estilos ignoram parâmetros geométricos residuais", () => {
 });
 
 test("encaixe padrão usa faixa central de 60% como o modelo SKP", () => {
+  assert.equal(DEFAULT_PARAMS.cutConnector, "male-female");
   assert.equal(DEFAULT_PARAMS.cutConnectorThickness, DEFAULT_PARAMS.depth * 0.6);
 });
 
