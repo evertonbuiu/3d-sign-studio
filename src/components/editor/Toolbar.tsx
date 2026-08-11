@@ -112,6 +112,7 @@ export default function Toolbar() {
     }
     const zip = new JSZip();
     let exportedSegments = 0;
+    const connectorWarnings = new Set<string>();
     for (const part of parts) {
       let segments;
       try {
@@ -160,6 +161,7 @@ export default function Toolbar() {
       }
       for (const segment of segments) {
         exportedSegments += 1;
+        if (segment.connectorApplied === false) connectorWarnings.add(part.name);
         const suffix =
           segment.total > 1
             ? `-segmento-${String(segment.index).padStart(2, "0")}-x${segment.column}-y${segment.row}`
@@ -174,6 +176,12 @@ export default function Toolbar() {
           ? `${exportedSegments} segmentos cortados e exportados em ZIP`
           : "Peças exportadas em ZIP",
       );
+      if (connectorWarnings.size) {
+        toast.warning(
+          `Encaixe macho/fêmea não pôde ser gerado em: ${Array.from(connectorWarnings).join(", ")}. ` +
+            "Ajuste o ângulo ou a posição do corte nessas peças e tente novamente.",
+        );
+      }
     });
   }
 

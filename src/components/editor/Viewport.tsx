@@ -1,4 +1,5 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -197,6 +198,18 @@ function PartMesh({
     manualCut?.connectorClearance,
     manualCut?.cuts,
   ]);
+
+  const connectorFailed = useMemo(
+    () => manualPieces?.some((piece) => piece.connectorApplied === false) ?? false,
+    [manualPieces],
+  );
+  useEffect(() => {
+    if (!connectorFailed) return;
+    toast.warning(`Encaixe macho/fêmea não coube em "${part.name}" neste ponto do corte.`, {
+      id: `connector-warning-${part.id}`,
+      description: "Ajuste o ângulo ou a posição do plano de corte para essa peça.",
+    });
+  }, [connectorFailed, part.id, part.name]);
 
   if (manualCut && manualPieces?.length) {
     part.geometry.computeBoundingBox();
