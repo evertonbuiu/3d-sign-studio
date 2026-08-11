@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
+import { useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -135,6 +134,7 @@ function PartMesh({
         connectorThickness: number;
         connectorClearance: number;
         cuts: SequentialSplitOptions[];
+        origin: { x: number; y: number };
       }
     | undefined;
 }) {
@@ -155,6 +155,7 @@ function PartMesh({
             ...cut,
             connector: part.kind === "laterais" ? (cut.connector ?? "none") : "none",
           })),
+          manualCut.origin,
         );
       }
       return splitGeometryByPlane(part.geometry, {
@@ -166,6 +167,7 @@ function PartMesh({
         connectorWidth: manualCut.connectorWidth,
         connectorThickness: manualCut.connectorThickness,
         connectorClearance: manualCut.connectorClearance,
+        origin: manualCut.origin,
       });
     } catch (error) {
       console.error(`Falha ao gerar prévia de corte para ${part.name}`, error);
@@ -197,19 +199,8 @@ function PartMesh({
     manualCut?.connectorThickness,
     manualCut?.connectorClearance,
     manualCut?.cuts,
+    manualCut?.origin,
   ]);
-
-  const connectorFailed = useMemo(
-    () => manualPieces?.some((piece) => piece.connectorApplied === false) ?? false,
-    [manualPieces],
-  );
-  useEffect(() => {
-    if (!connectorFailed) return;
-    toast.warning(`Encaixe macho/fêmea não coube em "${part.name}" neste ponto do corte.`, {
-      id: `connector-warning-${part.id}`,
-      description: "Ajuste o ângulo ou a posição do plano de corte para essa peça.",
-    });
-  }, [connectorFailed, part.id, part.name]);
 
   if (manualCut && manualPieces?.length) {
     part.geometry.computeBoundingBox();
@@ -499,6 +490,7 @@ function Model({
                     connectorWidth: params.cutConnectorWidth,
                     connectorThickness: params.cutConnectorThickness,
                     connectorClearance: params.cutConnectorClearance,
+                    origin: { x: center.x, y: center.y },
                     cuts: params.manualCuts
                       .filter((cut) => cut.target === "all" || cut.target === part.kind)
                       .map((cut) => ({
