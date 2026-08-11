@@ -3,9 +3,9 @@ import { SVGLoader } from "three/examples/jsm/loaders/SVGLoader.js";
 
 /**
  * Converte o conteúdo de um arquivo SVG em contornos (THREE.Shape) com o eixo Y
- * corrigido (SVG usa Y para baixo) e escalados para a altura desejada em mm.
+ * corrigido (SVG usa Y para baixo) e mantendo o tamanho físico original em mm.
  */
-export function svgToShapes(svgText: string, targetHeight: number): Shape[] {
+export function svgToShapes(svgText: string): Shape[] {
   const loader = new SVGLoader();
   const data = loader.parse(svgText);
 
@@ -36,8 +36,7 @@ export function svgToShapes(svgText: string, targetHeight: number): Shape[] {
       maxY = Math.max(maxY, p.y);
     }
   }
-  const height = maxY - minY || 1;
-  const scale = targetHeight / height;
+  const scale = svgMillimetersPerUserUnit(svgText);
   const cx = (minX + maxX) / 2;
   const cy = (minY + maxY) / 2;
 
@@ -63,4 +62,39 @@ export function svgToShapes(svgText: string, targetHeight: number): Shape[] {
     }
     return shape;
   });
+}
+
+function lengthToMillimeters(value: string | undefined): number | null {
+  if (!value || value.trim().endsWith("%")) return null;
+  const match = value.trim().match(/^([+-]?(?:\d+\.?\d*|\.\d+))(mm|cm|in|pt|pc|px)?$/i);
+  if (!match) return null;
+  const amount = Number(match[1]);
+  const factor: Record<string, number> = {
+    mm: 1,
+    cm: 10,
+    in: 25.4,
+    pt: 25.4 / 72,
+    pc: 25.4 / 6,
+    px: 25.4 / 96,
+  };
+  return amount * factor[(match[2] ?? "px").toLowerCase()]!;
+}
+
+/** Retorna quantos milímetros corresponde a uma unidade do viewBox. */
+export function svgMillimetersPerUserUnit(svgText: string): number {
+  const root = svgText.match(/<svg\b([^>]*)>/i)?.[1] ?? "";
+  const attribute = (name: string) =>
+    root.match(new RegExp(`\\b${name}\\s*=\\s*["']([^"']+)["']`, "i"))?.[1];
+  const viewBox = attribute("viewBox")
+    ?.trim()
+    .split(/[\s,]+/)
+    .map(Number);
+  const viewWidth = viewBox?.length === 4 && Number.isFinite(viewBox[2]) ? Math.abs(viewBox[2]!) : 0;
+  const viewHeight = viewBox?.length === 4 && Number.isFinite(viewBox[3]) ? Math.abs(viewBox[3]!) : 0;
+  const widthMm = lengthToMillimeters(attribute("width"));
+  const heightMm = lengthToMillimeters(attribute("height"));
+  if (widthMm && viewWidth) return widthMm / viewWidth;
+  if (heightMm && viewHeight) return heightMm / viewHeight;
+  // Sem tamanho físico explícito, SVG segue a unidade CSS padrão: 96 px por polegada.
+  return 25.4 / 96;
 }
