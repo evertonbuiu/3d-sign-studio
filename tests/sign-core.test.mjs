@@ -273,9 +273,11 @@ test("parte femea deixa aberta a metade interna do rebaixo", () => {
   const position = source.getAttribute("position");
   const sampleY = -15;
   const sampleZ = 0;
-  let covered = false;
-  for (let index = 0; index + 2 < position.count; index += 3) {
-    if (![0, 1, 2].every((offset) => Math.abs(position.getX(index + offset)) < 1e-4)) continue;
+    let covered = false;
+    for (let index = 0; index + 2 < position.count; index += 3) {
+      const xs = [position.getX(index), position.getX(index + 1), position.getX(index + 2)];
+      const meanX = (xs[0] + xs[1] + xs[2]) / 3;
+      if (Math.max(...xs) - Math.min(...xs) > 1e-4 || Math.abs(meanX) > 1) continue;
     const ay = position.getY(index), az = position.getZ(index);
     const by = position.getY(index + 1), bz = position.getZ(index + 1);
     const cy = position.getY(index + 2), cz = position.getZ(index + 2);
@@ -409,3 +411,4 @@ test("encaixe reproduz as medidas extraídas do modelo c.skp", () => {
   pieces[0].geometry.computeBoundingBox();
   assert.ok(pieces[0].geometry.boundingBox.max.x >= 3.99);
 });
+
