@@ -365,6 +365,31 @@ test("todas as paredes atravessadas recebem o recuo femea", () => {
   assert.ok(recessedSections.some((value) => value > 10), "a parede superior deve ter recuo");
 });
 
+test("encaixe acompanha a inclinacao local da parede", () => {
+  const wallAngle = 20;
+  const depth = 10;
+  const geometry = new BoxGeometry(120, 10, 20);
+  geometry.rotateZ((wallAngle * Math.PI) / 180);
+  const male = splitGeometryByPlane(geometry, {
+    angle: 0,
+    connector: "male-female",
+    connectorDepth: depth,
+    connectorWidth: 100,
+    connectorClearance: 0.2,
+  })[0].geometry;
+  const position = male.getAttribute("position");
+  const baseY = [];
+  const tipY = [];
+  for (let index = 0; index < position.count; index++) {
+    if (Math.abs(position.getX(index)) < 0.02) baseY.push(position.getY(index));
+    if (position.getX(index) > depth - 0.5) tipY.push(position.getY(index));
+  }
+  const baseCenter = (Math.min(...baseY) + Math.max(...baseY)) / 2;
+  const tipCenter = (Math.min(...tipY) + Math.max(...tipY)) / 2;
+  const expectedShift = Math.tan((wallAngle * Math.PI) / 180) * depth;
+  assert.ok(Math.abs((tipCenter - baseCenter) - expectedShift) < 0.5);
+});
+
 test("largura do encaixe controla a metade interna da parede", () => {
   const geometry = new BoxGeometry(100, 60, 20);
   const small = splitGeometryByPlane(geometry, {
