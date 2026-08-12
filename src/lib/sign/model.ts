@@ -12,6 +12,11 @@ export type PartKind =
   | "poste";
 
 export type BodyMode = "letras" | "placa" | "totem";
+export type CutPartSide = "part-1" | "part-2";
+
+export function oppositeCutSide(side: CutPartSide): CutPartSide {
+  return side === "part-1" ? "part-2" : "part-1";
+}
 
 export interface ManualCutPlan {
   id: string;
@@ -19,7 +24,7 @@ export interface ManualCutPlan {
   offset: number;
   target: PartKind | "all";
   connector: "none" | "male-female";
-  maleSide: "part-1" | "part-2";
+  maleSide: CutPartSide;
   connectorDepth: number;
   connectorWidth: number;
   connectorThickness: number;
@@ -537,3 +542,4 @@ export function paramsForStyle(style: SignStyle, base: SignParams = DEFAULT_PARA
     ...style.preset,
   };
 }
+
