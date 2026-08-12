@@ -335,6 +335,36 @@ test("encaixe e recuo femea acompanham o angulo do plano de corte", () => {
   assert.equal(recessedBack, true, "a Parte 2 deve ter o fundo do recuo paralelo ao corte");
 });
 
+test("todas as paredes atravessadas recebem o recuo femea", () => {
+  const angle = 37;
+  const radians = (angle * Math.PI) / 180;
+  const normal = new Vector3(Math.cos(radians), Math.sin(radians), 0);
+  const tangent = new Vector3(-normal.y, normal.x, 0);
+  const lower = new BoxGeometry(100, 10, 20).translate(0, -20, 0);
+  const upper = new BoxGeometry(100, 10, 20).translate(0, 20, 0);
+  const geometry = mergeGeometries([lower, upper], false);
+  assert.ok(geometry);
+  const female = splitGeometryByPlane(geometry, {
+    angle,
+    connector: "male-female",
+    connectorDepth: 4,
+    connectorWidth: 50,
+    connectorClearance: 0.2,
+  })[1].geometry.toNonIndexed();
+  const position = female.getAttribute("position");
+  const recessedSections = [];
+  for (let index = 0; index + 2 < position.count; index += 3) {
+    const points = [0, 1, 2].map((offset) =>
+      new Vector3(position.getX(index + offset), position.getY(index + offset), position.getZ(index + offset)));
+    const distances = points.map((point) => normal.dot(point));
+    if (distances.every((distance) => Math.abs(distance - 4.2) < 0.05)) {
+      recessedSections.push(tangent.dot(points[0].clone().add(points[1]).add(points[2]).multiplyScalar(1 / 3)));
+    }
+  }
+  assert.ok(recessedSections.some((value) => value < -10), "a parede inferior deve ter recuo");
+  assert.ok(recessedSections.some((value) => value > 10), "a parede superior deve ter recuo");
+});
+
 test("largura do encaixe controla a metade interna da parede", () => {
   const geometry = new BoxGeometry(100, 60, 20);
   const small = splitGeometryByPlane(geometry, {
