@@ -313,7 +313,7 @@ test("largura do encaixe controla a metade interna da parede", () => {
   assert.ok(extendedWidth(full[0]) >= 59.9, "100% deve usar toda a espessura da parede");
 });
 
-test("encaixe percorre a parede inteira do fundo ate a frente", () => {
+test("encaixe percorre a parede e preserva as extremidades fechadas", () => {
   const geometry = new BoxGeometry(100, 60, 20);
   const pieces = splitGeometryByPlane(geometry, {
     angle: 0,
@@ -326,9 +326,9 @@ test("encaixe percorre a parede inteira do fundo ate a frente", () => {
   for (let i = 0; i < position.count; i++) {
     if (position.getX(i) > 0.1) extendedZ.push(position.getZ(i));
   }
-  assert.ok(Math.max(...extendedZ) - Math.min(...extendedZ) >= 19.99);
-  assert.ok(Math.min(...extendedZ) <= -9.99);
-  assert.ok(Math.max(...extendedZ) >= 9.99);
+  assert.ok(Math.max(...extendedZ) - Math.min(...extendedZ) >= 17.99);
+  assert.ok(Math.abs(Math.min(...extendedZ) + 9) < 0.01);
+  assert.ok(Math.abs(Math.max(...extendedZ) - 9) < 0.01);
 });
 
 test("rebaixo ocupa somente metade interna da espessura da parede", () => {
@@ -389,8 +389,8 @@ test("encaixe reproduz as medidas extraídas do modelo c.skp", () => {
   for (let i = 0; i < position.count; i++) {
     if (position.getX(i) > 0.1) extendedZ.push(position.getZ(i));
   }
-  assert.ok(Math.abs(Math.min(...extendedZ)) < 0.01);
-  assert.ok(Math.abs(Math.max(...extendedZ) - 45) < 0.01);
+  assert.ok(Math.abs(Math.min(...extendedZ) - 1) < 0.01);
+  assert.ok(Math.abs(Math.max(...extendedZ) - 44) < 0.01);
   pieces[0].geometry.computeBoundingBox();
   assert.ok(pieces[0].geometry.boundingBox.max.x >= 3.99);
 });
