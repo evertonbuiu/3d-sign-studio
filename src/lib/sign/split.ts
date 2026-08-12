@@ -663,8 +663,9 @@ export function splitGeometryByPlane(
   // preservando uma pele fina no fundo e na frente para fechar as extremidades.
   const overlap = Math.min(0.5, depth * 0.2);
   const endClosure = Math.min(1, size.z * 0.25);
+  const maleBaseGeometry = pieces[maleIndex]!.geometry;
   const maleConnector = extrudeCutSection(
-    pieces[maleIndex]!.geometry,
+    maleBaseGeometry,
     center,
     normal,
     direction,
@@ -750,7 +751,10 @@ export function splitGeometryByPlane(
   if (withCavityShell) femaleGeometry = withCavityShell;
   femaleGeometry = mergeVertices(withoutDegenerateTriangles(femaleGeometry), 1e-4);
   const outerCap = extrudeCutSection(
-    pieces[femaleIndex]!.geometry,
+    // Usa a mesma seção-base do macho. Recalcular este complemento na Parte 2
+    // pode produzir grupos diferentes em paredes curvas/inclinadas e tampar
+    // apenas uma das várias cavidades atravessadas pelo corte.
+    maleBaseGeometry,
     center,
     normal,
     direction,
