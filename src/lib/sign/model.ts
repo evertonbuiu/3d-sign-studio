@@ -12,19 +12,13 @@ export type PartKind =
   | "poste";
 
 export type BodyMode = "letras" | "placa" | "totem";
-export type CutPartSide = "part-1" | "part-2";
-
-export function oppositeCutSide(side: CutPartSide): CutPartSide {
-  return side === "part-1" ? "part-2" : "part-1";
-}
-
 export interface ManualCutPlan {
   id: string;
   angle: number;
   offset: number;
   target: PartKind | "all";
   connector: "none" | "male-female";
-  maleSide: CutPartSide;
+  maleSide: "part-1" | "part-2";
   connectorDepth: number;
   connectorWidth: number;
   connectorThickness: number;
