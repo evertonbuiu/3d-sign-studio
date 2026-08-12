@@ -8,7 +8,7 @@ import {
   Vector3,
 } from "three";
 import { mergeGeometries, mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
-import { Brush, Evaluator, INTERSECTION } from "three-bvh-csg";
+import { Brush, Evaluator, INTERSECTION, SUBTRACTION } from "three-bvh-csg";
 
 export interface SplitPiece {
   geometry: BufferGeometry;
@@ -156,6 +156,19 @@ function withoutDegenerateTriangles(geometry: BufferGeometry): BufferGeometry {
   cleaned.setAttribute("position", new Float32BufferAttribute(vertices, 3));
   cleaned.computeVertexNormals();
   return cleaned;
+}
+
+function subtractGeometry(first: BufferGeometry, second: BufferGeometry): BufferGeometry {
+  const evaluator = new Evaluator();
+  evaluator.attributes = ["position"];
+  const source = new Brush(withoutDegenerateTriangles(first));
+  const cutter = new Brush(withoutDegenerateTriangles(second));
+  source.updateMatrixWorld(true);
+  cutter.updateMatrixWorld(true);
+  const result = evaluator.evaluate(source, cutter, SUBTRACTION).geometry.clone();
+  result.computeVertexNormals();
+  result.computeBoundingBox();
+  return result;
 }
 
 function pointInPolygon(point: Vector2, polygon: Vector2[]): boolean {
@@ -595,24 +608,6 @@ function replacePlanarCutCap(
   return welded;
 }
 
-function reverseTriangleWinding(geometry: BufferGeometry): BufferGeometry {
-  const source = geometry.index ? geometry.toNonIndexed() : geometry;
-  const position = source.getAttribute("position");
-  const vertices: number[] = [];
-  for (let index = 0; index + 2 < position.count; index += 3) {
-    for (const offset of [0, 2, 1]) {
-      vertices.push(
-        position.getX(index + offset),
-        position.getY(index + offset),
-        position.getZ(index + offset),
-      );
-    }
-  }
-  const result = new BufferGeometry();
-  result.setAttribute("position", new Float32BufferAttribute(vertices, 3));
-  return result;
-}
-
 /** Divide uma malha por um plano vertical rotacionado em torno do eixo Z. */
 export function splitGeometryByPlane(
   geometry: BufferGeometry,
@@ -734,21 +729,12 @@ export function splitGeometryByPlane(
   mergedMale.computeVertexNormals();
   mergedMale.computeBoundingBox();
   pieces[maleIndex] = { ...pieces[maleIndex]!, geometry: mergedMale };
-  // A peça já foi cortada exatamente no plano e não possui superfícies dentro
-  // do volume que receberá o macho. Por isso a cavidade pode ser construída
-  // diretamente com o fundo e as laterais do mesmo perfil, sem uma segunda
-  // operação CSG. O CSG recriava uma tampa quase coplanar em cortes inclinados
-  // e escondia o recuo da Parte 2.
-  let femaleGeometry = pieces[femaleIndex]!.geometry.clone();
   const femaleSide: -1 | 1 = maleIndex === 0 ? 1 : -1;
-  const cavityShell = reverseTriangleWinding(
-    clipGeometryHalf(femaleCavity, center, normal, femaleSide),
-  );
-  const withCavityShell = mergeGeometries(
-    [withoutDegenerateTriangles(femaleGeometry), withoutDegenerateTriangles(cavityShell)],
-    false,
-  );
-  if (withCavityShell) femaleGeometry = withCavityShell;
+  // Abre a cavidade enquanto a malha original ainda é um sólido fechado e só
+  // então extrai a metade fêmea. Isso evita operações booleanas sobre a face de
+  // corte e elimina as bordas abertas produzidas pela concatenação de cascas.
+  const carvedSource = subtractGeometry(geometry, femaleCavity);
+  let femaleGeometry = clipGeometryHalf(carvedSource, center, normal, femaleSide);
   femaleGeometry = mergeVertices(withoutDegenerateTriangles(femaleGeometry), 1e-4);
   const outerCap = extrudeCutSection(
     // Usa a mesma seção-base do macho. Recalcular este complemento na Parte 2
