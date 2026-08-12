@@ -285,6 +285,21 @@ test("parte femea deixa aberta a metade interna do rebaixo", () => {
     if (!((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0))) covered = true;
   }
   assert.equal(covered, false, "a cavidade da parte femea nao pode receber uma face de fechamento");
+  let closedAtDepth = false;
+  for (let index = 0; index + 2 < position.count; index += 3) {
+    const xs = [position.getX(index), position.getX(index + 1), position.getX(index + 2)];
+    if (Math.min(...xs) < 3.5 || Math.max(...xs) - Math.min(...xs) > 1e-4) continue;
+    const ay = position.getY(index), az = position.getZ(index);
+    const by = position.getY(index + 1), bz = position.getZ(index + 1);
+    const cy = position.getY(index + 2), cz = position.getZ(index + 2);
+    const d1 = (sampleY - by) * (az - bz) - (ay - by) * (sampleZ - bz);
+    const d2 = (sampleY - cy) * (bz - cz) - (by - cy) * (sampleZ - cz);
+    const d3 = (sampleY - ay) * (cz - az) - (cy - ay) * (sampleZ - az);
+    if (!((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0))) {
+      closedAtDepth = true;
+    }
+  }
+  assert.equal(closedAtDepth, true, "o fundo da cavidade femea deve ficar fechado");
 });
 
 test("largura do encaixe controla a metade interna da parede", () => {
