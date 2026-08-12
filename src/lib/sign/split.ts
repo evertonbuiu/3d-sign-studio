@@ -556,20 +556,36 @@ function replacePlanarCutCap(
   normal: Vector3,
 ): BufferGeometry {
   const epsilon = 1e-3;
+  const cutCapSlab = 1;
   const planeDistance = normal.dot(planePoint);
   const source = geometry.index ? geometry.toNonIndexed() : geometry;
   const position = source.getAttribute("position");
   const vertices: number[] = [];
+  const a = new Vector3();
+  const b = new Vector3();
+  const c = new Vector3();
+  const ab = new Vector3();
+  const ac = new Vector3();
+  const faceNormal = new Vector3();
   for (let index = 0; index + 2 < position.count; index += 3) {
-    const planar = [0, 1, 2].every(
-      (offset) =>
-        Math.abs(
-          normal.x * position.getX(index + offset) +
-            normal.y * position.getY(index + offset) -
-            planeDistance,
-        ) <= epsilon,
-    );
-    if (planar) continue;
+    a.fromBufferAttribute(position, index);
+    b.fromBufferAttribute(position, index + 1);
+    c.fromBufferAttribute(position, index + 2);
+    const distanceA = normal.dot(a) - planeDistance;
+    const distanceB = normal.dot(b) - planeDistance;
+    const distanceC = normal.dot(c) - planeDistance;
+    ab.subVectors(b, a);
+    ac.subVectors(c, a);
+    faceNormal.crossVectors(ab, ac);
+    const normalLength = faceNormal.length();
+    const distanceSpread =
+      Math.max(distanceA, distanceB, distanceC) - Math.min(distanceA, distanceB, distanceC);
+    const centroidDistance = Math.abs((distanceA + distanceB + distanceC) / 3);
+    const parallelToCut =
+      normalLength > epsilon && Math.abs(faceNormal.dot(normal) / normalLength) >= 0.98;
+    const isBooleanCutCap =
+      parallelToCut && distanceSpread <= epsilon && centroidDistance <= cutCapSlab;
+    if (isBooleanCutCap) continue;
     for (const offset of [0, 1, 2]) {
       vertices.push(
         position.getX(index + offset),
@@ -862,3 +878,4 @@ export function splitGeometryForBuildPlate(
   }
   return pieces.map((piece) => ({ ...piece, total: pieces.length }));
 }
+
