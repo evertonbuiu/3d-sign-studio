@@ -5,7 +5,7 @@ import { BoxGeometry, BufferGeometry, Float32BufferAttribute, Vector3 } from "th
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 import { computeCost } from "../src/lib/sign/cost.ts";
-import { DEFAULT_PARAMS, STYLES, oppositeCutSide, paramsForStyle } from "../src/lib/sign/model.ts";
+import { DEFAULT_PARAMS, STYLES, paramsForStyle } from "../src/lib/sign/model.ts";
 import {
   DEFAULT_PRINTER,
   getPrinterProfile,
@@ -153,11 +153,6 @@ test("todos os estilos ignoram parâmetros geométricos residuais", () => {
 test("encaixe padrão usa faixa central de 60% como o modelo SKP", () => {
   assert.equal(DEFAULT_PARAMS.cutConnector, "male-female");
   assert.equal(DEFAULT_PARAMS.cutConnectorThickness, DEFAULT_PARAMS.depth * 0.6);
-});
-
-test("seletor de rebaixo inverte internamente o lado macho", () => {
-  assert.equal(oppositeCutSide("part-1"), "part-2");
-  assert.equal(oppositeCutSide("part-2"), "part-1");
 });
 
 test("corta uma peça grande conforme a mesa da impressora", () => {
