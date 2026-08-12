@@ -8,7 +8,7 @@ import {
   Vector3,
 } from "three";
 import { mergeGeometries, mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
-import { Brush, Evaluator, INTERSECTION, SUBTRACTION } from "three-bvh-csg";
+import { Brush, Evaluator, INTERSECTION } from "three-bvh-csg";
 
 export interface SplitPiece {
   geometry: BufferGeometry;
@@ -121,23 +121,6 @@ export function clipGeometryByPlaneForPreview(
       total: 2,
     }))
     .filter((piece) => piece.geometry.getAttribute("position").count > 0);
-}
-
-function evaluateGeometry(
-  first: BufferGeometry,
-  second: BufferGeometry,
-  operation: number,
-): BufferGeometry {
-  const evaluator = new Evaluator();
-  evaluator.attributes = ["position"];
-  const a = new Brush(withoutDegenerateTriangles(first));
-  const b = new Brush(withoutDegenerateTriangles(second));
-  a.updateMatrixWorld(true);
-  b.updateMatrixWorld(true);
-  const result = evaluator.evaluate(a, b, operation).geometry.clone();
-  result.computeVertexNormals();
-  result.computeBoundingBox();
-  return result;
 }
 
 function withoutDegenerateTriangles(geometry: BufferGeometry): BufferGeometry {
@@ -750,15 +733,12 @@ export function splitGeometryByPlane(
   mergedMale.computeVertexNormals();
   mergedMale.computeBoundingBox();
   pieces[maleIndex] = { ...pieces[maleIndex]!, geometry: mergedMale };
-  let femaleGeometry: BufferGeometry;
-  try {
-    femaleGeometry = evaluateGeometry(pieces[femaleIndex]!.geometry, femaleCavity, SUBTRACTION);
-  } catch (error) {
-    throw new Error("Falha ao abrir a cavidade fêmea", { cause: error });
-  }
-  // Reinsere explicitamente o fundo e as laterais internas da cavidade. O CSG
-  // pode omitir essas faces em paredes estreitas/curvas, deixando o encaixe
-  // visualmente aberto na Parte 2. A entrada no plano de corte continua livre.
+  // A peça já foi cortada exatamente no plano e não possui superfícies dentro
+  // do volume que receberá o macho. Por isso a cavidade pode ser construída
+  // diretamente com o fundo e as laterais do mesmo perfil, sem uma segunda
+  // operação CSG. O CSG recriava uma tampa quase coplanar em cortes inclinados
+  // e escondia o recuo da Parte 2.
+  let femaleGeometry = pieces[femaleIndex]!.geometry.clone();
   const femaleSide: -1 | 1 = maleIndex === 0 ? 1 : -1;
   const cavityShell = reverseTriangleWinding(
     clipGeometryHalf(femaleCavity, center, normal, femaleSide),
