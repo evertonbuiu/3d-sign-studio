@@ -8,7 +8,7 @@ import {
   Vector3,
 } from "three";
 import { mergeGeometries, mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
-import { Brush, Evaluator, INTERSECTION, SUBTRACTION } from "three-bvh-csg";
+import { Brush, Evaluator, INTERSECTION } from "three-bvh-csg";
 
 export interface SplitPiece {
   geometry: BufferGeometry;
@@ -156,19 +156,6 @@ function withoutDegenerateTriangles(geometry: BufferGeometry): BufferGeometry {
   cleaned.setAttribute("position", new Float32BufferAttribute(vertices, 3));
   cleaned.computeVertexNormals();
   return cleaned;
-}
-
-function subtractGeometry(first: BufferGeometry, second: BufferGeometry): BufferGeometry {
-  const evaluator = new Evaluator();
-  evaluator.attributes = ["position"];
-  const source = new Brush(withoutDegenerateTriangles(first));
-  const cutter = new Brush(withoutDegenerateTriangles(second));
-  source.updateMatrixWorld(true);
-  cutter.updateMatrixWorld(true);
-  const result = evaluator.evaluate(source, cutter, SUBTRACTION).geometry.clone();
-  result.computeVertexNormals();
-  result.computeBoundingBox();
-  return result;
 }
 
 function pointInPolygon(point: Vector2, polygon: Vector2[]): boolean {
@@ -624,43 +611,43 @@ function extrudeCutSection(
   return welded;
 }
 
-function replacePlanarCutCap(
+function reverseTriangleWinding(geometry: BufferGeometry): BufferGeometry {
+  const source = geometry.index ? geometry.toNonIndexed() : geometry;
+  const position = source.getAttribute("position");
+  const vertices: number[] = [];
+  for (let index = 0; index + 2 < position.count; index += 3) {
+    for (const offset of [0, 2, 1]) {
+      vertices.push(
+        position.getX(index + offset),
+        position.getY(index + offset),
+        position.getZ(index + offset),
+      );
+    }
+  }
+  const result = new BufferGeometry();
+  result.setAttribute("position", new Float32BufferAttribute(vertices, 3));
+  return result;
+}
+
+function replaceExactPlanarCap(
   geometry: BufferGeometry,
   replacement: BufferGeometry,
   planePoint: Vector3,
   normal: Vector3,
 ): BufferGeometry {
-  const epsilon = 1e-3;
-  const cutCapSlab = 1;
+  const epsilon = 1e-4;
   const planeDistance = normal.dot(planePoint);
   const source = geometry.index ? geometry.toNonIndexed() : geometry;
   const position = source.getAttribute("position");
   const vertices: number[] = [];
-  const a = new Vector3();
-  const b = new Vector3();
-  const c = new Vector3();
-  const ab = new Vector3();
-  const ac = new Vector3();
-  const faceNormal = new Vector3();
   for (let index = 0; index + 2 < position.count; index += 3) {
-    a.fromBufferAttribute(position, index);
-    b.fromBufferAttribute(position, index + 1);
-    c.fromBufferAttribute(position, index + 2);
-    const distanceA = normal.dot(a) - planeDistance;
-    const distanceB = normal.dot(b) - planeDistance;
-    const distanceC = normal.dot(c) - planeDistance;
-    ab.subVectors(b, a);
-    ac.subVectors(c, a);
-    faceNormal.crossVectors(ab, ac);
-    const normalLength = faceNormal.length();
-    const distanceSpread =
-      Math.max(distanceA, distanceB, distanceC) - Math.min(distanceA, distanceB, distanceC);
-    const centroidDistance = Math.abs((distanceA + distanceB + distanceC) / 3);
-    const parallelToCut =
-      normalLength > epsilon && Math.abs(faceNormal.dot(normal) / normalLength) >= 0.98;
-    const isBooleanCutCap =
-      parallelToCut && distanceSpread <= epsilon && centroidDistance <= cutCapSlab;
-    if (isBooleanCutCap) continue;
+    const planar = [0, 1, 2].every((offset) =>
+      Math.abs(
+        normal.x * position.getX(index + offset) +
+          normal.y * position.getY(index + offset) -
+          planeDistance,
+      ) <= epsilon);
+    if (planar) continue;
     for (const offset of [0, 1, 2]) {
       vertices.push(
         position.getX(index + offset),
@@ -681,10 +668,7 @@ function replacePlanarCutCap(
   }
   const result = new BufferGeometry();
   result.setAttribute("position", new Float32BufferAttribute(vertices, 3));
-  const welded = mergeVertices(withoutDegenerateTriangles(result), epsilon);
-  welded.computeVertexNormals();
-  welded.computeBoundingBox();
-  return welded;
+  return result;
 }
 
 /** Divide uma malha por um plano vertical rotacionado em torno do eixo Z. */
@@ -812,16 +796,7 @@ export function splitGeometryByPlane(
   mergedMale.computeBoundingBox();
   pieces[maleIndex] = { ...pieces[maleIndex]!, geometry: mergedMale };
   const femaleSide: -1 | 1 = maleIndex === 0 ? 1 : -1;
-  // Abre a cavidade enquanto a malha original ainda é um sólido fechado e só
-  // então extrai a metade fêmea. Isso evita operações booleanas sobre a face de
-  // corte e elimina as bordas abertas produzidas pela concatenação de cascas.
-  const carvedSource = subtractGeometry(geometry, femaleCavity);
-  let femaleGeometry = clipGeometryHalf(carvedSource, center, normal, femaleSide);
-  femaleGeometry = mergeVertices(withoutDegenerateTriangles(femaleGeometry), 1e-4);
   const outerCap = extrudeCutSection(
-    // Usa a mesma seção-base do macho. Recalcular este complemento na Parte 2
-    // pode produzir grupos diferentes em paredes curvas/inclinadas e tampar
-    // apenas uma das várias cavidades atravessadas pelo corte.
     maleBaseGeometry,
     center,
     normal,
@@ -833,7 +808,25 @@ export function splitGeometryByPlane(
     false,
     true,
   );
-  femaleGeometry = replacePlanarCutCap(femaleGeometry, outerCap, center, normal);
+  const openedFemale = replaceExactPlanarCap(
+    pieces[femaleIndex]!.geometry,
+    outerCap,
+    center,
+    normal,
+  );
+  // Recorta primeiro no semiespaço feminino. A face traseira do sólido macho
+  // fica do outro lado do plano e não pode mais fechar a boca do encaixe.
+  const cavityShell = reverseTriangleWinding(
+    clipGeometryHalf(femaleCavity, center, normal, femaleSide),
+  );
+  const joinedFemale = mergeGeometries(
+    [withoutDegenerateTriangles(openedFemale), withoutDegenerateTriangles(cavityShell)],
+    false,
+  );
+  if (!joinedFemale) throw new Error("Falha ao montar a cavidade fêmea aberta");
+  const femaleGeometry = mergeVertices(withoutDegenerateTriangles(joinedFemale), 1e-4);
+  femaleGeometry.computeVertexNormals();
+  femaleGeometry.computeBoundingBox();
   pieces[femaleIndex] = { ...pieces[femaleIndex]!, geometry: femaleGeometry };
   return pieces.map((piece) => ({ ...piece, total: pieces.length }));
 }
