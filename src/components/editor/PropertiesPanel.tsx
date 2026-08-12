@@ -21,7 +21,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { FONTS, type FontId } from "@/lib/sign/fonts";
-import { oppositeCutSide, type CutPartSide, type PartKind, type SignParams } from "@/lib/sign/model";
+import type { PartKind, SignParams } from "@/lib/sign/model";
 import { PRINTER_PROFILES } from "@/lib/sign/printers";
 import { geometryCrossesCutPlane } from "@/lib/sign/split";
 import { useEditor } from "./store";
@@ -732,22 +732,6 @@ export default function PropertiesPanel() {
                         </Field>
                         {params.cutConnector === "male-female" ? (
                           <>
-                            <Field label="Rebaixo na peça">
-                              <Select
-                                value={oppositeCutSide(params.cutMaleSide)}
-                                onValueChange={(value) =>
-                                  setParam("cutMaleSide", oppositeCutSide(value as CutPartSide))
-                                }
-                              >
-                                <SelectTrigger className="h-9 bg-card text-sm">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="part-1">Parte 1</SelectItem>
-                                  <SelectItem value="part-2">Parte 2</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </Field>
                             <NumberSlider
                               label="Profundidade do encaixe"
                               keyName="cutConnectorDepth"
@@ -823,7 +807,7 @@ export default function PropertiesPanel() {
                                 offset: params.manualCutOffset,
                                 target: params.manualCutTarget,
                                 connector: params.cutConnector,
-                                maleSide: params.cutMaleSide,
+                                maleSide: "part-1" as const,
                                 connectorDepth: params.cutConnectorDepth,
                                 connectorWidth: params.cutConnectorWidth,
                                 connectorThickness: params.cutConnectorThickness,
