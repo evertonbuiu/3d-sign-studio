@@ -764,8 +764,8 @@ export default function PropertiesPanel() {
                               unit="%"
                             />
                             <p className="text-xs leading-relaxed text-muted-foreground">
-                              O macho percorre toda a parede, do fundo até a frente. Em 50%, ocupa a
-                              metade interna e mantém a metade externa como ombro de apoio.
+                              O macho ocupa a metade interna e mantém a metade externa como apoio.
+                              Uma parede de 1 mm fecha as extremidades no fundo e na frente.
                             </p>
                             <NumberSlider
                               label="Folga macho/fêmea"
