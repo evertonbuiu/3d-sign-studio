@@ -626,7 +626,7 @@ export default function Viewport() {
     <div className="absolute inset-0 bg-viewport">
       <Canvas
         shadows
-        camera={{ position: [0, 1.1, 4.6], fov: 42, near: 0.001, far: 1_000_000 }}
+        camera={{ position: [0, 1.1, 4.6], fov: 42, near: 0.000001, far: 1_000_000 }}
         dpr={[1, 2]}
         onCreated={({ gl }) => {
           gl.localClippingEnabled = true;
@@ -658,7 +658,7 @@ export default function Viewport() {
           makeDefault
           enablePan
           target={[0, 0, 0]}
-          minDistance={0.01}
+          minDistance={0}
           maxDistance={Infinity}
         />
       </Canvas>
