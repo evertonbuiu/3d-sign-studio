@@ -207,23 +207,16 @@ function PartMesh({
   ]);
 
   if (manualCut && manualPieces?.length) {
-    part.geometry.computeBoundingBox();
-    const sourceCenter = part.geometry.boundingBox?.getCenter(new Vector3()) ?? new Vector3();
+    const radians = (manualCut.angle * Math.PI) / 180;
+    const cutNormal = new Vector3(Math.cos(radians), Math.sin(radians), 0);
     return (
       <group position={[0, 0, offset]}>
         {manualPieces.map((piece) => {
           const separation = manualCut.separation / 2;
-          piece.geometry.computeBoundingBox();
-          const pieceCenter = piece.geometry.boundingBox?.getCenter(new Vector3()) ?? sourceCenter;
-          const radial = pieceCenter.clone().sub(sourceCenter);
-          radial.z = 0;
-          if (radial.lengthSq() < 1e-8) {
-            const radians = (manualCut.angle * Math.PI) / 180;
-            radial.set(Math.cos(radians) * (piece.column === 1 ? -1 : 1), Math.sin(radians), 0);
-          } else radial.normalize();
+          const side = piece.column === 1 ? -1 : 1;
           const displacement: [number, number, number] = [
-            radial.x * separation,
-            radial.y * separation,
+            cutNormal.x * separation * side,
+            cutNormal.y * separation * side,
             0,
           ];
           return (
