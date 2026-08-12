@@ -619,6 +619,7 @@ export default function Viewport() {
     <div className="absolute inset-0 bg-viewport">
       <Canvas
         shadows
+        gl={{ antialias: true, logarithmicDepthBuffer: true }}
         camera={{ position: [0, 1.1, 4.6], fov: 42, near: 0.000001, far: 1_000_000 }}
         dpr={[1, 2]}
         onCreated={({ gl }) => {
