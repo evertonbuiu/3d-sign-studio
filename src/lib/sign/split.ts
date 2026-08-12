@@ -375,11 +375,17 @@ function clipGeometryHalf(
   return clipped;
 }
 
-function wallCentersAtPlane(
+interface WallProfile {
+  minT: number;
+  maxT: number;
+  centerT: number;
+}
+
+function wallProfilesAtPlane(
   geometry: BufferGeometry,
   planePoint: Vector3,
   normal: Vector3,
-): number[] {
+): WallProfile[] {
   const epsilon = 1e-5;
   const tangent = new Vector3(-normal.y, normal.x, 0);
   const planeDistance = normal.dot(planePoint);
@@ -405,11 +411,13 @@ function wallCentersAtPlane(
   }
   const unique = [...new Set(coordinates.map((value) => Math.round(value * 1e4) / 1e4))]
     .sort((a, b) => a - b);
-  const centers: number[] = [];
+  const profiles: WallProfile[] = [];
   for (let index = 0; index + 1 < unique.length; index += 2) {
-    centers.push((unique[index]! + unique[index + 1]!) / 2);
+    const minT = unique[index]!;
+    const maxT = unique[index + 1]!;
+    profiles.push({ minT, maxT, centerT: (minT + maxT) / 2 });
   }
-  return centers;
+  return profiles;
 }
 
 function extrudeCutSection(
@@ -505,8 +513,8 @@ function extrudeCutSection(
       return { triangles, minT, maxT, centerT: (minT + maxT) / 2 };
     })
     .sort((a, b) => a.centerT - b.centerT);
-  const targetCenters = followGeometry
-    ? wallCentersAtPlane(
+  const targetProfiles = followGeometry
+    ? wallProfilesAtPlane(
         followGeometry,
         planePoint.clone().add(direction.clone().multiplyScalar(depth)),
         normal,
@@ -573,18 +581,27 @@ function extrudeCutSection(
       0,
     );
     const sourceSectionCenter = sections[nearestSectionIndex]!.centerT;
-    const targetCenter = targetCenters.reduce<number | undefined>(
+    const targetProfile = targetProfiles.reduce<WallProfile | undefined>(
       (best, candidate) =>
-        best === undefined || Math.abs(candidate - sourceSectionCenter) < Math.abs(best - sourceSectionCenter)
+        best === undefined ||
+        Math.abs(candidate.centerT - sourceSectionCenter) < Math.abs(best.centerT - sourceSectionCenter)
           ? candidate
           : best,
       undefined,
     );
-    const tangentShift = targetCenter === undefined ? 0 : targetCenter - sourceSectionCenter;
-    const extension = direction.clone().multiplyScalar(depth).addScaledVector(tangent, tangentShift);
-    const aa = a.clone().add(extension);
-    const bb = b.clone().add(extension);
-    const cc = c.clone().add(extension);
+    const projectToTarget = (point: Vector3) => {
+      const result = point.clone().addScaledVector(direction, depth);
+      if (!targetProfile) return result;
+      const sourceWidth = sections[nearestSectionIndex]!.maxT - sections[nearestSectionIndex]!.minT;
+      const ratio = sourceWidth > epsilon
+        ? (tangent.dot(point) - sections[nearestSectionIndex]!.minT) / sourceWidth
+        : 0.5;
+      const targetT = targetProfile.minT + ratio * (targetProfile.maxT - targetProfile.minT);
+      return result.addScaledVector(tangent, targetT - tangent.dot(point));
+    };
+    const aa = projectToTarget(a);
+    const bb = projectToTarget(b);
+    const cc = projectToTarget(c);
     addFace(a, c, b);
     addFace(aa, bb, cc);
     for (const [start, end, endTop, startTop] of [
