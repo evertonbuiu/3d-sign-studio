@@ -21,7 +21,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { FONTS, type FontId } from "@/lib/sign/fonts";
-import type { PartKind, SignParams } from "@/lib/sign/model";
+import { oppositeCutSide, type CutPartSide, type PartKind, type SignParams } from "@/lib/sign/model";
 import { PRINTER_PROFILES } from "@/lib/sign/printers";
 import { geometryCrossesCutPlane } from "@/lib/sign/split";
 import { useEditor } from "./store";
@@ -732,11 +732,11 @@ export default function PropertiesPanel() {
                         </Field>
                         {params.cutConnector === "male-female" ? (
                           <>
-                            <Field label="Lado macho">
+                            <Field label="Rebaixo na peça">
                               <Select
-                                value={params.cutMaleSide}
+                                value={oppositeCutSide(params.cutMaleSide)}
                                 onValueChange={(value) =>
-                                  setParam("cutMaleSide", value as SignParams["cutMaleSide"])
+                                  setParam("cutMaleSide", oppositeCutSide(value as CutPartSide))
                                 }
                               >
                                 <SelectTrigger className="h-9 bg-card text-sm">
