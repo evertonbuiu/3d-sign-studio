@@ -555,7 +555,7 @@ function replacePlanarCutCap(
   planePoint: Vector3,
   normal: Vector3,
 ): BufferGeometry {
-  const epsilon = 1e-5;
+  const epsilon = 1e-3;
   const planeDistance = normal.dot(planePoint);
   const source = geometry.index ? geometry.toNonIndexed() : geometry;
   const position = source.getAttribute("position");
@@ -594,6 +594,24 @@ function replacePlanarCutCap(
   welded.computeVertexNormals();
   welded.computeBoundingBox();
   return welded;
+}
+
+function reverseTriangleWinding(geometry: BufferGeometry): BufferGeometry {
+  const source = geometry.index ? geometry.toNonIndexed() : geometry;
+  const position = source.getAttribute("position");
+  const vertices: number[] = [];
+  for (let index = 0; index + 2 < position.count; index += 3) {
+    for (const offset of [0, 2, 1]) {
+      vertices.push(
+        position.getX(index + offset),
+        position.getY(index + offset),
+        position.getZ(index + offset),
+      );
+    }
+  }
+  const result = new BufferGeometry();
+  result.setAttribute("position", new Float32BufferAttribute(vertices, 3));
+  return result;
 }
 
 /** Divide uma malha por um plano vertical rotacionado em torno do eixo Z. */
@@ -722,6 +740,19 @@ export function splitGeometryByPlane(
   } catch (error) {
     throw new Error("Falha ao abrir a cavidade fêmea", { cause: error });
   }
+  // Reinsere explicitamente o fundo e as laterais internas da cavidade. O CSG
+  // pode omitir essas faces em paredes estreitas/curvas, deixando o encaixe
+  // visualmente aberto na Parte 2. A entrada no plano de corte continua livre.
+  const femaleSide: -1 | 1 = maleIndex === 0 ? 1 : -1;
+  const cavityShell = reverseTriangleWinding(
+    clipGeometryHalf(femaleCavity, center, normal, femaleSide),
+  );
+  const withCavityShell = mergeGeometries(
+    [withoutDegenerateTriangles(femaleGeometry), withoutDegenerateTriangles(cavityShell)],
+    false,
+  );
+  if (withCavityShell) femaleGeometry = withCavityShell;
+  femaleGeometry = mergeVertices(withoutDegenerateTriangles(femaleGeometry), 1e-4);
   const outerCap = extrudeCutSection(
     pieces[femaleIndex]!.geometry,
     center,
