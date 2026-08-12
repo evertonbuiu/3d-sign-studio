@@ -643,16 +643,17 @@ export function splitGeometryByPlane(
   // Assim, a metade macho prolonga o perfil real da parede em vez de receber
   // apenas um pino retangular isolado.
   // O macho usa a metade interna da espessura e percorre toda a parede,
-  // desde o fundo ate a frente. A metade externa permanece como ombro.
+  // preservando uma pele fina no fundo e na frente para fechar as extremidades.
   const overlap = Math.min(0.5, depth * 0.2);
+  const endClosure = Math.min(1, size.z * 0.25);
   const maleConnector = extrudeCutSection(
     pieces[maleIndex]!.geometry,
     center,
     normal,
     direction,
     depth + overlap,
-    bounds.min.z,
-    bounds.max.z,
+    bounds.min.z + endClosure,
+    bounds.max.z - endClosure,
     widthPercent,
   );
   if (maleConnector.getAttribute("position").count === 0) {
@@ -727,8 +728,8 @@ export function splitGeometryByPlane(
     normal,
     direction,
     0,
-    bounds.min.z,
-    bounds.max.z,
+    bounds.min.z + endClosure,
+    bounds.max.z - endClosure,
     1 - widthPercent,
     false,
     true,
