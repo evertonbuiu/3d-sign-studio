@@ -304,6 +304,37 @@ test("parte femea deixa aberta a metade interna do rebaixo", () => {
   assert.equal(closedAtDepth, true, "o fundo da cavidade femea deve ficar fechado");
 });
 
+test("encaixe e recuo femea acompanham o angulo do plano de corte", () => {
+  const angle = 37;
+  const radians = (angle * Math.PI) / 180;
+  const normal = new Vector3(Math.cos(radians), Math.sin(radians), 0);
+  const pieces = splitGeometryByPlane(new BoxGeometry(100, 60, 20), {
+    angle,
+    connector: "male-female",
+    connectorDepth: 4,
+    connectorWidth: 50,
+    connectorClearance: 0.2,
+  });
+  const signedDistances = (piece) => {
+    const position = piece.geometry.getAttribute("position");
+    return Array.from({ length: position.count }, (_, index) =>
+      normal.x * position.getX(index) + normal.y * position.getY(index));
+  };
+  assert.ok(
+    Math.max(...signedDistances(pieces[0])) >= 3.99,
+    "o macho deve avançar na normal do plano inclinado",
+  );
+  const female = pieces[1].geometry.index ? pieces[1].geometry.toNonIndexed() : pieces[1].geometry;
+  const position = female.getAttribute("position");
+  let recessedBack = false;
+  for (let index = 0; index + 2 < position.count; index += 3) {
+    const distances = [0, 1, 2].map((offset) =>
+      normal.x * position.getX(index + offset) + normal.y * position.getY(index + offset));
+    if (distances.every((distance) => Math.abs(distance - 4.2) < 0.05)) recessedBack = true;
+  }
+  assert.equal(recessedBack, true, "a Parte 2 deve ter o fundo do recuo paralelo ao corte");
+});
+
 test("largura do encaixe controla a metade interna da parede", () => {
   const geometry = new BoxGeometry(100, 60, 20);
   const small = splitGeometryByPlane(geometry, {
