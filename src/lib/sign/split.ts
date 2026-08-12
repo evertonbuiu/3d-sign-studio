@@ -375,6 +375,43 @@ function clipGeometryHalf(
   return clipped;
 }
 
+function wallCentersAtPlane(
+  geometry: BufferGeometry,
+  planePoint: Vector3,
+  normal: Vector3,
+): number[] {
+  const epsilon = 1e-5;
+  const tangent = new Vector3(-normal.y, normal.x, 0);
+  const planeDistance = normal.dot(planePoint);
+  const source = geometry.index ? geometry.toNonIndexed() : geometry;
+  const position = source.getAttribute("position");
+  const coordinates: number[] = [];
+  for (let index = 0; index + 2 < position.count; index += 3) {
+    const triangle = [0, 1, 2].map((offset) =>
+      new Vector3(position.getX(index + offset), position.getY(index + offset), position.getZ(index + offset)));
+    const zValues = triangle.map((point) => point.z);
+    if (Math.max(...zValues) - Math.min(...zValues) <= epsilon) continue;
+    for (let edge = 0; edge < 3; edge++) {
+      const start = triangle[edge]!;
+      const end = triangle[(edge + 1) % 3]!;
+      const startDistance = normal.dot(start) - planeDistance;
+      const endDistance = normal.dot(end) - planeDistance;
+      if (Math.abs(startDistance) <= epsilon) coordinates.push(tangent.dot(start));
+      if (startDistance * endDistance < -epsilon * epsilon) {
+        const ratio = startDistance / (startDistance - endDistance);
+        coordinates.push(tangent.dot(start.clone().lerp(end, ratio)));
+      }
+    }
+  }
+  const unique = [...new Set(coordinates.map((value) => Math.round(value * 1e4) / 1e4))]
+    .sort((a, b) => a - b);
+  const centers: number[] = [];
+  for (let index = 0; index + 1 < unique.length; index += 2) {
+    centers.push((unique[index]! + unique[index + 1]!) / 2);
+  }
+  return centers;
+}
+
 function extrudeCutSection(
   geometry: BufferGeometry,
   planePoint: Vector3,
@@ -386,6 +423,7 @@ function extrudeCutSection(
   wallFraction: number,
   selectInner = true,
   capOnly = false,
+  followGeometry?: BufferGeometry,
 ): BufferGeometry {
   const epsilon = 1e-5;
   const planeDistance = normal.dot(planePoint);
@@ -467,6 +505,13 @@ function extrudeCutSection(
       return { triangles, minT, maxT, centerT: (minT + maxT) / 2 };
     })
     .sort((a, b) => a.centerT - b.centerT);
+  const targetCenters = followGeometry
+    ? wallCentersAtPlane(
+        followGeometry,
+        planePoint.clone().add(direction.clone().multiplyScalar(depth)),
+        normal,
+      )
+    : [];
   for (const [sectionIndex, section] of sections.entries()) {
     const { triangles, minT, maxT, centerT } = section;
     const innerAbove = sections.length % 2 === 0
@@ -518,8 +563,25 @@ function extrudeCutSection(
     const existing = faces.get(key);
     faces.set(key, { vertices, count: (existing?.count ?? 0) + 1 });
   };
-  const extension = direction.clone().multiplyScalar(depth);
   for (const [a, b, c] of connectorTriangles) {
+    const sourceCenter = tangent.dot(a.clone().add(b).add(c).multiplyScalar(1 / 3));
+    const nearestSectionIndex = sections.reduce(
+      (best, section, index) =>
+        Math.abs(section.centerT - sourceCenter) < Math.abs(sections[best]!.centerT - sourceCenter)
+          ? index
+          : best,
+      0,
+    );
+    const sourceSectionCenter = sections[nearestSectionIndex]!.centerT;
+    const targetCenter = targetCenters.reduce<number | undefined>(
+      (best, candidate) =>
+        best === undefined || Math.abs(candidate - sourceSectionCenter) < Math.abs(best - sourceSectionCenter)
+          ? candidate
+          : best,
+      undefined,
+    );
+    const tangentShift = targetCenter === undefined ? 0 : targetCenter - sourceSectionCenter;
+    const extension = direction.clone().multiplyScalar(depth).addScaledVector(tangent, tangentShift);
     const aa = a.clone().add(extension);
     const bb = b.clone().add(extension);
     const cc = c.clone().add(extension);
@@ -668,6 +730,9 @@ export function splitGeometryByPlane(
     bounds.min.z + endClosure,
     bounds.max.z - endClosure,
     widthPercent,
+    true,
+    false,
+    geometry,
   );
   if (maleConnector.getAttribute("position").count === 0) {
     return pieces.map((piece) => ({ ...piece, total: pieces.length }));
