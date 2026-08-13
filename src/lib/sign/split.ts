@@ -42,6 +42,12 @@ export interface SequentialSplitOptions extends ManualSplitOptions {
   id?: string;
 }
 
+/** Seleciona onde o encaixe estrutural pode ser criado em cada estilo. */
+export function partSupportsCutConnector(kind: string, styleHasWalls: boolean): boolean {
+  if (styleHasWalls) return kind === "laterais";
+  return ["fundo", "frente", "placa", "poste", "camada-2", "camada-3"].includes(kind);
+}
+
 export function geometryCrossesCutPlane(
   geometry: BufferGeometry,
   options: Pick<ManualSplitOptions, "angle" | "offset" | "origin">,
