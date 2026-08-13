@@ -211,7 +211,7 @@ test("a letra G gera componentes fechados e manifold", () => {
   );
 });
 
-test("plano manual corta todas as malhas reais da letra sem lançar erro", () => {
+test("plano manual corta todas as malhas reais da letra sem lanÃ§ar erro", () => {
   const params = { ...DEFAULT_PARAMS, text: "G", mountHoles: false };
   const build = buildSign(
     glyphShapes(archivo, "G", params.letterHeight),
@@ -220,7 +220,7 @@ test("plano manual corta todas as malhas reais da letra sem lançar erro", () =>
   );
   for (const part of build.parts) {
     const pieces = splitGeometryByPlane(part.geometry, { angle: 90, offset: 0 });
-    assert.ok(pieces.length >= 1, `${part.id} não produziu segmentos`);
+    assert.ok(pieces.length >= 1, `${part.id} nÃ£o produziu segmentos`);
   }
 });
 
@@ -257,7 +257,7 @@ test("corte das paredes nao tampa o vazio interno da letra", () => {
   assert.equal(coversCavity, false, "o rebaixo criou uma tampa sobre o vazio interno");
 });
 
-test("encaixe macho e fêmea é gerado nas paredes de uma palavra", () => {
+test("encaixe macho e fÃªmea Ã© gerado nas paredes de uma palavra", () => {
   const params = { ...DEFAULT_PARAMS, text: "LUMINA", mountHoles: false };
   const build = buildSign(
     glyphShapes(archivo, params.text, params.letterHeight),
@@ -282,7 +282,7 @@ test("encaixe macho e fêmea é gerado nas paredes de uma palavra", () => {
   pieces[0].geometry.computeBoundingBox();
   assert.ok(
     pieces[0].geometry.boundingBox.max.y >= plainPieces[0].geometry.boundingBox.max.y + 3.9,
-    "a lingueta macho deve avançar pela profundidade configurada",
+    "a lingueta macho deve avanÃ§ar pela profundidade configurada",
   );
   for (const piece of pieces) {
     const position = piece.geometry.getAttribute("position");
@@ -347,7 +347,7 @@ test("frente acrilica e fundo impresso preservam os vazados internos", () => {
 
 test("Neon Flex gera fundo e paredes unidos sem tampa", () => {
   const style = getStyle("neon-flex-fundo-impresso");
-  assert.equal(style.name, "Neon Flex — Fundo Impresso sem Tampa");
+  assert.equal(style.name, "Neon Flex â€” Fundo Impresso sem Tampa");
   const params = {
     ...DEFAULT_PARAMS,
     ...style.preset,
@@ -558,6 +558,18 @@ test("fundo impresso com frente impressa recebe encaixe somente nas paredes da f
       plainFrontPieces[0].geometry.boundingBox.max.x + 3.9,
   );
   assert.ok(backPieces[0].geometry.boundingBox.max.x <= back.geometry.boundingBox.max.x + 1e-4);
+  const cutLimit = plainFrontPieces[0].geometry.boundingBox.max.x;
+  const frontPosition = frontPieces[0].geometry.getAttribute("position");
+  const connectorZ = [];
+  for (let index = 0; index < frontPosition.count; index++) {
+    if (frontPosition.getX(index) > cutLimit + 0.1) connectorZ.push(frontPosition.getZ(index));
+  }
+  assert.ok(connectorZ.length > 0, "o macho deve prolongar as paredes cortadas");
+  assert.ok(Math.abs(Math.min(...connectorZ) - 1) < 1e-3);
+  assert.ok(
+    Math.abs(Math.max(...connectorZ) - (params.depth - params.faceThickness)) < 1e-3,
+    "o encaixe deve terminar sob a frente impressa, como no modelo SKP",
+  );
 });
 
 test("frente e fundo acrilicos ficam separados com rebaixo duplo", () => {
@@ -590,7 +602,7 @@ test("frente e fundo acrilicos ficam separados com rebaixo duplo", () => {
 
 test("novo estilo usa fundo acrilico apoiado por aba interna", () => {
   const style = getStyle("fundo-acrilico-frente-acrilica-aba");
-  assert.equal(style.name, "Fundo Acrílico + Frente Acrílica com Aba");
+  assert.equal(style.name, "Fundo AcrÃ­lico + Frente AcrÃ­lica com Aba");
   const params = {
     ...DEFAULT_PARAMS,
     ...style.preset,
