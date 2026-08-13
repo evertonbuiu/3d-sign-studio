@@ -33,6 +33,8 @@ export interface ManualSplitOptions {
   connectorWidth?: number;
   connectorThickness?: number;
   connectorClearance?: number;
+  connectorBackInset?: number;
+  connectorFrontInset?: number;
   origin?: { x: number; y: number };
 }
 
@@ -721,6 +723,8 @@ export function splitGeometryByPlane(
   // preservando uma pele fina no fundo e na frente para fechar as extremidades.
   const overlap = Math.min(0.5, depth * 0.2);
   const endClosure = Math.min(1, size.z * 0.25);
+  const backClosure = Math.max(endClosure, options.connectorBackInset ?? 0);
+  const frontClosure = Math.max(endClosure, options.connectorFrontInset ?? 0);
   const maleBaseGeometry = pieces[maleIndex]!.geometry;
   const maleConnector = extrudeCutSection(
     maleBaseGeometry,
@@ -728,8 +732,8 @@ export function splitGeometryByPlane(
     normal,
     direction,
     depth + overlap,
-    bounds.min.z + endClosure,
-    bounds.max.z - endClosure,
+    bounds.min.z + backClosure,
+    bounds.max.z - frontClosure,
     widthPercent,
     true,
     false,
@@ -746,7 +750,9 @@ export function splitGeometryByPlane(
   const femaleCavity = maleConnector.clone();
   if (clearance > 0) {
     femaleCavity.computeBoundingBox();
-    const cavityCenter = femaleCavity.boundingBox!.getCenter(new Vector3());
+    const cavityBounds = femaleCavity.boundingBox!;
+    const cavityCenter = cavityBounds.getCenter(new Vector3());
+    const cavitySize = cavityBounds.getSize(new Vector3());
     const cavityPosition = femaleCavity.getAttribute("position");
     let tangentExtent = 0;
     for (let i = 0; i < cavityPosition.count; i++) {
@@ -760,7 +766,7 @@ export function splitGeometryByPlane(
     }
     const normalScale = (depth + clearance * 2) / depth;
     const tangentScale = tangentExtent > 1e-6 ? (tangentExtent + clearance) / tangentExtent : 1;
-    const zScale = (size.z + clearance * 2) / size.z;
+    const zScale = cavitySize.z > 1e-6 ? (cavitySize.z + clearance * 2) / cavitySize.z : 1;
     for (let i = 0; i < cavityPosition.count; i++) {
       const relative = new Vector3(
         cavityPosition.getX(i) - cavityCenter.x,
@@ -802,8 +808,8 @@ export function splitGeometryByPlane(
     normal,
     direction,
     0,
-    bounds.min.z + endClosure,
-    bounds.max.z - endClosure,
+    bounds.min.z + backClosure,
+    bounds.max.z - frontClosure,
     1 - widthPercent,
     false,
     true,
