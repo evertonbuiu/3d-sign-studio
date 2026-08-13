@@ -1,6 +1,6 @@
 # 3D Sign Studio
 
-Crie um aplicativo chamado "3D Sign Maker PRO" inspirado na experiência de uso do Letra Maker.
+Crie um aplicativo chamado "Letra 3D line tape" inspirado na experiência de uso do Letra Maker.
 
 O aplicativo deve possuir uma interface semelhante ao Letra Maker, com fluxo simples e intuitivo, utilizando uma biblioteca visual de estilos onde o usuário escolhe um modelo através de miniaturas (cards) em vez de configurar tudo manualmente.
 

@@ -81,14 +81,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { name: "google", content: "notranslate" },
       { httpEquiv: "content-language", content: "pt-BR" },
-      { title: "3D Sign Maker PRO — Letras e placas 3D paramétricas" },
+      { title: "Letra 3D line tape — Letras e placas 3D paramétricas" },
       {
         name: "description",
         content:
           "Crie letras caixa, placas, totens e logotipos 3D paramétricos, visualize em tempo real, calcule custos e exporte em STL para impressão 3D.",
       },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "3D Sign Maker PRO — Letras e placas 3D paramétricas" },
+      { property: "og:title", content: "Letra 3D line tape — Letras e placas 3D paramétricas" },
       {
         property: "og:description",
         content:
@@ -97,7 +97,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "3D Sign Maker PRO — Letras e placas 3D paramétricas" },
+      { name: "twitter:title", content: "Letra 3D line tape — Letras e placas 3D paramétricas" },
       {
         name: "twitter:description",
         content:

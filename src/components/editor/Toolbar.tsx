@@ -244,7 +244,7 @@ export default function Toolbar() {
           <Box className="h-4 w-4" />
         </div>
         <div className="leading-tight">
-          <h1 className="font-display text-sm font-bold tracking-tight">3D Sign Maker PRO</h1>
+          <h1 className="font-display text-sm font-bold tracking-tight">Letra 3D line tape</h1>
           <p className="text-xs uppercase tracking-wider text-muted-foreground">
             Letras e placas paramétricas
           </p>
