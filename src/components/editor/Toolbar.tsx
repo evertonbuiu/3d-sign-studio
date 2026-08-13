@@ -39,6 +39,7 @@ import {
   splitGeometryByPlane,
   splitGeometryByPlanes,
   splitGeometryForBuildPlate,
+  partSupportsCutConnector,
 } from "@/lib/sign/split";
 import { transformGeometryForPlacement } from "@/lib/sign/placement";
 import {
@@ -136,7 +137,9 @@ export default function Toolbar() {
     }
     const zip = new JSZip();
     let exportedSegments = 0;
+    const styleHasWalls = parts.some((part) => part.kind === "laterais");
     for (const part of parts) {
+      const connectorEnabled = partSupportsCutConnector(part.kind, styleHasWalls);
       let segments;
       try {
         segments = editor.params.splitForBuildPlate
@@ -148,7 +151,7 @@ export default function Toolbar() {
                     .map((cut) => ({
                       angle: cut.angle,
                       offset: cut.offset,
-                      connector: part.kind === "laterais" ? cut.connector : "none" as const,
+                      connector: connectorEnabled ? cut.connector : "none" as const,
                       maleSide: cut.maleSide,
                       connectorDepth: cut.connectorDepth,
                       connectorWidth: cut.connectorWidth,
@@ -166,7 +169,7 @@ export default function Toolbar() {
               : splitGeometryByPlane(part.geometry, {
                   angle: editor.params.manualCutAngle,
                   offset: editor.params.manualCutOffset,
-                  connector: part.kind === "laterais" ? editor.params.cutConnector : "none",
+                  connector: connectorEnabled ? editor.params.cutConnector : "none",
                   maleSide: editor.params.cutMaleSide,
                   connectorDepth: editor.params.cutConnectorDepth,
                   connectorWidth: editor.params.cutConnectorWidth,

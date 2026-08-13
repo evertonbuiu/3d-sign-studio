@@ -20,6 +20,7 @@ import { useEditor } from "./store";
 import type { SignOutline, SignPart } from "@/lib/sign/build";
 import {
   clipGeometryByPlaneForPreview,
+  partSupportsCutConnector,
   splitGeometryByPlane,
   splitGeometryByPlanes,
   type SequentialSplitOptions,
@@ -142,6 +143,7 @@ function PartMesh({
         connectorFrontInset: number;
         cuts: SequentialSplitOptions[];
         origin: { x: number; y: number };
+        connectorEnabled: boolean;
       }
     | undefined;
 }) {
@@ -153,14 +155,14 @@ function PartMesh({
     if (!manualCut) return null;
     // O encaixe pertence às paredes. Frente, fundo e acessórios recebem apenas
     // o corte, evitando CSG desnecessário e mantendo macho/fêmea na peça certa.
-    const previewConnector = part.kind === "laterais" ? manualCut.connector : "none";
+    const previewConnector = manualCut.connectorEnabled ? manualCut.connector : "none";
     try {
       if (manualCut.cuts.length) {
         return splitGeometryByPlanes(
           part.geometry,
           manualCut.cuts.map((cut) => ({
             ...cut,
-            connector: part.kind === "laterais" ? (cut.connector ?? "none") : "none",
+            connector: manualCut.connectorEnabled ? (cut.connector ?? "none") : "none",
           })),
           manualCut.origin,
         );
@@ -639,6 +641,7 @@ function Model({
   if (!build) return null;
 
   const visible = displayParts.filter((part) => !hidden.has(part.id));
+  const styleHasWalls = displayParts.some((part) => part.kind === "laterais");
 
   return (
     <group ref={groupRef} scale={scale} rotation={[-0.05, 0, 0]}>
@@ -682,6 +685,7 @@ function Model({
                         connectorFrontInset:
                           part.id === "frente-laterais" ? params.faceThickness : 0,
                       })),
+                    connectorEnabled: partSupportsCutConnector(part.kind, styleHasWalls),
                   }
                 : undefined
             }

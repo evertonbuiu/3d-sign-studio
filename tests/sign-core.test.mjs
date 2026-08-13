@@ -16,10 +16,21 @@ import { geometriesToStl, slugify } from "../src/lib/sign/stl.ts";
 import {
   clipGeometryByPlaneForPreview,
   geometryCrossesCutPlane,
+  partSupportsCutConnector,
   splitGeometryByPlane,
   splitGeometryByPlanes,
   splitGeometryForBuildPlate,
 } from "../src/lib/sign/split.ts";
+
+test("encaixe estrutural atende estilos com e sem paredes", () => {
+  assert.equal(partSupportsCutConnector("laterais", true), true);
+  assert.equal(partSupportsCutConnector("frente", true), false);
+  assert.equal(partSupportsCutConnector("frente", false), true);
+  assert.equal(partSupportsCutConnector("placa", false), true);
+  assert.equal(partSupportsCutConnector("camada-2", false), true);
+  assert.equal(partSupportsCutConnector("canal-led", false), false);
+  assert.equal(partSupportsCutConnector("furos", false), false);
+});
 
 const build = {
   parts: [],

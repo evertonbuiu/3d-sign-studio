@@ -35,7 +35,7 @@ function validateVectorFile(file: File): boolean {
   return false;
 }
 
-export function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
       <Label className="text-sm font-medium text-muted-foreground">{label}</Label>
@@ -44,7 +44,7 @@ export function Field({ label, children }: { label: string; children: React.Reac
   );
 }
 
-export function NumberSlider({
+function NumberSlider({
   label,
   keyName,
   min,
@@ -95,7 +95,7 @@ function ColorField({ label, keyName }: { label: string; keyName: keyof SignPara
   );
 }
 
-export function MoneyField({
+function MoneyField({
   label,
   keyName,
   step = 1,
@@ -518,68 +518,26 @@ export default function PropertiesPanel() {
           </AccordionItem>
 
           <AccordionItem value="corpo">
-            <AccordionTrigger className="text-sm">Placa, totem e camadas</AccordionTrigger>
-            <AccordionContent className="space-y-3 pb-4">
-              <Field label="Modo do corpo">
-                <Select
-                  value={params.bodyMode}
-                  onValueChange={(v) => setParam("bodyMode", v as SignParams["bodyMode"])}
-                >
-                  <SelectTrigger className="h-9 bg-card text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="letras" className="text-sm">
-                      Letras soltas
-                    </SelectItem>
-                    <SelectItem value="placa" className="text-sm">
-                      Placa
-                    </SelectItem>
-                    <SelectItem value="totem" className="text-sm">
-                      Totem
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </Field>
-              <NumberSlider
-                label="Margem da placa"
-                keyName="plateMargin"
-                min={5}
-                max={200}
-                step={1}
-              />
-              <NumberSlider
-                label="Espessura da placa"
-                keyName="plateThickness"
-                min={2}
-                max={40}
-                step={0.5}
-              />
-              <NumberSlider
-                label="Altura do poste"
-                keyName="poleHeight"
-                min={100}
-                max={2000}
-                step={10}
-              />
+            <AccordionTrigger className="text-sm">Placa, totem e camadas…616 tokens truncated…ssName="space-y-3 pb-4">
               <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium text-muted-foreground">Letras vazadas</Label>
-                <Switch checked={params.cutout} onCheckedChange={(v) => setParam("cutout", v)} />
+                <Label className="text-sm font-medium text-muted-foreground">
+                  Furos de fixação
+                </Label>
+                <Switch
+                  checked={params.mountHoles}
+                  onCheckedChange={(v) => setParam("mountHoles", v)}
+                />
               </div>
               <NumberSlider
-                label="Espessura da camada"
-                keyName="layerThickness"
-                min={1}
-                max={30}
+                label="Diâmetro do furo"
+                keyName="holeDiameter"
+                min={2}
+                max={20}
                 step={0.5}
               />
-              <NumberSlider
-                label="Redução por camada"
-                keyName="layerShrink"
-                min={1}
-                max={40}
-                step={0.5}
-              />
+              <ColorField label="Cor da frente" keyName="faceColor" />
+              <ColorField label="Cor do corpo" keyName="bodyColor" />
+              <ColorField label="Cor do fundo" keyName="backColor" />
             </AccordionContent>
           </AccordionItem>
 
@@ -725,7 +683,7 @@ export default function PropertiesPanel() {
                             <SelectContent>
                               <SelectItem value="none">Sem encaixe</SelectItem>
                               <SelectItem value="male-female">
-                                Rebaixo nas paredes (macho e fêmea)
+                                Encaixe estrutural (macho e fêmea)
                               </SelectItem>
                             </SelectContent>
                           </Select>
@@ -748,8 +706,8 @@ export default function PropertiesPanel() {
                               unit="%"
                             />
                             <p className="text-xs leading-relaxed text-muted-foreground">
-                              O macho ocupa a metade interna e mantém a metade externa como apoio.
-                              Uma parede de 1 mm fecha as extremidades no fundo e na frente.
+                              Em estilos de caixa, o encaixe fica somente nas paredes. Em estilos
+                              sem paredes, ele é aplicado ao volume estrutural impresso.
                             </p>
                             <NumberSlider
                               label="Folga macho/fêmea"
@@ -964,3 +922,4 @@ export default function PropertiesPanel() {
     </div>
   );
 }
+
