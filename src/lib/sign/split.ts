@@ -517,7 +517,54 @@ function extrudeCutSection(
     }
   }
 
-  // Cada ilha da secao represent…497 tokens truncated…int.clone().add(direction.clone().multiplyScalar(depth)),
+  // Cada ilha da secao representa uma parede atravessada pelo plano. As ilhas
+  // sao pareadas na ordem transversal e as metades ficam voltadas uma para a
+  // outra. Isso identifica o interior local de cada letra, sem usar o centro
+  // global da palavra (que invertia paredes em letras deslocadas).
+  const parent = surfaceTriangles.map((_, index) => index);
+  const find = (value: number): number => {
+    while (parent[value] !== value) {
+      parent[value] = parent[parent[value]!]!;
+      value = parent[value]!;
+    }
+    return value;
+  };
+  const union = (a: number, b: number) => {
+    const rootA = find(a);
+    const rootB = find(b);
+    if (rootA !== rootB) parent[rootA] = rootB;
+  };
+  const vertexOwners = new Map<string, number>();
+  const vertexKey = (point: Vector3) =>
+    point.toArray().map((value) => Math.round(value * 1e5)).join(",");
+  surfaceTriangles.forEach((triangle, triangleIndex) => {
+    for (const point of triangle) {
+      const key = vertexKey(point);
+      const owner = vertexOwners.get(key);
+      if (owner !== undefined) union(triangleIndex, owner);
+      else vertexOwners.set(key, triangleIndex);
+    }
+  });
+  const groups = new Map<number, Array<[Vector3, Vector3, Vector3]>>();
+  surfaceTriangles.forEach((triangle, index) => {
+    const root = find(index);
+    groups.set(root, [...(groups.get(root) ?? []), triangle]);
+  });
+  const connectorTriangles: Array<[Vector3, Vector3, Vector3]> = [];
+  const fraction = Math.min(Math.max(wallFraction, 0), 1);
+  if (fraction <= 1e-6) return new BufferGeometry();
+  const sections = [...groups.values()]
+    .map((triangles) => {
+      const coordinates = triangles.flat().map((point) => tangent.dot(point));
+      const minT = Math.min(...coordinates);
+      const maxT = Math.max(...coordinates);
+      return { triangles, minT, maxT, centerT: (minT + maxT) / 2 };
+    })
+    .sort((a, b) => a.centerT - b.centerT);
+  const targetProfiles = followGeometry
+    ? wallProfilesAtPlane(
+        followGeometry,
+        planePoint.clone().add(direction.clone().multiplyScalar(depth)),
         normal,
       )
     : [];
