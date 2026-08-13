@@ -6,7 +6,7 @@ import { Box2, ShapePath, Vector2 } from "three";
 
 import { buildSign } from "../src/lib/sign/build.ts";
 import { DEFAULT_PARAMS, STYLES, getStyle, paramsForStyle } from "../src/lib/sign/model.ts";
-import { splitGeometryByPlane } from "../src/lib/sign/split.ts";
+import { partSupportsCutConnector, splitGeometryByPlane } from "../src/lib/sign/split.ts";
 
 function glyphShapes(font, text, height) {
   const capUnits = font.tables?.os2?.sCapHeight || font.unitsPerEm * 0.7;
@@ -523,6 +523,41 @@ test("frente impressa com paredes encaixa no fundo impresso com aba", () => {
         (params.backThickness + params.backFlangeThickness),
     ) < 1e-5,
   );
+});
+
+test("fundo impresso com frente impressa recebe encaixe somente nas paredes da frente", () => {
+  const style = getStyle("fundo-impresso-frente-impressa-aba");
+  const params = { ...DEFAULT_PARAMS, ...style.preset, text: "G", mountHoles: false };
+  const build = buildSign(glyphShapes(archivo, "G", params.letterHeight), params, style);
+  const frontWalls = build.parts.find((part) => part.id === "frente-laterais");
+  const back = build.parts.find((part) => part.id === "fundo");
+  assert.ok(frontWalls && back);
+  const hasWalls = build.parts.some((part) => part.kind === "laterais");
+  assert.equal(partSupportsCutConnector(frontWalls.kind, hasWalls), true);
+  assert.equal(partSupportsCutConnector(back.kind, hasWalls), false);
+
+  const frontPieces = splitGeometryByPlane(frontWalls.geometry, {
+    angle: 0,
+    connector: "male-female",
+    connectorDepth: 4,
+    connectorWidth: 50,
+    connectorClearance: 0.2,
+    connectorFrontInset: params.faceThickness,
+  });
+  const plainFrontPieces = splitGeometryByPlane(frontWalls.geometry, { angle: 0 });
+  const backPieces = splitGeometryByPlane(back.geometry, { angle: 0, connector: "none" });
+  assert.equal(frontPieces.length, 2);
+  assert.equal(backPieces.length, 2);
+  frontPieces[0].geometry.computeBoundingBox();
+  plainFrontPieces[0].geometry.computeBoundingBox();
+  backPieces[0].geometry.computeBoundingBox();
+  frontWalls.geometry.computeBoundingBox();
+  back.geometry.computeBoundingBox();
+  assert.ok(
+    frontPieces[0].geometry.boundingBox.max.x >=
+      plainFrontPieces[0].geometry.boundingBox.max.x + 3.9,
+  );
+  assert.ok(backPieces[0].geometry.boundingBox.max.x <= back.geometry.boundingBox.max.x + 1e-4);
 });
 
 test("frente e fundo acrilicos ficam separados com rebaixo duplo", () => {
