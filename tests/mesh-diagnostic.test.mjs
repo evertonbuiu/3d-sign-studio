@@ -558,6 +558,7 @@ test("fundo impresso com frente impressa recebe encaixe somente nas paredes da f
       plainFrontPieces[0].geometry.boundingBox.max.x + 3.9,
   );
   assert.ok(backPieces[0].geometry.boundingBox.max.x <= back.geometry.boundingBox.max.x + 1e-4);
+
 });
 
 test("frente e fundo acrilicos ficam separados com rebaixo duplo", () => {
