@@ -69,7 +69,7 @@ export function geometryCrossesCutPlane(
   return Math.min(...distances) < -1e-5 && Math.max(...distances) > 1e-5;
 }
 
-/** Recorte visual robusto, sem CSG e sem tampas, usado somente na prévia. */
+/** Recorte visual robusto, sem CSG e sem tampas, usado somente na prÃ©via. */
 export function clipGeometryByPlaneForPreview(
   geometry: BufferGeometry,
   options: Pick<ManualSplitOptions, "angle" | "offset">,
@@ -404,13 +404,48 @@ function wallProfilesAtPlane(
       }
     }
   }
-  const unique = [...new Set(coordinates.map((value) => Math.round(value * 1e4) / 1e4))]
+  const coordinateCounts = new Map<number, number>();
+  for (const coordinate of coordinates) {
+    const rounded = Math.round(coordinate * 1e4) / 1e4;
+    coordinateCounts.set(rounded, (coordinateCounts.get(rounded) ?? 0) + 1);
+  }
+  // Uma parede realmente atravessada pelo plano produz a mesma linha em mais
+  // de um triangulo vertical. Contatos tangenciais aparecem apenas uma vez e,
+  // se entrarem no pareamento, deslocam todos os intervalos seguintes e fecham
+  // o vazio da letra com placas largas.
+  const confirmed = [...coordinateCounts.entries()]
+    .filter(([, count]) => count >= 2)
+    .map(([coordinate]) => coordinate)
     .sort((a, b) => a - b);
+  const unique = confirmed.length >= 2
+    ? confirmed
+    : [...coordinateCounts.keys()].sort((a, b) => a - b);
   const profiles: WallProfile[] = [];
-  for (let index = 0; index + 1 < unique.length; index += 2) {
+  // A uniÃ£o da frente com as laterais pode conservar uma linha intermediÃ¡ria
+  // dentro da mesma parede. Por isso cada parede pode aparecer com duas ou trÃªs
+  // linhas. Particionamos a sequÃªncia procurando os grupos locais mais estreitos,
+  // em vez de parear cegamente de dois em dois e atravessar o vazio seguinte.
+  const costs = Array(unique.length + 1).fill(Number.POSITIVE_INFINITY);
+  const groupSizes = Array<number>(unique.length + 1).fill(0);
+  costs[unique.length] = 0;
+  for (let index = unique.length - 1; index >= 0; index--) {
+    for (const groupSize of [2, 3]) {
+      const next = index + groupSize;
+      if (next > unique.length || !Number.isFinite(costs[next])) continue;
+      const span = unique[next - 1]! - unique[index]!;
+      const cost = span * span + costs[next];
+      if (cost < costs[index]) {
+        costs[index] = cost;
+        groupSizes[index] = groupSize;
+      }
+    }
+  }
+  for (let index = 0; index < unique.length && groupSizes[index] > 0;) {
+    const groupSize = groupSizes[index]!;
     const minT = unique[index]!;
-    const maxT = unique[index + 1]!;
+    const maxT = unique[index + groupSize - 1]!;
     profiles.push({ minT, maxT, centerT: (minT + maxT) / 2 });
+    index += groupSize;
   }
   return profiles;
 }
@@ -464,9 +499,9 @@ function extrudeCutSection(
     }
   }
 
-  // A tampa reconstruída pode ligar paredes distintas quando uma frente
-  // impressa fecha toda a letra. Usar seus triângulos como seção do encaixe
-  // cria lâminas diagonais atravessando os vãos. As interseções das faces
+  // A tampa reconstruÃ­da pode ligar paredes distintas quando uma frente
+  // impressa fecha toda a letra. Usar seus triÃ¢ngulos como seÃ§Ã£o do encaixe
+  // cria lÃ¢minas diagonais atravessando os vÃ£os. As interseÃ§Ãµes das faces
   // verticais fornecem diretamente um intervalo independente para cada parede.
   const profileSections = wallProfilesAtPlane(followGeometry ?? geometry, planePoint, normal);
   if (profileSections.length && maxZ > minZ + epsilon) {
@@ -594,9 +629,9 @@ function extrudeCutSection(
       0,
     );
     const sourceSectionCenter = sections[nearestSectionIndex]!.centerT;
-    // Quando a quantidade de paredes permanece igual, a ordem transversal é
-    // a correspondência topológica correta. Escolher apenas pela proximidade
-    // podia ligar uma parede à vizinha em curvas apertadas e criar espigões.
+    // Quando a quantidade de paredes permanece igual, a ordem transversal Ã©
+    // a correspondÃªncia topolÃ³gica correta. Escolher apenas pela proximidade
+    // podia ligar uma parede Ã  vizinha em curvas apertadas e criar espigÃµes.
     const targetProfile = targetProfiles.length === sections.length
       ? targetProfiles[nearestSectionIndex]
       : targetProfiles.reduce<WallProfile | undefined>(
@@ -746,7 +781,7 @@ export function splitGeometryByPlane(
   const femaleIndex = maleIndex === 0 ? 1 : 0;
   const direction = normal.clone().multiplyScalar(maleIndex === 0 ? 1 : -1);
 
-  // O encaixe é extraído da própria seção das paredes junto ao plano de corte.
+  // O encaixe Ã© extraÃ­do da prÃ³pria seÃ§Ã£o das paredes junto ao plano de corte.
   // Assim, a metade macho prolonga o perfil real da parede em vez de receber
   // apenas um pino retangular isolado.
   // O macho usa a metade interna da espessura e percorre toda a parede,
@@ -774,9 +809,9 @@ export function splitGeometryByPlane(
   }
   maleConnector.translate(-direction.x * overlap, -direction.y * overlap, 0);
 
-  // Expande uma única cópia do perfil nos eixos normal, tangente e Z. Uma
-  // única subtração é mais estável em contornos complexos do que unir ou
-  // subtrair várias cópias quase coincidentes.
+  // Expande uma Ãºnica cÃ³pia do perfil nos eixos normal, tangente e Z. Uma
+  // Ãºnica subtraÃ§Ã£o Ã© mais estÃ¡vel em contornos complexos do que unir ou
+  // subtrair vÃ¡rias cÃ³pias quase coincidentes.
   const femaleCavity = maleConnector.clone();
   if (clearance > 0) {
     femaleCavity.computeBoundingBox();
@@ -817,9 +852,9 @@ export function splitGeometryByPlane(
     femaleCavity.computeVertexNormals();
   }
 
-  // A lingueta já penetra a parede pelo `overlap`. Concatenar as duas cascas
-  // preserva esse volume sobreposto para o fatiador e evita a união CSG entre
-  // faces coplanares, que criava pontas/triângulos atravessando letras inteiras.
+  // A lingueta jÃ¡ penetra a parede pelo `overlap`. Concatenar as duas cascas
+  // preserva esse volume sobreposto para o fatiador e evita a uniÃ£o CSG entre
+  // faces coplanares, que criava pontas/triÃ¢ngulos atravessando letras inteiras.
   const mergedMale = mergeGeometries(
     [
       withoutDegenerateTriangles(pieces[maleIndex]!.geometry),
@@ -827,7 +862,7 @@ export function splitGeometryByPlane(
     ],
     false,
   );
-  if (!mergedMale) throw new Error("Falha ao montar o rebaixo prolongado da peça macho");
+  if (!mergedMale) throw new Error("Falha ao montar o rebaixo prolongado da peÃ§a macho");
   mergedMale.computeVertexNormals();
   mergedMale.computeBoundingBox();
   pieces[maleIndex] = { ...pieces[maleIndex]!, geometry: mergedMale };
@@ -851,20 +886,20 @@ export function splitGeometryByPlane(
     center,
     normal,
   );
-  // Recorta primeiro no semiespaço feminino. A face traseira do sólido macho
-  // fica do outro lado do plano e não pode mais fechar a boca do encaixe.
+  // Recorta primeiro no semiespaÃ§o feminino. A face traseira do sÃ³lido macho
+  // fica do outro lado do plano e nÃ£o pode mais fechar a boca do encaixe.
   let cavityShell = reverseTriangleWinding(
     clipGeometryHalf(femaleCavity, center, normal, femaleSide),
   );
-  // A face inicial do sólido macho fica exatamente na boca da cavidade. Ela é
-  // necessária para fechar o macho, mas deve ser removida da cópia invertida
-  // usada como fêmea; caso contrário, vira uma tampa sobre o encaixe.
+  // A face inicial do sÃ³lido macho fica exatamente na boca da cavidade. Ela Ã©
+  // necessÃ¡ria para fechar o macho, mas deve ser removida da cÃ³pia invertida
+  // usada como fÃªmea; caso contrÃ¡rio, vira uma tampa sobre o encaixe.
   cavityShell = replaceExactPlanarCap(cavityShell, new BufferGeometry(), center, normal);
   const joinedFemale = mergeGeometries(
     [withoutDegenerateTriangles(openedFemale), withoutDegenerateTriangles(cavityShell)],
     false,
   );
-  if (!joinedFemale) throw new Error("Falha ao montar a cavidade fêmea aberta");
+  if (!joinedFemale) throw new Error("Falha ao montar a cavidade fÃªmea aberta");
   const femaleGeometry = mergeVertices(withoutDegenerateTriangles(joinedFemale), 1e-4);
   femaleGeometry.computeVertexNormals();
   femaleGeometry.computeBoundingBox();
@@ -872,7 +907,7 @@ export function splitGeometryByPlane(
   return pieces.map((piece) => ({ ...piece, total: pieces.length }));
 }
 
-/** Aplica vários planos sobre as peças resultantes, preservando a origem do modelo. */
+/** Aplica vÃ¡rios planos sobre as peÃ§as resultantes, preservando a origem do modelo. */
 export function splitGeometryByPlanes(
   geometry: BufferGeometry,
   cuts: SequentialSplitOptions[],
@@ -905,7 +940,7 @@ export function splitGeometryByPlanes(
   }));
 }
 
-/** Divide uma malha em blocos fechados que cabem na área útil XY da impressora. */
+/** Divide uma malha em blocos fechados que cabem na Ã¡rea Ãºtil XY da impressora. */
 export function splitGeometryForBuildPlate(
   geometry: BufferGeometry,
   options: BuildPlateSplitOptions,
@@ -914,7 +949,7 @@ export function splitGeometryForBuildPlate(
   const usableWidth = options.width - margin * 2;
   const usableDepth = options.depth - margin * 2;
   if (usableWidth <= 0 || usableDepth <= 0) {
-    throw new Error("A margem de corte é maior que a mesa de impressão.");
+    throw new Error("A margem de corte Ã© maior que a mesa de impressÃ£o.");
   }
   geometry.computeBoundingBox();
   const bounds = geometry.boundingBox?.clone();
