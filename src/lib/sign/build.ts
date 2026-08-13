@@ -823,7 +823,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
                       : unifiedPrintedFace
                         ? params.backThickness
                         : params.faceThickness,
-                    unifiedPrintedCup
+                    unifiedPrintedCup || printedFrontRearInsert
                       ? params.backThickness
                       : unifiedPrintedFace
                         ? params.faceThickness
@@ -859,19 +859,19 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
       geo.translate(
         0,
         0,
-        unifiedPrintedCup || unifiedPrintedFace || doubleAcrylicRecess || acrylicBackFlange
+        unifiedPrintedCup || unifiedPrintedFace || doubleAcrylicRecess || acrylicBackFlange || printedFrontRearInsert
           ? baseZ
           : baseZ + (active.has("fundo") ? params.backThickness : 0),
       );
       parts.push(
         makePart(
-          unifiedPrintedCup
+          unifiedPrintedCup || printedFrontRearInsert
             ? "fundo-laterais"
             : unifiedPrintedFace
               ? "frente-laterais"
               : "laterais",
           "laterais",
-          unifiedPrintedCup
+          unifiedPrintedCup || printedFrontRearInsert
             ? "Fundo + laterais (peça única)"
             : unifiedPrintedFace
               ? "Frente + laterais (peça única)"
