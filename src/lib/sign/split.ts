@@ -900,18 +900,38 @@ export function splitGeometryByPlane(
     const cavityCenter = cavityBounds.getCenter(new Vector3());
     const cavitySize = cavityBounds.getSize(new Vector3());
     const cavityPosition = femaleCavity.getAttribute("position");
-    let tangentExtent = 0;
+    const tangent = new Vector3(-normal.y, normal.x, 0);
+    const parent = Array.from({ length: cavityPosition.count }, (_, index) => index);
+    const find = (value: number): number => {
+      while (parent[value] !== value) {
+        parent[value] = parent[parent[value]!]!;
+        value = parent[value]!;
+      }
+      return value;
+    };
+    const union = (left: number, right: number) => {
+      const leftRoot = find(left), rightRoot = find(right);
+      if (leftRoot !== rightRoot) parent[leftRoot] = rightRoot;
+    };
+    const owners = new Map<string, number>();
     for (let i = 0; i < cavityPosition.count; i++) {
-      const point = new Vector3(
-        cavityPosition.getX(i),
-        cavityPosition.getY(i),
-        cavityPosition.getZ(i),
-      );
-      const tangent = new Vector3(-normal.y, normal.x, 0);
-      tangentExtent = Math.max(tangentExtent, Math.abs(tangent.dot(point.clone().sub(cavityCenter))));
+      const key = [cavityPosition.getX(i), cavityPosition.getY(i), cavityPosition.getZ(i)]
+        .map((value) => Math.round(value * 1e4)).join(",");
+      const owner = owners.get(key);
+      if (owner === undefined) owners.set(key, i);
+      else union(i, owner);
+      if (i % 3 !== 0) union(i, i - 1);
+    }
+    const componentT = new Map<number, { min: number; max: number }>();
+    for (let i = 0; i < cavityPosition.count; i++) {
+      const root = find(i);
+      const coordinate = tangent.x * cavityPosition.getX(i) + tangent.y * cavityPosition.getY(i);
+      const bounds = componentT.get(root) ?? { min: coordinate, max: coordinate };
+      bounds.min = Math.min(bounds.min, coordinate);
+      bounds.max = Math.max(bounds.max, coordinate);
+      componentT.set(root, bounds);
     }
     const normalScale = (depth + clearance * 2) / depth;
-    const tangentScale = tangentExtent > 1e-6 ? (tangentExtent + clearance) / tangentExtent : 1;
     const zScale = cavitySize.z > 1e-6 ? (cavitySize.z + clearance * 2) / cavitySize.z : 1;
     for (let i = 0; i < cavityPosition.count; i++) {
       const relative = new Vector3(
@@ -919,16 +939,21 @@ export function splitGeometryByPlane(
         cavityPosition.getY(i) - cavityCenter.y,
         cavityPosition.getZ(i) - cavityCenter.z,
       );
-      const tangent = new Vector3(-normal.y, normal.x, 0);
       const normalDistance = normal.dot(relative) * normalScale;
-      const tangentDistance = tangent.dot(relative) * tangentScale;
+      const component = componentT.get(find(i))!;
+      const componentCenter = (component.min + component.max) / 2;
+      const tangentCoordinate = tangent.x * cavityPosition.getX(i) + tangent.y * cavityPosition.getY(i);
+      const tangentExtent = Math.max((component.max - component.min) / 2, 1e-6);
+      const expandedTangent = componentCenter +
+        (tangentCoordinate - componentCenter) * ((tangentExtent + clearance) / tangentExtent);
       cavityPosition.setXYZ(
         i,
-        cavityCenter.x + normal.x * normalDistance + tangent.x * tangentDistance,
-        cavityCenter.y + normal.y * normalDistance + tangent.y * tangentDistance,
+        cavityCenter.x + normal.x * normalDistance + tangent.x * (expandedTangent - tangent.dot(cavityCenter)),
+        cavityCenter.y + normal.y * normalDistance + tangent.y * (expandedTangent - tangent.dot(cavityCenter)),
         cavityCenter.z + relative.z * zScale,
       );
     }
+
     cavityPosition.needsUpdate = true;
     femaleCavity.computeVertexNormals();
   }
