@@ -902,7 +902,7 @@ export function splitGeometryByPlane(
     bounds.min.z + backClosure,
     bounds.max.z - frontClosure,
     widthPercent,
-    false,
+    true,
     false,
     geometry,
   );
@@ -995,7 +995,7 @@ export function splitGeometryByPlane(
     bounds.min.z + backClosure,
     bounds.max.z - frontClosure,
     1 - widthPercent,
-    true,
+    false,
     true,
     geometry,
   );
