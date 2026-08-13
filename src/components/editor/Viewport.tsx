@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -360,6 +360,7 @@ function ManualCutPlane({
   onDraggingChange: (dragging: boolean) => void;
 }) {
   const meshRef = useRef<Mesh>(null);
+  const [previewOffset, setPreviewOffset] = useState(offset);
   const dragRef = useRef<{
     pointerId: number;
     startX: number;
@@ -368,8 +369,12 @@ function ManualCutPlane({
     screenX: number;
     screenY: number;
     pixelsPerUnit: number;
+    currentOffset: number;
   } | null>(null);
   const { camera, size } = useThree();
+  useEffect(() => {
+    if (!dragRef.current) setPreviewOffset(offset);
+  }, [offset]);
   const geometry = useMemo(() => {
     const box = new Box3();
     for (const part of parts) {
@@ -380,7 +385,7 @@ function ManualCutPlane({
     const radians = (angle * Math.PI) / 180;
     const normal = new Vector3(Math.cos(radians), Math.sin(radians), 0);
     const tangent = new Vector3(-normal.y, normal.x, 0);
-    const center = box.getCenter(new Vector3()).addScaledVector(normal, offset);
+    const center = box.getCenter(new Vector3()).addScaledVector(normal, previewOffset);
     const size = box.getSize(new Vector3());
     const halfLength = Math.hypot(size.x, size.y) * 0.65 + 10;
     const minZ = box.min.z - 5;
@@ -407,7 +412,7 @@ function ManualCutPlane({
     result.computeVertexNormals();
     result.computeBoundingBox();
     return result;
-  }, [parts, angle, offset]);
+  }, [parts, angle, previewOffset]);
   if (!geometry) return null;
 
   const startDragging = (event: ThreeEvent<PointerEvent>) => {
@@ -428,10 +433,11 @@ function ManualCutPlane({
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
-      startOffset: offset,
+      startOffset: previewOffset,
       screenX: screenDeltaX / pixelsPerUnit,
       screenY: screenDeltaY / pixelsPerUnit,
       pixelsPerUnit,
+      currentOffset: previewOffset,
     };
     (event.nativeEvent.target as Element).setPointerCapture(event.pointerId);
     onDraggingChange(true);
@@ -445,7 +451,11 @@ function ManualCutPlane({
     const screenDistance =
       (event.clientX - state.startX) * state.screenX +
       (event.clientY - state.startY) * state.screenY;
-    onOffsetChange(Math.round((state.startOffset + screenDistance / state.pixelsPerUnit) * 10) / 10);
+    state.currentOffset =
+      Math.round((state.startOffset + screenDistance / state.pixelsPerUnit) * 10) / 10;
+    // Durante o gesto, move somente o plano. Recalcular o corte/encaixe em cada
+    // pixel bloqueava a interface em letras complexas.
+    setPreviewOffset(state.currentOffset);
   };
 
   const stopDragging = (event: ThreeEvent<PointerEvent>) => {
@@ -453,8 +463,10 @@ function ManualCutPlane({
     event.stopPropagation();
     const target = event.nativeEvent.target as Element;
     if (target.hasPointerCapture(event.pointerId)) target.releasePointerCapture(event.pointerId);
+    const finalOffset = dragRef.current.currentOffset;
     dragRef.current = null;
     onDraggingChange(false);
+    onOffsetChange(finalOffset);
     document.body.style.cursor = "";
   };
 
