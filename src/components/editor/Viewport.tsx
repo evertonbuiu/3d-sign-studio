@@ -138,6 +138,8 @@ function PartMesh({
         connectorWidth: number;
         connectorThickness: number;
         connectorClearance: number;
+        connectorBackInset: number;
+        connectorFrontInset: number;
         cuts: SequentialSplitOptions[];
         origin: { x: number; y: number };
       }
@@ -172,6 +174,8 @@ function PartMesh({
         connectorWidth: manualCut.connectorWidth,
         connectorThickness: manualCut.connectorThickness,
         connectorClearance: manualCut.connectorClearance,
+        connectorBackInset: manualCut.connectorBackInset,
+        connectorFrontInset: manualCut.connectorFrontInset,
         origin: manualCut.origin,
       });
     } catch (error) {
@@ -203,6 +207,8 @@ function PartMesh({
     manualCut?.connectorWidth,
     manualCut?.connectorThickness,
     manualCut?.connectorClearance,
+    manualCut?.connectorBackInset,
+    manualCut?.connectorFrontInset,
     manualCut?.cuts,
     manualCut?.origin,
   ]);
@@ -655,6 +661,10 @@ function Model({
                     connectorWidth: params.cutConnectorWidth,
                     connectorThickness: params.cutConnectorThickness,
                     connectorClearance: params.cutConnectorClearance,
+                    connectorBackInset:
+                      part.id === "fundo-laterais" ? params.backThickness : 0,
+                    connectorFrontInset:
+                      part.id === "frente-laterais" ? params.faceThickness : 0,
                     origin: { x: center.x, y: center.y },
                     cuts: params.manualCuts
                       .filter((cut) => cut.target === "all" || cut.target === part.kind)
@@ -667,6 +677,10 @@ function Model({
                         connectorWidth: cut.connectorWidth,
                         connectorThickness: cut.connectorThickness,
                         connectorClearance: cut.connectorClearance,
+                        connectorBackInset:
+                          part.id === "fundo-laterais" ? params.backThickness : 0,
+                        connectorFrontInset:
+                          part.id === "frente-laterais" ? params.faceThickness : 0,
                       })),
                   }
                 : undefined
