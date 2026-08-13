@@ -137,7 +137,10 @@ export default function Toolbar() {
     }
     const zip = new JSZip();
     let exportedSegments = 0;
-    const styleHasWalls = parts.some((part) => part.kind === "laterais");
+    // A política do encaixe pertence ao estilo completo, não só às peças
+    // visíveis/exportadas. Caso contrário, ocultar `Frente + laterais` faria o
+    // fundo separado parecer um estilo sem paredes e receber macho/fêmea.
+    const styleHasWalls = build.parts.some((part) => part.kind === "laterais");
     for (const part of parts) {
       const connectorEnabled = partSupportsCutConnector(part.kind, styleHasWalls);
       let segments;
@@ -224,7 +227,7 @@ export default function Toolbar() {
       vectorSource:
         row.vector_kind && row.vector_name && row.vector_content
           ? {
-              kind: row.vector_kind as "dxf" | "svg",
+              kind: row.vector_kind,
               name: row.vector_name,
               content: row.vector_content,
             }
