@@ -429,6 +429,38 @@ test("frente impressa e laterais formam uma unica peca com fundo separado", () =
   assert.equal(build.parts.filter((part) => part.kind === "fundo").length, 1);
 });
 
+test("encaixe da peca unificada fica somente nas paredes e nao invade a frente", () => {
+  const style = getStyle("fundo-acrilico-frente-impressa");
+  const params = { ...DEFAULT_PARAMS, ...style.preset, text: "G", mountHoles: false };
+  const build = buildSign(glyphShapes(archivo, "G", params.letterHeight), params, style);
+  const body = build.parts.find((part) => part.id === "frente-laterais");
+  assert.ok(body);
+  body.geometry.computeBoundingBox();
+  const bounds = body.geometry.boundingBox;
+  const centerX = (bounds.min.x + bounds.max.x) / 2;
+  const pieces = splitGeometryByPlane(body.geometry, {
+    angle: 0,
+    connector: "male-female",
+    connectorDepth: 4,
+    connectorWidth: 50,
+    connectorClearance: 0.2,
+    connectorFrontInset: params.faceThickness,
+  });
+  assert.equal(pieces.length, 2);
+  const male = pieces[0].geometry.index ? pieces[0].geometry.toNonIndexed() : pieces[0].geometry;
+  const position = male.getAttribute("position");
+  let connectorVertices = 0;
+  for (let index = 0; index < position.count; index++) {
+    if (position.getX(index) <= centerX + 1e-4) continue;
+    connectorVertices++;
+    assert.ok(
+      position.getZ(index) <= bounds.max.z - params.faceThickness + 1e-4,
+      "o encaixe macho entrou na espessura da frente impressa",
+    );
+  }
+  assert.ok(connectorVertices > 0, "o encaixe macho deve continuar presente nas paredes");
+});
+
 test("frentes impressas preservam os vazados internos das letras", () => {
   const shapes = glyphShapes(archivo, "D", DEFAULT_PARAMS.letterHeight);
   const bounds = new Box2();
@@ -609,3 +641,4 @@ test("estilo acrilico com aba tem preset completo e estilos removidos nao retorn
     },
   );
 });
+
