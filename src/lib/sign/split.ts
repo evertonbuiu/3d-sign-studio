@@ -232,88 +232,39 @@ function rebuildCutCap(
       .map(([key, candidate]) => [key, candidate.edge]),
   );
 
-  const point2 = (key: string) => {
-    const point = nodes.get(key)!;
-    return new Vector2(tangent.dot(point), point.z);
-  };
-
   const adjacency = new Map<string, string[]>();
   for (const [a, b] of edges.values()) {
     adjacency.set(a, [...(adjacency.get(a) ?? []), b]);
     adjacency.set(b, [...(adjacency.get(b) ?? []), a]);
   }
-  const edgeKeyOf = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
-  // Em cruzamentos (T/X) escolhe sempre a aresta mais "a direita", o que evita
-  // lacos que se auto-intersectam e geram picos na tampa do corte.
-  const nextAt = (previous: string, current: string, available: Set<string>) => {
-    const candidates = (adjacency.get(current) ?? []).filter(
-      (candidate) => candidate !== current && available.has(edgeKeyOf(current, candidate)),
-    );
-    if (!candidates.length) return undefined;
-    if (candidates.length === 1) return candidates[0];
-    const here = point2(current);
-    const back = point2(previous).sub(here);
-    const backAngle = Math.atan2(back.y, back.x);
-    let best: string | undefined;
-    let bestTurn = Number.POSITIVE_INFINITY;
-    for (const candidate of candidates) {
-      if (candidate === previous) continue;
-      const direction = point2(candidate).sub(here);
-      let turn = backAngle - Math.atan2(direction.y, direction.x);
-      while (turn <= 0) turn += Math.PI * 2;
-      while (turn > Math.PI * 2) turn -= Math.PI * 2;
-      if (turn < bestTurn) {
-        bestTurn = turn;
-        best = candidate;
-      }
-    }
-    return best ?? candidates.find((candidate) => candidate === previous);
-  };
-
   const unused = new Set(edges.keys());
   const loops: Vector2[][] = [];
   for (const [startA, startB] of edges.values()) {
-    const initialKey = edgeKeyOf(startA, startB);
+    const initialKey = startA < startB ? `${startA}|${startB}` : `${startB}|${startA}`;
     if (!unused.has(initialKey)) continue;
     const loopKeys = [startA];
-    const visited = new Set([startA]);
     let previous = startA;
     let current = startB;
     unused.delete(initialKey);
-    let closed = false;
-    while (loopKeys.length <= edges.size + 1) {
-      if (current === startA) {
-        closed = true;
-        break;
-      }
-      if (visited.has(current)) break;
+    while (current !== startA && loopKeys.length <= edges.size + 1) {
       loopKeys.push(current);
-      visited.add(current);
-      const next = nextAt(previous, current, unused);
+      const next = (adjacency.get(current) ?? []).find((candidate) => {
+        if (candidate === previous) return false;
+        const key = current < candidate ? `${current}|${candidate}` : `${candidate}|${current}`;
+        return unused.has(key);
+      });
       if (!next) break;
-      unused.delete(edgeKeyOf(current, next));
+      const key = current < next ? `${current}|${next}` : `${next}|${current}`;
+      unused.delete(key);
       previous = current;
       current = next;
     }
-    if (!closed || loopKeys.length < 3) continue;
-    const points: Vector2[] = [];
-    for (const key of loopKeys) {
-      const point = point2(key);
-      const last = points[points.length - 1];
-      if (last && last.distanceToSquared(point) <= epsilon * epsilon) continue;
-      points.push(point);
-    }
-    if (points.length >= 3) loops.push(points);
+    if (current !== startA || loopKeys.length < 3) continue;
+    loops.push(loopKeys.map((key) => new Vector2(tangent.dot(nodes.get(key)!), nodes.get(key)!.z)));
   }
 
   const loopInfo = loops
-    .map((points, index) => ({
-      points,
-      index,
-      area: Math.abs(ShapeUtils.area(points)),
-      signedArea: ShapeUtils.area(points),
-      parent: -1,
-    }))
+    .map((points, index) => ({ points, index, area: Math.abs(ShapeUtils.area(points)), parent: -1 }))
     .filter((loop) => loop.area > epsilon * epsilon);
   for (const loop of loopInfo) {
     let parentArea = Number.POSITIVE_INFINITY;
@@ -336,13 +287,11 @@ function rebuildCutCap(
   };
   const capVertices: number[] = [];
   for (const outer of loopInfo.filter((loop) => depthOf(loop) % 2 === 0)) {
-    // Contorno externo sempre anti-horario e furos sempre horarios.
-    const outerPoints = outer.signedArea < 0 ? [...outer.points].reverse() : outer.points;
     const holes = loopInfo
       .filter((loop) => loop.parent === outer.index && depthOf(loop) % 2 === 1)
-      .map((loop) => (loop.signedArea > 0 ? [...loop.points].reverse() : loop.points));
-    const allPoints = [...outerPoints, ...holes.flat()];
-    for (const face of ShapeUtils.triangulateShape(outerPoints, holes)) {
+      .map((loop) => loop.points);
+    const allPoints = [...outer.points, ...holes.flat()];
+    for (const face of ShapeUtils.triangulateShape(outer.points, holes)) {
       const ordered = side < 0 ? face : [face[0]!, face[2]!, face[1]!];
       for (const index of ordered) {
         if (index === undefined) continue;
@@ -355,7 +304,6 @@ function rebuildCutCap(
       }
     }
   }
-
 
   const kept: number[] = [];
   for (let i = 0; i + 2 < resultPosition.count; i += 3) {
@@ -482,6 +430,7 @@ function extrudeCutSection(
 ): BufferGeometry {
   const epsilon = 1e-5;
   const planeDistance = normal.dot(planePoint);
+  const tangent = new Vector3(-normal.y, normal.x, 0);
   const source = geometry.index ? geometry.toNonIndexed() : geometry;
   const position = source.getAttribute("position");
   const surfaceTriangles: Array<[Vector3, Vector3, Vector3]> = [];
@@ -515,11 +464,28 @@ function extrudeCutSection(
     }
   }
 
+  // A tampa reconstruída pode ligar paredes distintas quando uma frente
+  // impressa fecha toda a letra. Usar seus triângulos como seção do encaixe
+  // cria lâminas diagonais atravessando os vãos. As interseções das faces
+  // verticais fornecem diretamente um intervalo independente para cada parede.
+  const profileSections = wallProfilesAtPlane(followGeometry ?? geometry, planePoint, normal);
+  if (profileSections.length && maxZ > minZ + epsilon) {
+    surfaceTriangles.length = 0;
+    const at = (coordinate: number, z: number) =>
+      tangent.clone().multiplyScalar(coordinate).addScaledVector(normal, planeDistance).setZ(z);
+    for (const profile of profileSections) {
+      const a = at(profile.minT, minZ);
+      const b = at(profile.maxT, minZ);
+      const c = at(profile.maxT, maxZ);
+      const d = at(profile.minT, maxZ);
+      surfaceTriangles.push([a, b, c], [a, c, d]);
+    }
+  }
+
   // Cada ilha da secao representa uma parede atravessada pelo plano. As ilhas
   // sao pareadas na ordem transversal e as metades ficam voltadas uma para a
   // outra. Isso identifica o interior local de cada letra, sem usar o centro
   // global da palavra (que invertia paredes em letras deslocadas).
-  const tangent = new Vector3(-normal.y, normal.x, 0);
   const parent = surfaceTriangles.map((_, index) => index);
   const find = (value: number): number => {
     while (parent[value] !== value) {
@@ -628,14 +594,20 @@ function extrudeCutSection(
       0,
     );
     const sourceSectionCenter = sections[nearestSectionIndex]!.centerT;
-    const targetProfile = targetProfiles.reduce<WallProfile | undefined>(
-      (best, candidate) =>
-        best === undefined ||
-        Math.abs(candidate.centerT - sourceSectionCenter) < Math.abs(best.centerT - sourceSectionCenter)
-          ? candidate
-          : best,
-      undefined,
-    );
+    // Quando a quantidade de paredes permanece igual, a ordem transversal é
+    // a correspondência topológica correta. Escolher apenas pela proximidade
+    // podia ligar uma parede à vizinha em curvas apertadas e criar espigões.
+    const targetProfile = targetProfiles.length === sections.length
+      ? targetProfiles[nearestSectionIndex]
+      : targetProfiles.reduce<WallProfile | undefined>(
+          (best, candidate) =>
+            best === undefined ||
+            Math.abs(candidate.centerT - sourceSectionCenter) <
+              Math.abs(best.centerT - sourceSectionCenter)
+              ? candidate
+              : best,
+          undefined,
+        );
     const projectToTarget = (point: Vector3) => {
       const result = point.clone().addScaledVector(direction, depth);
       if (!targetProfile) return result;
@@ -871,6 +843,7 @@ export function splitGeometryByPlane(
     1 - widthPercent,
     false,
     true,
+    geometry,
   );
   const openedFemale = replaceExactPlanarCap(
     pieces[femaleIndex]!.geometry,
@@ -880,9 +853,13 @@ export function splitGeometryByPlane(
   );
   // Recorta primeiro no semiespaço feminino. A face traseira do sólido macho
   // fica do outro lado do plano e não pode mais fechar a boca do encaixe.
-  const cavityShell = reverseTriangleWinding(
+  let cavityShell = reverseTriangleWinding(
     clipGeometryHalf(femaleCavity, center, normal, femaleSide),
   );
+  // A face inicial do sólido macho fica exatamente na boca da cavidade. Ela é
+  // necessária para fechar o macho, mas deve ser removida da cópia invertida
+  // usada como fêmea; caso contrário, vira uma tampa sobre o encaixe.
+  cavityShell = replaceExactPlanarCap(cavityShell, new BufferGeometry(), center, normal);
   const joinedFemale = mergeGeometries(
     [withoutDegenerateTriangles(openedFemale), withoutDegenerateTriangles(cavityShell)],
     false,
