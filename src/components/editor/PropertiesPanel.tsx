@@ -518,7 +518,8 @@ export default function PropertiesPanel() {
           </AccordionItem>
 
           <AccordionItem value="corpo">
-            <AccordionTrigger className="text-sm">Placa, totem e camadas…616 tokens truncated…ssName="space-y-3 pb-4">
+            <AccordionTrigger className="text-sm">Placa, totem e camadas</AccordionTrigger>
+            <AccordionContent className="space-y-3 pb-4">
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium text-muted-foreground">
                   Furos de fixação
