@@ -597,11 +597,17 @@ test("encaixe da frente impressa nao fecha o canal entre paredes", () => {
       ? pieces[1].geometry.toNonIndexed()
       : pieces[1].geometry;
     const position = female.getAttribute("position");
+    let closedBackTriangles = 0;
+    let closedFrontTriangles = 0;
     for (let index = 0; index + 2 < position.count; index += 3) {
       const normalValues = [0, 1, 2].map((offset) =>
         normalAxis === "x" ? position.getX(index + offset) : position.getY(index + offset));
       const zValues = [0, 1, 2].map((offset) => position.getZ(index + offset));
       if (!normalValues.every((value) => Math.abs(value - plane) < 1e-3)) continue;
+      if (Math.max(...zValues) <= 1 + 1e-3) closedBackTriangles++;
+      if (Math.min(...zValues) >= params.depth - params.faceThickness - 1e-3) {
+        closedFrontTriangles++;
+      }
       if (Math.min(...zValues) < 0.9 || Math.max(...zValues) > params.depth - params.faceThickness + 1e-3) continue;
       const tangentValues = [0, 1, 2].map((offset) =>
         tangentAxis === "x" ? position.getX(index + offset) : position.getY(index + offset));
@@ -610,6 +616,8 @@ test("encaixe da frente impressa nao fecha o canal entre paredes", () => {
         `o corte a ${angle} graus criou uma tampa atravessando o canal`,
       );
     }
+    assert.ok(closedBackTriangles > 0, `o corte a ${angle} graus deixou o fundo da parede aberto`);
+    assert.ok(closedFrontTriangles > 0, `o corte a ${angle} graus deixou a frente impressa aberta`);
   }
 });
 
