@@ -574,19 +574,25 @@ test("fundo impresso com frente impressa recebe encaixe somente nas paredes da f
 
 test("encaixe da frente impressa nao fecha o canal entre paredes", () => {
   const style = getStyle("fundo-impresso-frente-impressa-aba");
-  const params = { ...DEFAULT_PARAMS, ...style.preset, text: "M", mountHoles: false };
+  const params = { ...DEFAULT_PARAMS, ...style.preset, text: "LUMINA", mountHoles: false };
   const build = buildSign(glyphShapes(archivo, params.text, params.letterHeight), params, style);
   const frontWalls = build.parts.find((part) => part.id === "frente-laterais");
   assert.ok(frontWalls);
   frontWalls.geometry.computeBoundingBox();
   const bounds = frontWalls.geometry.boundingBox;
 
-  for (const angle of [0, 90]) {
-    const normalAxis = angle === 0 ? "x" : "y";
-    const tangentAxis = angle === 0 ? "y" : "x";
-    const plane = (bounds.min[normalAxis] + bounds.max[normalAxis]) / 2;
+  for (const { angle, offset } of [
+    { angle: 0, offset: 0 },
+    { angle: 90, offset: 0 },
+    { angle: 45, offset: -80 },
+  ]) {
+    const radians = (angle * Math.PI) / 180;
+    const centerX = (bounds.min.x + bounds.max.x) / 2;
+    const centerY = (bounds.min.y + bounds.max.y) / 2;
+    const plane = Math.cos(radians) * centerX + Math.sin(radians) * centerY + offset;
     const pieces = splitGeometryByPlane(frontWalls.geometry, {
       angle,
+      offset,
       connector: "male-female",
       connectorDepth: 4,
       connectorWidth: 50,
@@ -600,17 +606,22 @@ test("encaixe da frente impressa nao fecha o canal entre paredes", () => {
     let closedBackTriangles = 0;
     let closedFrontTriangles = 0;
     for (let index = 0; index + 2 < position.count; index += 3) {
-      const normalValues = [0, 1, 2].map((offset) =>
-        normalAxis === "x" ? position.getX(index + offset) : position.getY(index + offset));
+      const normalValues = [0, 1, 2].map((vertexOffset) =>
+        Math.cos(radians) * position.getX(index + vertexOffset) +
+        Math.sin(radians) * position.getY(index + vertexOffset));
       const zValues = [0, 1, 2].map((offset) => position.getZ(index + offset));
       if (!normalValues.every((value) => Math.abs(value - plane) < 1e-3)) continue;
       if (Math.max(...zValues) <= 1 + 1e-3) closedBackTriangles++;
       if (Math.min(...zValues) >= params.depth - params.faceThickness - 1e-3) {
         closedFrontTriangles++;
       }
-      if (Math.min(...zValues) < 0.9 || Math.max(...zValues) > params.depth - params.faceThickness + 1e-3) continue;
-      const tangentValues = [0, 1, 2].map((offset) =>
-        tangentAxis === "x" ? position.getX(index + offset) : position.getY(index + offset));
+      if (
+        Math.min(...zValues) < 0.9 ||
+        Math.max(...zValues) > params.depth - params.faceThickness - 0.01
+      ) continue;
+      const tangentValues = [0, 1, 2].map((vertexOffset) =>
+        -Math.sin(radians) * position.getX(index + vertexOffset) +
+        Math.cos(radians) * position.getY(index + vertexOffset));
       assert.ok(
         Math.max(...tangentValues) - Math.min(...tangentValues) < 10,
         `o corte a ${angle} graus criou uma tampa atravessando o canal`,
