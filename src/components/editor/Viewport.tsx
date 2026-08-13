@@ -370,11 +370,43 @@ function ManualCutPlane({
     screenY: number;
     pixelsPerUnit: number;
     currentOffset: number;
+    captureTarget: Element;
   } | null>(null);
+  const callbacksRef = useRef({ onDraggingChange, onOffsetChange });
   const { camera, size } = useThree();
+  useEffect(() => {
+    callbacksRef.current = { onDraggingChange, onOffsetChange };
+  }, [onDraggingChange, onOffsetChange]);
   useEffect(() => {
     if (!dragRef.current) setPreviewOffset(offset);
   }, [offset]);
+  useEffect(() => {
+    const finish = (event?: PointerEvent) => {
+      const state = dragRef.current;
+      if (!state || (event && event.pointerId !== state.pointerId)) return;
+      if (state.captureTarget.hasPointerCapture(state.pointerId)) {
+        state.captureTarget.releasePointerCapture(state.pointerId);
+      }
+      dragRef.current = null;
+      callbacksRef.current.onDraggingChange(false);
+      callbacksRef.current.onOffsetChange(state.currentOffset);
+      document.body.style.cursor = "";
+    };
+    const cancelOnBlur = () => finish();
+    window.addEventListener("pointerup", finish, true);
+    window.addEventListener("pointercancel", finish, true);
+    window.addEventListener("blur", cancelOnBlur);
+    return () => {
+      window.removeEventListener("pointerup", finish, true);
+      window.removeEventListener("pointercancel", finish, true);
+      window.removeEventListener("blur", cancelOnBlur);
+      if (dragRef.current) {
+        dragRef.current = null;
+        callbacksRef.current.onDraggingChange(false);
+        document.body.style.cursor = "";
+      }
+    };
+  }, []);
   const geometry = useMemo(() => {
     const box = new Box3();
     for (const part of parts) {
@@ -429,6 +461,7 @@ function ManualCutPlane({
     const screenDeltaY = (-(projectedNormal.y - projectedCenter.y) * size.height) / 2;
     const pixelsPerUnit = Math.hypot(screenDeltaX, screenDeltaY);
     if (pixelsPerUnit < 1e-4) return;
+    const captureTarget = event.nativeEvent.target as Element;
     dragRef.current = {
       pointerId: event.pointerId,
       startX: event.clientX,
@@ -438,8 +471,9 @@ function ManualCutPlane({
       screenY: screenDeltaY / pixelsPerUnit,
       pixelsPerUnit,
       currentOffset: previewOffset,
+      captureTarget,
     };
-    (event.nativeEvent.target as Element).setPointerCapture(event.pointerId);
+    captureTarget.setPointerCapture(event.pointerId);
     onDraggingChange(true);
     document.body.style.cursor = "grabbing";
   };
@@ -459,14 +493,15 @@ function ManualCutPlane({
   };
 
   const stopDragging = (event: ThreeEvent<PointerEvent>) => {
-    if (!dragRef.current || dragRef.current.pointerId !== event.pointerId) return;
+    const state = dragRef.current;
+    if (!state || state.pointerId !== event.pointerId) return;
     event.stopPropagation();
-    const target = event.nativeEvent.target as Element;
-    if (target.hasPointerCapture(event.pointerId)) target.releasePointerCapture(event.pointerId);
-    const finalOffset = dragRef.current.currentOffset;
+    if (state.captureTarget.hasPointerCapture(event.pointerId)) {
+      state.captureTarget.releasePointerCapture(event.pointerId);
+    }
     dragRef.current = null;
     onDraggingChange(false);
-    onOffsetChange(finalOffset);
+    onOffsetChange(state.currentOffset);
     document.body.style.cursor = "";
   };
 
