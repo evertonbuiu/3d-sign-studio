@@ -154,6 +154,10 @@ export default function Toolbar() {
                       connectorWidth: cut.connectorWidth,
                       connectorThickness: cut.connectorThickness,
                       connectorClearance: cut.connectorClearance,
+                      connectorBackInset:
+                        part.id === "fundo-laterais" ? editor.params.backThickness : 0,
+                      connectorFrontInset:
+                        part.id === "frente-laterais" ? editor.params.faceThickness : 0,
                     }));
                   return cuts.length
                     ? splitGeometryByPlanes(part.geometry, cuts, cutOrigin)
@@ -168,6 +172,10 @@ export default function Toolbar() {
                   connectorWidth: editor.params.cutConnectorWidth,
                   connectorThickness: editor.params.cutConnectorThickness,
                   connectorClearance: editor.params.cutConnectorClearance,
+                  connectorBackInset:
+                    part.id === "fundo-laterais" ? editor.params.backThickness : 0,
+                  connectorFrontInset:
+                    part.id === "frente-laterais" ? editor.params.faceThickness : 0,
                   origin: cutOrigin,
                 })
             : splitGeometryForBuildPlate(part.geometry, {
@@ -213,7 +221,7 @@ export default function Toolbar() {
       vectorSource:
         row.vector_kind && row.vector_name && row.vector_content
           ? {
-              kind: row.vector_kind as "svg" | "dxf",
+              kind: row.vector_kind,
               name: row.vector_name,
               content: row.vector_content,
             }
@@ -364,3 +372,4 @@ export default function Toolbar() {
     </header>
   );
 }
+
