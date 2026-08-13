@@ -5,13 +5,13 @@ import EditorShell from "@/components/editor/EditorShell";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "3D Sign Maker PRO — Letras e placas 3D paramétricas" },
+      { title: "Letra 3D line tape — Letras e placas 3D paramétricas" },
       {
         name: "description",
         content:
           "Crie letras caixa, placas, totens e logotipos 3D paramétricos, visualize em tempo real, calcule custos e exporte em STL para impressão 3D.",
       },
-      { property: "og:title", content: "3D Sign Maker PRO — Letras e placas 3D paramétricas" },
+      { property: "og:title", content: "Letra 3D line tape — Letras e placas 3D paramétricas" },
       {
         property: "og:description",
         content:

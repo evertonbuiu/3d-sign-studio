@@ -13,12 +13,12 @@ import { lovable } from "@/integrations/lovable/index";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Entrar — 3D Sign Maker PRO" },
+      { title: "Entrar — Letra 3D line tape" },
       {
         name: "description",
         content: "Acesse sua conta para salvar projetos de letras 3D na nuvem.",
       },
-      { property: "og:title", content: "Entrar — 3D Sign Maker PRO" },
+      { property: "og:title", content: "Entrar — Letra 3D line tape" },
       {
         property: "og:description",
         content: "Acesse sua conta para salvar projetos de letras 3D na nuvem.",
@@ -86,7 +86,7 @@ function AuthPage() {
             <Box className="h-4 w-4" />
           </div>
           <div>
-            <h1 className="font-display text-base font-bold">3D Sign Maker PRO</h1>
+            <h1 className="font-display text-base font-bold">Letra 3D line tape</h1>
             <p className="text-xs text-muted-foreground">Salve seus projetos na nuvem</p>
           </div>
         </div>

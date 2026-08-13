@@ -25,7 +25,7 @@ export function geometriesToStl(geometries: BufferGeometry[]): ArrayBuffer {
 
   const buffer = new ArrayBuffer(84 + triangles.length * 50);
   const view = new DataView(buffer);
-  const header = "3D Sign Maker PRO";
+  const header = "Letra 3D line tape";
   for (let i = 0; i < 80; i++) {
     view.setUint8(i, i < header.length ? header.charCodeAt(i) : 32);
   }
