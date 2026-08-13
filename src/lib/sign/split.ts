@@ -893,7 +893,20 @@ export function splitGeometryByPlane(
   // Expande uma Ãºnica cÃ³pia do perfil nos eixos normal, tangente e Z. Uma
   // Ãºnica subtraÃ§Ã£o Ã© mais estÃ¡vel em contornos complexos do que unir ou
   // subtrair vÃ¡rias cÃ³pias quase coincidentes.
-  const femaleCavity = maleConnector.clone();
+  const femaleCavity = extrudeCutSection(
+    maleBaseGeometry,
+    center,
+    normal,
+    direction,
+    depth + overlap,
+    bounds.min.z + backClosure,
+    bounds.max.z - frontClosure,
+    widthPercent,
+    false,
+    false,
+    geometry,
+  );
+  femaleCavity.translate(-direction.x * overlap, -direction.y * overlap, 0);
   if (clearance > 0) {
     femaleCavity.computeBoundingBox();
     const cavityBounds = femaleCavity.boundingBox!;
@@ -982,7 +995,7 @@ export function splitGeometryByPlane(
     bounds.min.z + backClosure,
     bounds.max.z - frontClosure,
     1 - widthPercent,
-    false,
+    true,
     true,
     geometry,
   );
