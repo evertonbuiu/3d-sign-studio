@@ -232,39 +232,88 @@ function rebuildCutCap(
       .map(([key, candidate]) => [key, candidate.edge]),
   );
 
+  const point2 = (key: string) => {
+    const point = nodes.get(key)!;
+    return new Vector2(tangent.dot(point), point.z);
+  };
+
   const adjacency = new Map<string, string[]>();
   for (const [a, b] of edges.values()) {
     adjacency.set(a, [...(adjacency.get(a) ?? []), b]);
     adjacency.set(b, [...(adjacency.get(b) ?? []), a]);
   }
+  const edgeKeyOf = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+  // Em cruzamentos (T/X) escolhe sempre a aresta mais "a direita", o que evita
+  // lacos que se auto-intersectam e geram picos na tampa do corte.
+  const nextAt = (previous: string, current: string, available: Set<string>) => {
+    const candidates = (adjacency.get(current) ?? []).filter(
+      (candidate) => candidate !== current && available.has(edgeKeyOf(current, candidate)),
+    );
+    if (!candidates.length) return undefined;
+    if (candidates.length === 1) return candidates[0];
+    const here = point2(current);
+    const back = point2(previous).sub(here);
+    const backAngle = Math.atan2(back.y, back.x);
+    let best: string | undefined;
+    let bestTurn = Number.POSITIVE_INFINITY;
+    for (const candidate of candidates) {
+      if (candidate === previous) continue;
+      const direction = point2(candidate).sub(here);
+      let turn = backAngle - Math.atan2(direction.y, direction.x);
+      while (turn <= 0) turn += Math.PI * 2;
+      while (turn > Math.PI * 2) turn -= Math.PI * 2;
+      if (turn < bestTurn) {
+        bestTurn = turn;
+        best = candidate;
+      }
+    }
+    return best ?? candidates.find((candidate) => candidate === previous);
+  };
+
   const unused = new Set(edges.keys());
   const loops: Vector2[][] = [];
   for (const [startA, startB] of edges.values()) {
-    const initialKey = startA < startB ? `${startA}|${startB}` : `${startB}|${startA}`;
+    const initialKey = edgeKeyOf(startA, startB);
     if (!unused.has(initialKey)) continue;
     const loopKeys = [startA];
+    const visited = new Set([startA]);
     let previous = startA;
     let current = startB;
     unused.delete(initialKey);
-    while (current !== startA && loopKeys.length <= edges.size + 1) {
+    let closed = false;
+    while (loopKeys.length <= edges.size + 1) {
+      if (current === startA) {
+        closed = true;
+        break;
+      }
+      if (visited.has(current)) break;
       loopKeys.push(current);
-      const next = (adjacency.get(current) ?? []).find((candidate) => {
-        if (candidate === previous) return false;
-        const key = current < candidate ? `${current}|${candidate}` : `${candidate}|${current}`;
-        return unused.has(key);
-      });
+      visited.add(current);
+      const next = nextAt(previous, current, unused);
       if (!next) break;
-      const key = current < next ? `${current}|${next}` : `${next}|${current}`;
-      unused.delete(key);
+      unused.delete(edgeKeyOf(current, next));
       previous = current;
       current = next;
     }
-    if (current !== startA || loopKeys.length < 3) continue;
-    loops.push(loopKeys.map((key) => new Vector2(tangent.dot(nodes.get(key)!), nodes.get(key)!.z)));
+    if (!closed || loopKeys.length < 3) continue;
+    const points: Vector2[] = [];
+    for (const key of loopKeys) {
+      const point = point2(key);
+      const last = points[points.length - 1];
+      if (last && last.distanceToSquared(point) <= epsilon * epsilon) continue;
+      points.push(point);
+    }
+    if (points.length >= 3) loops.push(points);
   }
 
   const loopInfo = loops
-    .map((points, index) => ({ points, index, area: Math.abs(ShapeUtils.area(points)), parent: -1 }))
+    .map((points, index) => ({
+      points,
+      index,
+      area: Math.abs(ShapeUtils.area(points)),
+      signedArea: ShapeUtils.area(points),
+      parent: -1,
+    }))
     .filter((loop) => loop.area > epsilon * epsilon);
   for (const loop of loopInfo) {
     let parentArea = Number.POSITIVE_INFINITY;
@@ -287,11 +336,13 @@ function rebuildCutCap(
   };
   const capVertices: number[] = [];
   for (const outer of loopInfo.filter((loop) => depthOf(loop) % 2 === 0)) {
+    // Contorno externo sempre anti-horario e furos sempre horarios.
+    const outerPoints = outer.signedArea < 0 ? [...outer.points].reverse() : outer.points;
     const holes = loopInfo
       .filter((loop) => loop.parent === outer.index && depthOf(loop) % 2 === 1)
-      .map((loop) => loop.points);
-    const allPoints = [...outer.points, ...holes.flat()];
-    for (const face of ShapeUtils.triangulateShape(outer.points, holes)) {
+      .map((loop) => (loop.signedArea > 0 ? [...loop.points].reverse() : loop.points));
+    const allPoints = [...outerPoints, ...holes.flat()];
+    for (const face of ShapeUtils.triangulateShape(outerPoints, holes)) {
       const ordered = side < 0 ? face : [face[0]!, face[2]!, face[1]!];
       for (const index of ordered) {
         if (index === undefined) continue;
@@ -304,6 +355,7 @@ function rebuildCutCap(
       }
     }
   }
+
 
   const kept: number[] = [];
   for (let i = 0; i + 2 < resultPosition.count; i += 3) {
