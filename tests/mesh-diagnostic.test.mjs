@@ -572,6 +572,47 @@ test("fundo impresso com frente impressa recebe encaixe somente nas paredes da f
   );
 });
 
+test("encaixe da frente impressa nao fecha o canal entre paredes", () => {
+  const style = getStyle("fundo-impresso-frente-impressa-aba");
+  const params = { ...DEFAULT_PARAMS, ...style.preset, text: "M", mountHoles: false };
+  const build = buildSign(glyphShapes(archivo, params.text, params.letterHeight), params, style);
+  const frontWalls = build.parts.find((part) => part.id === "frente-laterais");
+  assert.ok(frontWalls);
+  frontWalls.geometry.computeBoundingBox();
+  const bounds = frontWalls.geometry.boundingBox;
+
+  for (const angle of [0, 90]) {
+    const normalAxis = angle === 0 ? "x" : "y";
+    const tangentAxis = angle === 0 ? "y" : "x";
+    const plane = (bounds.min[normalAxis] + bounds.max[normalAxis]) / 2;
+    const pieces = splitGeometryByPlane(frontWalls.geometry, {
+      angle,
+      connector: "male-female",
+      connectorDepth: 4,
+      connectorWidth: 50,
+      connectorClearance: 0.2,
+      connectorFrontInset: params.faceThickness,
+    });
+    const female = pieces[1].geometry.index
+      ? pieces[1].geometry.toNonIndexed()
+      : pieces[1].geometry;
+    const position = female.getAttribute("position");
+    for (let index = 0; index + 2 < position.count; index += 3) {
+      const normalValues = [0, 1, 2].map((offset) =>
+        normalAxis === "x" ? position.getX(index + offset) : position.getY(index + offset));
+      const zValues = [0, 1, 2].map((offset) => position.getZ(index + offset));
+      if (!normalValues.every((value) => Math.abs(value - plane) < 1e-3)) continue;
+      if (Math.min(...zValues) < 0.9 || Math.max(...zValues) > params.depth - params.faceThickness + 1e-3) continue;
+      const tangentValues = [0, 1, 2].map((offset) =>
+        tangentAxis === "x" ? position.getX(index + offset) : position.getY(index + offset));
+      assert.ok(
+        Math.max(...tangentValues) - Math.min(...tangentValues) < 10,
+        `o corte a ${angle} graus criou uma tampa atravessando o canal`,
+      );
+    }
+  }
+});
+
 test("frente e fundo acrilicos ficam separados com rebaixo duplo", () => {
   const style = getStyle("fundo-acrilico-frente-acrilica");
   const params = {
