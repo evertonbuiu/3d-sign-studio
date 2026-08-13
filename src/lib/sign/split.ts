@@ -429,14 +429,14 @@ function wallProfilesAtPlane(
   const groupSizes = Array<number>(unique.length + 1).fill(0);
   costs[unique.length] = 0;
   for (let index = unique.length - 1; index >= 0; index--) {
-    for (const groupSize of [2, 3]) {
+    for (const groupSize of [1, 2, 3]) {
       const next = index + groupSize;
       if (next > unique.length || !Number.isFinite(costs[next])) continue;
       const span = unique[next - 1]! - unique[index]!;
       // Uma linha isolada pode ser uma tangÃªncia ou uma aresta residual da
       // uniÃ£o. O custo equivale a uma parede de 5 mm: preferimos agrupamentos
       // locais reais, mas descartamos a sobra antes de cruzar um vazio grande.
-      const cost = span * span + costs[next]!;
+      const cost = (groupSize === 1 ? 25 : span * span) + costs[next]!;
       if (cost < costs[index]!) {
         costs[index] = cost;
         groupSizes[index] = groupSize;
@@ -445,6 +445,10 @@ function wallProfilesAtPlane(
   }
   for (let index = 0; index < unique.length && groupSizes[index]! > 0;) {
     const groupSize = groupSizes[index]!;
+    if (groupSize === 1) {
+      index++;
+      continue;
+    }
     const minT = unique[index]!;
     const maxT = unique[index + groupSize - 1]!;
     profiles.push({ minT, maxT, centerT: (minT + maxT) / 2 });
@@ -511,126 +515,7 @@ function capProfiles(
   for (const profile of profiles) {
     const a = at(profile.minT, minZ), b = at(profile.maxT, minZ);
     const c = at(profile.maxT, maxZ), d = at(profile.minT, maxZ);
-    vertices.push(
-      ...a.toArray(),
-      ...b.toArray(),
-      ...c.toArray(),
-      ...a.toArray(),
-      ...c.toArray(),
-      ...d.toArray(),
-    );
-  }
-  const cap = new BufferGeometry();
-  cap.setAttribute("position", new Float32BufferAttribute(vertices, 3));
-  cap.computeVertexNormals();
-  return cap;
-}
-
-function extrudeCutSection(
-  geometry: BufferGeometry,
-  planePoint: Vector3,
-  normal: Vector3,
-  direction: Vector3,
-  depth: number,
-  minZ: number,
-  maxZ: number,
-  wallFraction: number,
-  selectInner = true,
-  capOnly = false,
-  followGeometry?: BufferGeometry,
-): BufferGeometry {
-  const epsilon = 1e-5;
-  const planeDistance = normal.dot(planePoint);
-  const tangent = new Vector3(-normal.y, normal.x, 0);
-  const surfaceTriangles: Array<[Vector3, Vector3, Vector3]> = [];
-
-  // As intersecoes das faces verticais fornecem diretamente um intervalo
-  // independente para cada parede atravessada pelo plano.
-  const profileSections = wallProfilesAtPlane(followGeometry ?? geometry, planePoint, normal);
-  if (profileSections.length && maxZ > minZ + epsilon) {
-    const at = (coordinate: number, z: number) =>
-      tangent.clone().multiplyScalar(coordinate).addScaledVector(normal, planeDistance).setZ(z);
-    for (const profile of profileSections) {
-      const a = at(profile.minT, minZ);
-      const b = at(profile.maxT, minZ);
-      const c = at(profile.maxT, maxZ);
-      const d = at(profile.minT, maxZ);
-      surfaceTriangles.push([a, b, c], [a, c, d]);
-    }
-  }
-
-  // Cada ilha da secao representa uma parede atravessada pelo plano.
-  const parent = surfaceTriangles.map((_, index) => index);
-  const find = (value: number): number => {
-    while (parent[value] !== value) {
-      parent[value] = parent[parent[value]!]!;
-      value = parent[value]!;
-    }
-    return value;
-  };
-  const union = (a: number, b: number) => {
-    const rootA = find(a);
-    const rootB = find(b);
-    if (rootA !== rootB) parent[rootA] = rootB;
-  };
-  const vertexOwners = new Map<string, number>();
-  const vertexKey = (point: Vector3) =>
-    point.toArray().map((value) => Math.round(value * 1e5)).join(",");
-  surfaceTriangles.forEach((triangle, triangleIndex) => {
-    for (const point of triangle) {
-      const key = vertexKey(point);
-      const owner = vertexOwners.get(key);
-      if (owner !== undefined) union(triangleIndex, owner);
-      else vertexOwners.set(key, triangleIndex);
-    }
-  });
-  const groups = new Map<number, Array<[Vector3, Vector3, Vector3]>>();
-  surfaceTriangles.forEach((triangle, index) => {
-    const root = find(index);
-    groups.set(root, [...(groups.get(root) ?? []), triangle]);
-  });
-  const connectorTriangles: Array<[Vector3, Vector3, Vector3]> = [];
-  const fraction = Math.min(Math.max(wallFraction, 0), 1);
-  if (fraction <= 1e-6) return new BufferGeometry();
-  const sections = [...groups.values()]
-    .map((triangles) => {
-      const coordinates = triangles.flat().map((point) => tangent.dot(point));
-      const minT = Math.min(...coordinates);
-      const maxT = Math.max(...coordinates);
-      return { triangles, minT, maxT, centerT: (minT + maxT) / 2 };
-    })
-    .sort((a, b) => a.centerT - b.centerT);
-  const targetProfiles = followGeometry
-    ? wallProfilesAtPlane(
-        followGeometry,
-        planePoint.clone().add(direction.clone().multiplyScalar(depth)),
-        normal,
-      )
-    : [];
-  for (const [sectionIndex, section] of sections.entries()) {
-    const { triangles, minT, maxT, centerT } = section;
-    const innerAbove = sections.length % 2 === 0
-      ? sectionIndex % 2 === 0
-      : centerT < tangent.dot(planePoint);
-    const keepAbove = selectInner ? innerAbove : !innerAbove;
-    const limit = keepAbove ? maxT - (maxT - minT) * fraction : minT + (maxT - minT) * fraction;
-    for (const triangle of triangles) {
-      let polygon = triangle.map((point) => point.clone());
-      const clipped: Vector3[] = [];
-      for (let index = 0; index < polygon.length; index++) {
-        const current = polygon[index]!;
-        const next = polygon[(index + 1) % polygon.length]!;
-        const currentT = tangent.dot(current);
-        const nextT = tangent.dot(next);
-        const currentInside = keepAbove ? currentT >= limit - epsilon : currentT <= limit + epsilon;
-        const nextInside = keepAbove ? nextT >= limit - epsilon : nextT <= limit + epsilon;
-        if (currentInside) clipped.push(current.clone());
-        if (currentInside !== nextInside) {
-          clipped.push(current.clone().lerp(next, (limit - currentT) / (nextT - currentT)));
-        }
-      }
-      polygon = clipped;
-      for (let vertex = 1; vertex + 1 < polygon.length; vertex++) {
+    vertices.push(...a.to…1601 tokens truncated…vertex + 1 < polygon.length; vertex++) {
         connectorTriangles.push([polygon[0]!, polygon[vertex]!, polygon[vertex + 1]!]);
       }
     }
@@ -900,18 +785,38 @@ export function splitGeometryByPlane(
     const cavityCenter = cavityBounds.getCenter(new Vector3());
     const cavitySize = cavityBounds.getSize(new Vector3());
     const cavityPosition = femaleCavity.getAttribute("position");
-    let tangentExtent = 0;
+    const tangent = new Vector3(-normal.y, normal.x, 0);
+    const parent = Array.from({ length: cavityPosition.count }, (_, index) => index);
+    const find = (value: number): number => {
+      while (parent[value] !== value) {
+        parent[value] = parent[parent[value]!]!;
+        value = parent[value]!;
+      }
+      return value;
+    };
+    const union = (left: number, right: number) => {
+      const leftRoot = find(left), rightRoot = find(right);
+      if (leftRoot !== rightRoot) parent[leftRoot] = rightRoot;
+    };
+    const owners = new Map<string, number>();
     for (let i = 0; i < cavityPosition.count; i++) {
-      const point = new Vector3(
-        cavityPosition.getX(i),
-        cavityPosition.getY(i),
-        cavityPosition.getZ(i),
-      );
-      const tangent = new Vector3(-normal.y, normal.x, 0);
-      tangentExtent = Math.max(tangentExtent, Math.abs(tangent.dot(point.clone().sub(cavityCenter))));
+      const key = [cavityPosition.getX(i), cavityPosition.getY(i), cavityPosition.getZ(i)]
+        .map((value) => Math.round(value * 1e4)).join(",");
+      const owner = owners.get(key);
+      if (owner === undefined) owners.set(key, i);
+      else union(i, owner);
+      if (i % 3 !== 0) union(i, i - 1);
+    }
+    const componentT = new Map<number, { min: number; max: number }>();
+    for (let i = 0; i < cavityPosition.count; i++) {
+      const root = find(i);
+      const coordinate = tangent.x * cavityPosition.getX(i) + tangent.y * cavityPosition.getY(i);
+      const bounds = componentT.get(root) ?? { min: coordinate, max: coordinate };
+      bounds.min = Math.min(bounds.min, coordinate);
+      bounds.max = Math.max(bounds.max, coordinate);
+      componentT.set(root, bounds);
     }
     const normalScale = (depth + clearance * 2) / depth;
-    const tangentScale = tangentExtent > 1e-6 ? (tangentExtent + clearance) / tangentExtent : 1;
     const zScale = cavitySize.z > 1e-6 ? (cavitySize.z + clearance * 2) / cavitySize.z : 1;
     for (let i = 0; i < cavityPosition.count; i++) {
       const relative = new Vector3(
@@ -919,13 +824,17 @@ export function splitGeometryByPlane(
         cavityPosition.getY(i) - cavityCenter.y,
         cavityPosition.getZ(i) - cavityCenter.z,
       );
-      const tangent = new Vector3(-normal.y, normal.x, 0);
       const normalDistance = normal.dot(relative) * normalScale;
-      const tangentDistance = tangent.dot(relative) * tangentScale;
+      const component = componentT.get(find(i))!;
+      const componentCenter = (component.min + component.max) / 2;
+      const tangentCoordinate = tangent.x * cavityPosition.getX(i) + tangent.y * cavityPosition.getY(i);
+      const tangentExtent = Math.max((component.max - component.min) / 2, 1e-6);
+      const expandedTangent = componentCenter +
+        (tangentCoordinate - componentCenter) * ((tangentExtent + clearance) / tangentExtent);
       cavityPosition.setXYZ(
         i,
-        cavityCenter.x + normal.x * normalDistance + tangent.x * tangentDistance,
-        cavityCenter.y + normal.y * normalDistance + tangent.y * tangentDistance,
+        cavityCenter.x + normal.x * normalDistance + tangent.x * (expandedTangent - tangent.dot(cavityCenter)),
+        cavityCenter.y + normal.y * normalDistance + tangent.y * (expandedTangent - tangent.dot(cavityCenter)),
         cavityCenter.z + relative.z * zScale,
       );
     }
