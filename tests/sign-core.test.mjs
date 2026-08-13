@@ -50,7 +50,7 @@ test("calcula custo, LED e margem", () => {
   assert.ok(Math.abs(result.total - result.subtotal * 1.45) < 1e-9);
 });
 
-test("gera STL binÃ¡rio com a contagem correta", () => {
+test("gera STL binário com a contagem correta", () => {
   const geometry = new BufferGeometry();
   geometry.setAttribute("position", new Float32BufferAttribute([0, 0, 0, 1, 0, 0, 0, 1, 0], 3));
   const result = geometriesToStl([geometry]);
@@ -59,11 +59,11 @@ test("gera STL binÃ¡rio com a contagem correta", () => {
 });
 
 test("normaliza nomes de arquivo", () => {
-  assert.equal(slugify("Letra SÃ£o JoÃ£o!"), "letra-sao-joao");
+  assert.equal(slugify("Letra São João!"), "letra-sao-joao");
   assert.equal(slugify("***"), "projeto");
 });
 
-test("selecionar impressora carrega todos os parÃ¢metros do perfil", () => {
+test("selecionar impressora carrega todos os parâmetros do perfil", () => {
   const selected = getPrinterProfile("bambu-x1c");
   const params = paramsForPrinter("bambu-x1c", {
     ...DEFAULT_PARAMS,
@@ -88,7 +88,7 @@ test("selecionar impressora carrega todos os parÃ¢metros do perfil", () => {
   );
 });
 
-test("Bambu Lab A1 Ã© a impressora padrÃ£o", () => {
+test("Bambu Lab A1 é a impressora padrão", () => {
   assert.equal(DEFAULT_PRINTER.id, "bambu-a1");
   assert.equal(DEFAULT_PARAMS.printerId, "bambu-a1");
   assert.deepEqual(
@@ -111,7 +111,7 @@ test("Bambu Lab A1 Ã© a impressora padrÃ£o", () => {
   );
 });
 
-test("todos os estilos ignoram parÃ¢metros geomÃ©tricos residuais", () => {
+test("todos os estilos ignoram parâmetros geométricos residuais", () => {
   const contaminated = {
     ...DEFAULT_PARAMS,
     depth: 199,
@@ -161,12 +161,12 @@ test("todos os estilos ignoram parÃ¢metros geomÃ©tricos residuais", () => {
   }
 });
 
-test("encaixe padrÃ£o usa faixa central de 60% como o modelo SKP", () => {
+test("encaixe padrão usa faixa central de 60% como o modelo SKP", () => {
   assert.equal(DEFAULT_PARAMS.cutConnector, "male-female");
   assert.equal(DEFAULT_PARAMS.cutConnectorThickness, DEFAULT_PARAMS.depth * 0.6);
 });
 
-test("corta uma peÃ§a grande conforme a mesa da impressora", () => {
+test("corta uma peça grande conforme a mesa da impressora", () => {
   const geometry = new BoxGeometry(500, 300, 10);
   const pieces = splitGeometryForBuildPlate(geometry, { width: 220, depth: 220, margin: 10 });
   assert.equal(pieces.length, 6);
@@ -180,7 +180,7 @@ test("corta uma peÃ§a grande conforme a mesa da impressora", () => {
   }
 });
 
-test("corta uma peÃ§a em duas metades por um plano manual rotacionado", () => {
+test("corta uma peça em duas metades por um plano manual rotacionado", () => {
   const geometry = new BoxGeometry(300, 180, 20);
   const pieces = splitGeometryByPlane(geometry, { angle: 35, offset: 0 });
   assert.equal(pieces.length, 2);
@@ -201,7 +201,7 @@ test("acumula cortes manuais sucessivos usando a mesma origem", () => {
   assert.deepEqual(pieces.map((piece) => piece.total), [3, 3, 3]);
 });
 
-test("plano manual usa a origem global do modelo em todas as peÃ§as", () => {
+test("plano manual usa a origem global do modelo em todas as peças", () => {
   const geometry = new BoxGeometry(20, 20, 10);
   geometry.translate(100, 0, 0);
   assert.equal(
@@ -229,7 +229,7 @@ test("corte manual aceita malha sem UV e sem normais, como as letras geradas", (
   }
 });
 
-test("fallback visual recorta duas metades locais sem depender da cÃ¢mera", () => {
+test("fallback visual recorta duas metades locais sem depender da câmera", () => {
   const geometry = new BoxGeometry(100, 60, 20);
   const pieces = clipGeometryByPlaneForPreview(geometry, { angle: 90, offset: 0 });
   assert.equal(pieces.length, 2);
@@ -239,7 +239,7 @@ test("fallback visual recorta duas metades locais sem depender da cÃ¢mera", ()
   }
 });
 
-test("corte manual cria macho e fÃªmea complementares com folga", () => {
+test("corte manual cria macho e fêmea complementares com folga", () => {
   const geometry = new BoxGeometry(100, 60, 20);
   const plain = splitGeometryByPlane(geometry, { angle: 0, offset: 0 });
   const pieces = splitGeometryByPlane(geometry, {
@@ -254,7 +254,7 @@ test("corte manual cria macho e fÃªmea complementares com folga", () => {
   assert.equal(pieces.length, 2);
   pieces[0].geometry.computeBoundingBox();
   pieces[1].geometry.computeBoundingBox();
-  assert.ok(pieces[0].geometry.boundingBox.max.x >= 3.99, "o macho deve avanÃ§ar 4 mm");
+  assert.ok(pieces[0].geometry.boundingBox.max.x >= 3.99, "o macho deve avançar 4 mm");
   const malePosition = pieces[0].geometry.getAttribute("position");
   const extendedY = [];
   for (let i = 0; i < malePosition.count; i++) {
@@ -267,7 +267,7 @@ test("corte manual cria macho e fÃªmea complementares com folga", () => {
   assert.ok(
     pieces[1].geometry.getAttribute("position").count >
       plain[1].geometry.getAttribute("position").count,
-    "a fÃªmea deve conter a cavidade com folga",
+    "a fêmea deve conter a cavidade com folga",
   );
 });
 
@@ -333,7 +333,7 @@ test("encaixe e recuo femea acompanham o angulo do plano de corte", () => {
   };
   assert.ok(
     Math.max(...signedDistances(pieces[0])) >= 3.99,
-    "o macho deve avanÃ§ar na normal do plano inclinado",
+    "o macho deve avançar na normal do plano inclinado",
   );
   const female = pieces[1].geometry.index ? pieces[1].geometry.toNonIndexed() : pieces[1].geometry;
   const position = female.getAttribute("position");
@@ -479,8 +479,8 @@ test("parte superior usa o rebaixo na metade externa da parede", () => {
     const z = position.getZ(index);
     if (x > 0.1 && x < 4.5 && z > -9 && z < 9) cavityY.push(position.getY(index));
   }
-  assert.ok(cavityY.length > 0, "a peÃ§a superior deve receber a cavidade fÃªmea");
-  assert.ok(Math.min(...cavityY) >= -0.3, "a fÃªmea deve ficar na metade externa oposta ao macho");
+  assert.ok(cavityY.length > 0, "a peça superior deve receber a cavidade fêmea");
+  assert.ok(Math.min(...cavityY) >= -0.3, "a fêmea deve ficar na metade externa oposta ao macho");
 });
 
 test("paredes fora do centro global mantem o encaixe voltado para dentro", () => {
@@ -508,7 +508,7 @@ test("paredes fora do centro global mantem o encaixe voltado para dentro", () =>
   );
 });
 
-test("encaixe reproduz as medidas extraÃ­das do modelo c.skp", () => {
+test("encaixe reproduz as medidas extraídas do modelo c.skp", () => {
   const geometry = new BoxGeometry(100, 60, 45);
   geometry.translate(0, 0, 22.5);
   const pieces = splitGeometryByPlane(geometry, {
