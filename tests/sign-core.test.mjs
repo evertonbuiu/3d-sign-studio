@@ -463,7 +463,7 @@ test("rebaixo ocupa somente metade interna da espessura da parede", () => {
   assert.ok(Math.max(...extendedY) <= 0.01, "o macho deve permanecer na metade interna selecionada");
 });
 
-test("parte superior usa o rebaixo na metade externa da parede", () => {
+test("parte superior preserva a metade externa e recua a metade interna", () => {
   const geometry = new BoxGeometry(100, 60, 20);
   const pieces = splitGeometryByPlane(geometry, {
     angle: 0,
@@ -480,7 +480,7 @@ test("parte superior usa o rebaixo na metade externa da parede", () => {
     if (x > 0.1 && x < 4.5 && z > -9 && z < 9) cavityY.push(position.getY(index));
   }
   assert.ok(cavityY.length > 0, "a peça superior deve receber a cavidade fêmea");
-  assert.ok(Math.min(...cavityY) >= -0.3, "a fêmea deve ficar na metade externa oposta ao macho");
+  assert.ok(Math.max(...cavityY) <= 0.3, "a cavidade deve receber a lingueta na metade interna");
 });
 
 test("paredes fora do centro global mantem o encaixe voltado para dentro", () => {
