@@ -433,14 +433,14 @@ function wallProfilesAtPlane(
       const next = index + groupSize;
       if (next > unique.length || !Number.isFinite(costs[next])) continue;
       const span = unique[next - 1]! - unique[index]!;
-      const cost = span * span + costs[next];
-      if (cost < costs[index]) {
+      const cost = span * span + costs[next]!;
+      if (cost < costs[index]!) {
         costs[index] = cost;
         groupSizes[index] = groupSize;
       }
     }
   }
-  for (let index = 0; index < unique.length && groupSizes[index] > 0;) {
+  for (let index = 0; index < unique.length && groupSizes[index]! > 0;) {
     const groupSize = groupSizes[index]!;
     const minT = unique[index]!;
     const maxT = unique[index + groupSize - 1]!;
@@ -517,54 +517,7 @@ function extrudeCutSection(
     }
   }
 
-  // Cada ilha da secao representa uma parede atravessada pelo plano. As ilhas
-  // sao pareadas na ordem transversal e as metades ficam voltadas uma para a
-  // outra. Isso identifica o interior local de cada letra, sem usar o centro
-  // global da palavra (que invertia paredes em letras deslocadas).
-  const parent = surfaceTriangles.map((_, index) => index);
-  const find = (value: number): number => {
-    while (parent[value] !== value) {
-      parent[value] = parent[parent[value]!]!;
-      value = parent[value]!;
-    }
-    return value;
-  };
-  const union = (a: number, b: number) => {
-    const rootA = find(a);
-    const rootB = find(b);
-    if (rootA !== rootB) parent[rootA] = rootB;
-  };
-  const vertexOwners = new Map<string, number>();
-  const vertexKey = (point: Vector3) =>
-    point.toArray().map((value) => Math.round(value * 1e5)).join(",");
-  surfaceTriangles.forEach((triangle, triangleIndex) => {
-    for (const point of triangle) {
-      const key = vertexKey(point);
-      const owner = vertexOwners.get(key);
-      if (owner !== undefined) union(triangleIndex, owner);
-      else vertexOwners.set(key, triangleIndex);
-    }
-  });
-  const groups = new Map<number, Array<[Vector3, Vector3, Vector3]>>();
-  surfaceTriangles.forEach((triangle, index) => {
-    const root = find(index);
-    groups.set(root, [...(groups.get(root) ?? []), triangle]);
-  });
-  const connectorTriangles: Array<[Vector3, Vector3, Vector3]> = [];
-  const fraction = Math.min(Math.max(wallFraction, 0), 1);
-  if (fraction <= 1e-6) return new BufferGeometry();
-  const sections = [...groups.values()]
-    .map((triangles) => {
-      const coordinates = triangles.flat().map((point) => tangent.dot(point));
-      const minT = Math.min(...coordinates);
-      const maxT = Math.max(...coordinates);
-      return { triangles, minT, maxT, centerT: (minT + maxT) / 2 };
-    })
-    .sort((a, b) => a.centerT - b.centerT);
-  const targetProfiles = followGeometry
-    ? wallProfilesAtPlane(
-        followGeometry,
-        planePoint.clone().add(direction.clone().multiplyScalar(depth)),
+  // Cada ilha da secao represent…497 tokens truncated…int.clone().add(direction.clone().multiplyScalar(depth)),
         normal,
       )
     : [];
@@ -738,6 +691,48 @@ function replaceExactPlanarCap(
   return result;
 }
 
+function extractExactPlanarCapRange(
+  geometry: BufferGeometry,
+  planePoint: Vector3,
+  normal: Vector3,
+  minZ: number,
+  maxZ: number,
+): BufferGeometry {
+  const epsilon = 1e-5;
+  const planeDistance = normal.dot(planePoint);
+  const source = geometry.index ? geometry.toNonIndexed() : geometry;
+  const position = source.getAttribute("position");
+  const vertices: number[] = [];
+  const clipZ = (polygon: Vector3[], limit: number, keepAbove: boolean) => {
+    const clipped: Vector3[] = [];
+    for (let index = 0; index < polygon.length; index++) {
+      const current = polygon[index]!;
+      const next = polygon[(index + 1) % polygon.length]!;
+      const currentInside = keepAbove ? current.z >= limit - epsilon : current.z <= limit + epsilon;
+      const nextInside = keepAbove ? next.z >= limit - epsilon : next.z <= limit + epsilon;
+      if (currentInside) clipped.push(current.clone());
+      if (currentInside !== nextInside) {
+        const ratio = (limit - current.z) / (next.z - current.z);
+        clipped.push(current.clone().lerp(next, ratio));
+      }
+    }
+    return clipped;
+  };
+  for (let index = 0; index + 2 < position.count; index += 3) {
+    let polygon = [0, 1, 2].map((offset) =>
+      new Vector3(position.getX(index + offset), position.getY(index + offset), position.getZ(index + offset)));
+    if (!polygon.every((point) => Math.abs(normal.dot(point) - planeDistance) <= epsilon)) continue;
+    polygon = clipZ(polygon, minZ, true);
+    polygon = clipZ(polygon, maxZ, false);
+    for (let vertex = 1; vertex + 1 < polygon.length; vertex++) {
+      vertices.push(...polygon[0]!.toArray(), ...polygon[vertex]!.toArray(), ...polygon[vertex + 1]!.toArray());
+    }
+  }
+  const result = new BufferGeometry();
+  result.setAttribute("position", new Float32BufferAttribute(vertices, 3));
+  return result;
+}
+
 /** Divide uma malha por um plano vertical rotacionado em torno do eixo Z. */
 export function splitGeometryByPlane(
   geometry: BufferGeometry,
@@ -880,9 +875,29 @@ export function splitGeometryByPlane(
     true,
     geometry,
   );
+  const backCap = extractExactPlanarCapRange(
+    pieces[femaleIndex]!.geometry,
+    center,
+    normal,
+    bounds.min.z,
+    bounds.min.z + backClosure,
+  );
+  const frontCap = extractExactPlanarCapRange(
+    pieces[femaleIndex]!.geometry,
+    center,
+    normal,
+    bounds.max.z - frontClosure,
+    bounds.max.z,
+  );
+  const capParts = [outerCap, backCap, frontCap].filter(
+    (cap) => (cap.getAttribute("position")?.count ?? 0) > 0,
+  );
+  const replacementCap = capParts.length === 1
+    ? capParts[0]
+    : mergeGeometries(capParts, false);
   const openedFemale = replaceExactPlanarCap(
     pieces[femaleIndex]!.geometry,
-    outerCap,
+    replacementCap ?? outerCap,
     center,
     normal,
   );
