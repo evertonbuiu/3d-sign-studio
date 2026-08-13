@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { Canvas, type ThreeEvent } from "@react-three/fiber";
+import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
 import { ContactShadows, Grid, OrbitControls } from "@react-three/drei";
 import {
   Box3,
@@ -11,6 +11,7 @@ import {
   DoubleSide,
   EdgesGeometry,
   Float32BufferAttribute,
+  Mesh,
   Vector3,
   type Group,
 } from "three";
@@ -349,11 +350,26 @@ function ManualCutPlane({
   parts,
   angle,
   offset,
+  onOffsetChange,
+  onDraggingChange,
 }: {
   parts: SignPart[];
   angle: number;
   offset: number;
+  onOffsetChange: (offset: number) => void;
+  onDraggingChange: (dragging: boolean) => void;
 }) {
+  const meshRef = useRef<Mesh>(null);
+  const dragRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    startOffset: number;
+    screenX: number;
+    screenY: number;
+    pixelsPerUnit: number;
+  } | null>(null);
+  const { camera, size } = useThree();
   const geometry = useMemo(() => {
     const box = new Box3();
     for (const part of parts) {
@@ -389,11 +405,75 @@ function ManualCutPlane({
       ),
     );
     result.computeVertexNormals();
+    result.computeBoundingBox();
     return result;
   }, [parts, angle, offset]);
   if (!geometry) return null;
+
+  const startDragging = (event: ThreeEvent<PointerEvent>) => {
+    if (!meshRef.current) return;
+    event.stopPropagation();
+    const radians = (angle * Math.PI) / 180;
+    const normal = new Vector3(Math.cos(radians), Math.sin(radians), 0);
+    const localCenter = geometry.boundingBox?.getCenter(new Vector3()) ?? new Vector3();
+    const worldCenter = meshRef.current.localToWorld(localCenter.clone());
+    const worldNormalPoint = meshRef.current.localToWorld(localCenter.clone().add(normal));
+    const projectedCenter = worldCenter.project(camera);
+    const projectedNormal = worldNormalPoint.project(camera);
+    const screenDeltaX = ((projectedNormal.x - projectedCenter.x) * size.width) / 2;
+    const screenDeltaY = (-(projectedNormal.y - projectedCenter.y) * size.height) / 2;
+    const pixelsPerUnit = Math.hypot(screenDeltaX, screenDeltaY);
+    if (pixelsPerUnit < 1e-4) return;
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      startOffset: offset,
+      screenX: screenDeltaX / pixelsPerUnit,
+      screenY: screenDeltaY / pixelsPerUnit,
+      pixelsPerUnit,
+    };
+    (event.nativeEvent.target as Element).setPointerCapture(event.pointerId);
+    onDraggingChange(true);
+    document.body.style.cursor = "grabbing";
+  };
+
+  const drag = (event: ThreeEvent<PointerEvent>) => {
+    const state = dragRef.current;
+    if (!state || state.pointerId !== event.pointerId) return;
+    event.stopPropagation();
+    const screenDistance =
+      (event.clientX - state.startX) * state.screenX +
+      (event.clientY - state.startY) * state.screenY;
+    onOffsetChange(Math.round((state.startOffset + screenDistance / state.pixelsPerUnit) * 10) / 10);
+  };
+
+  const stopDragging = (event: ThreeEvent<PointerEvent>) => {
+    if (!dragRef.current || dragRef.current.pointerId !== event.pointerId) return;
+    event.stopPropagation();
+    const target = event.nativeEvent.target as Element;
+    if (target.hasPointerCapture(event.pointerId)) target.releasePointerCapture(event.pointerId);
+    dragRef.current = null;
+    onDraggingChange(false);
+    document.body.style.cursor = "";
+  };
+
   return (
-    <mesh geometry={geometry} renderOrder={1001}>
+    <mesh
+      ref={meshRef}
+      geometry={geometry}
+      renderOrder={1001}
+      onPointerDown={startDragging}
+      onPointerMove={drag}
+      onPointerUp={stopDragging}
+      onPointerCancel={stopDragging}
+      onPointerOver={() => {
+        if (!dragRef.current) document.body.style.cursor = "grab";
+      }}
+      onPointerOut={() => {
+        if (!dragRef.current) document.body.style.cursor = "";
+      }}
+    >
       <meshBasicMaterial
         color="#2563eb"
         transparent
@@ -433,14 +513,16 @@ function Model({
   selected,
   onHover,
   onPick,
+  onCutPlaneDragging,
 }: {
   edgeSelect: boolean;
   hover: PickedEdge | null;
   selected: PickedEdge[];
   onHover: (edge: PickedEdge | null) => void;
   onPick: (edge: PickedEdge, additive: boolean) => void;
+  onCutPlaneDragging: (dragging: boolean) => void;
 }) {
-  const { build, explode, hidden, wireframe, showOutlines, params } = useEditor();
+  const { build, explode, hidden, wireframe, showOutlines, params, setParam } = useEditor();
   const groupRef = useRef<Group>(null);
 
   const placement = useMemo(
@@ -561,6 +643,8 @@ function Model({
             parts={visible}
             angle={params.manualCutAngle}
             offset={params.manualCutOffset}
+            onOffsetChange={(value) => setParam("manualCutOffset", value)}
+            onDraggingChange={onCutPlaneDragging}
           />
         ) : null}
         {edgeSelect &&
@@ -600,6 +684,7 @@ export default function Viewport() {
   const [edgeSelect, setEdgeSelect] = useState(false);
   const [hover, setHover] = useState<PickedEdge | null>(null);
   const [selected, setSelected] = useState<PickedEdge[]>([]);
+  const [cutPlaneDragging, setCutPlaneDragging] = useState(false);
 
   const totalLength = selected.reduce((sum, e) => sum + e.length, 0);
 
@@ -636,6 +721,7 @@ export default function Viewport() {
           selected={selected}
           onHover={setHover}
           onPick={handlePick}
+          onCutPlaneDragging={setCutPlaneDragging}
         />
         <ContactShadows position={[0, -1.6, 0]} opacity={0.35} blur={2.4} scale={9} far={4} />
         <Grid
@@ -650,6 +736,7 @@ export default function Viewport() {
         />
         <OrbitControls
           makeDefault
+          enabled={!cutPlaneDragging}
           enablePan
           target={[0, 0, 0]}
           minDistance={0}
