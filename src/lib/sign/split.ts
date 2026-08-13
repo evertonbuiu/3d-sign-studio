@@ -429,14 +429,11 @@ function wallProfilesAtPlane(
   const groupSizes = Array<number>(unique.length + 1).fill(0);
   costs[unique.length] = 0;
   for (let index = unique.length - 1; index >= 0; index--) {
-    for (const groupSize of [1, 2, 3]) {
+    for (const groupSize of [2, 3]) {
       const next = index + groupSize;
       if (next > unique.length || !Number.isFinite(costs[next])) continue;
       const span = unique[next - 1]! - unique[index]!;
-      // Uma linha isolada pode ser uma tangÃªncia ou uma aresta residual da
-      // uniÃ£o. O custo equivale a uma parede de 5 mm: preferimos agrupamentos
-      // locais reais, mas descartamos a sobra antes de cruzar um vazio grande.
-      const cost = (groupSize === 1 ? 25 : span * span) + costs[next]!;
+      const cost = span * span + costs[next]!;
       if (cost < costs[index]!) {
         costs[index] = cost;
         groupSizes[index] = groupSize;
@@ -445,89 +442,12 @@ function wallProfilesAtPlane(
   }
   for (let index = 0; index < unique.length && groupSizes[index]! > 0;) {
     const groupSize = groupSizes[index]!;
-    if (groupSize === 1) {
-      index++;
-      continue;
-    }
     const minT = unique[index]!;
     const maxT = unique[index + groupSize - 1]!;
     profiles.push({ minT, maxT, centerT: (minT + maxT) / 2 });
     index += groupSize;
   }
   return profiles;
-}
-
-function surfaceProfilesAtPlane(
-  geometry: BufferGeometry,
-  planePoint: Vector3,
-  normal: Vector3,
-  z: number,
-): WallProfile[] {
-  const epsilon = 1e-4;
-  const tangent = new Vector3(-normal.y, normal.x, 0);
-  const planeDistance = normal.dot(planePoint);
-  const source = geometry.index ? geometry.toNonIndexed() : geometry;
-  const position = source.getAttribute("position");
-  const intervals: Array<[number, number]> = [];
-  for (let index = 0; index + 2 < position.count; index += 3) {
-    const triangle = [0, 1, 2].map((offset) =>
-      new Vector3(position.getX(index + offset), position.getY(index + offset), position.getZ(index + offset)));
-    if (!triangle.every((point) => Math.abs(point.z - z) <= epsilon)) continue;
-    const intersections: number[] = [];
-    for (let edge = 0; edge < 3; edge++) {
-      const start = triangle[edge]!;
-      const end = triangle[(edge + 1) % 3]!;
-      const startDistance = normal.dot(start) - planeDistance;
-      const endDistance = normal.dot(end) - planeDistance;
-      if (Math.abs(startDistance) <= epsilon) intersections.push(tangent.dot(start));
-      if (startDistance * endDistance < -epsilon * epsilon) {
-        intersections.push(tangent.dot(start.clone().lerp(end, startDistance / (startDistance - endDistance))));
-      }
-    }
-    if (intersections.length >= 2) {
-      const minT = Math.min(...intersections);
-      const maxT = Math.max(...intersections);
-      if (maxT - minT > epsilon) intervals.push([minT, maxT]);
-    }
-  }
-  intervals.sort((a, b) => a[0] - b[0]);
-  const merged: Array<[number, number]> = [];
-  for (const interval of intervals) {
-    const previous = merged.at(-1);
-    if (previous && interval[0] <= previous[1] + epsilon) previous[1] = Math.max(previous[1], interval[1]);
-    else merged.push([...interval]);
-  }
-  return merged.map(([minT, maxT]) => ({ minT, maxT, centerT: (minT + maxT) / 2 }));
-}
-
-function capProfiles(
-  profiles: WallProfile[],
-  planePoint: Vector3,
-  normal: Vector3,
-  minZ: number,
-  maxZ: number,
-): BufferGeometry {
-  const tangent = new Vector3(-normal.y, normal.x, 0);
-  const planeDistance = normal.dot(planePoint);
-  const at = (coordinate: number, z: number) =>
-    tangent.clone().multiplyScalar(coordinate).addScaledVector(normal, planeDistance).setZ(z);
-  const vertices: number[] = [];
-  for (const profile of profiles) {
-    const a = at(profile.minT, minZ), b = at(profile.maxT, minZ);
-    const c = at(profile.maxT, maxZ), d = at(profile.minT, maxZ);
-    vertices.push(
-      ...a.toArray(),
-      ...b.toArray(),
-      ...c.toArray(),
-      ...a.toArray(),
-      ...c.toArray(),
-      ...d.toArray(),
-    );
-  }
-  const cap = new BufferGeometry();
-  cap.setAttribute("position", new Float32BufferAttribute(vertices, 3));
-  cap.computeVertexNormals();
-  return cap;
 }
 
 function extrudeCutSection(
@@ -546,12 +466,46 @@ function extrudeCutSection(
   const epsilon = 1e-5;
   const planeDistance = normal.dot(planePoint);
   const tangent = new Vector3(-normal.y, normal.x, 0);
+  const source = geometry.index ? geometry.toNonIndexed() : geometry;
+  const position = source.getAttribute("position");
   const surfaceTriangles: Array<[Vector3, Vector3, Vector3]> = [];
 
-  // As intersecoes das faces verticais fornecem diretamente um intervalo
-  // independente para cada parede atravessada pelo plano.
+  const clipZ = (polygon: Vector3[], limit: number, keepAbove: boolean) => {
+    const clipped: Vector3[] = [];
+    for (let index = 0; index < polygon.length; index++) {
+      const current = polygon[index]!;
+      const next = polygon[(index + 1) % polygon.length]!;
+      const currentInside = keepAbove ? current.z >= limit - epsilon : current.z <= limit + epsilon;
+      const nextInside = keepAbove ? next.z >= limit - epsilon : next.z <= limit + epsilon;
+      if (currentInside) clipped.push(current.clone());
+      if (currentInside !== nextInside) {
+        const ratio = (limit - current.z) / (next.z - current.z);
+        clipped.push(current.clone().lerp(next, ratio));
+      }
+    }
+    return clipped;
+  };
+
+  for (let i = 0; i + 2 < position.count; i += 3) {
+    let polygon = [0, 1, 2].map(
+      (offset) =>
+        new Vector3(position.getX(i + offset), position.getY(i + offset), position.getZ(i + offset)),
+    );
+    if (!polygon.every((point) => Math.abs(normal.dot(point) - planeDistance) <= epsilon)) continue;
+    polygon = clipZ(polygon, minZ, true);
+    polygon = clipZ(polygon, maxZ, false);
+    for (let vertex = 1; vertex + 1 < polygon.length; vertex++) {
+      surfaceTriangles.push([polygon[0]!, polygon[vertex]!, polygon[vertex + 1]!]);
+    }
+  }
+
+  // A tampa reconstruÃ­da pode ligar paredes distintas quando uma frente
+  // impressa fecha toda a letra. Usar seus triÃ¢ngulos como seÃ§Ã£o do encaixe
+  // cria lÃ¢minas diagonais atravessando os vÃ£os. As interseÃ§Ãµes das faces
+  // verticais fornecem diretamente um intervalo independente para cada parede.
   const profileSections = wallProfilesAtPlane(followGeometry ?? geometry, planePoint, normal);
   if (profileSections.length && maxZ > minZ + epsilon) {
+    surfaceTriangles.length = 0;
     const at = (coordinate: number, z: number) =>
       tangent.clone().multiplyScalar(coordinate).addScaledVector(normal, planeDistance).setZ(z);
     for (const profile of profileSections) {
@@ -563,7 +517,10 @@ function extrudeCutSection(
     }
   }
 
-  // Cada ilha da secao representa uma parede atravessada pelo plano.
+  // Cada ilha da secao representa uma parede atravessada pelo plano. As ilhas
+  // sao pareadas na ordem transversal e as metades ficam voltadas uma para a
+  // outra. Isso identifica o interior local de cada letra, sem usar o centro
+  // global da palavra (que invertia paredes em letras deslocadas).
   const parent = surfaceTriangles.map((_, index) => index);
   const find = (value: number): number => {
     while (parent[value] !== value) {
@@ -965,15 +922,15 @@ export function splitGeometryByPlane(
     true,
     geometry,
   );
-  const backCap = capProfiles(
-    wallProfilesAtPlane(geometry, center, normal),
+  const backCap = extractExactPlanarCapRange(
+    pieces[femaleIndex]!.geometry,
     center,
     normal,
     bounds.min.z,
     bounds.min.z + backClosure,
   );
-  const frontCap = capProfiles(
-    surfaceProfilesAtPlane(geometry, center, normal, bounds.max.z),
+  const frontCap = extractExactPlanarCapRange(
+    pieces[femaleIndex]!.geometry,
     center,
     normal,
     bounds.max.z - frontClosure,
