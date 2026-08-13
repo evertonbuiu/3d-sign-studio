@@ -515,7 +515,99 @@ function capProfiles(
   for (const profile of profiles) {
     const a = at(profile.minT, minZ), b = at(profile.maxT, minZ);
     const c = at(profile.maxT, maxZ), d = at(profile.minT, maxZ);
-    vertices.push(...a.to…1271 tokens truncated…ection.clone().multiplyScalar(depth)),
+    vertices.push(
+      ...a.toArray(),
+      ...b.toArray(),
+      ...c.toArray(),
+      ...a.toArray(),
+      ...c.toArray(),
+      ...d.toArray(),
+    );
+  }
+  const cap = new BufferGeometry();
+  cap.setAttribute("position", new Float32BufferAttribute(vertices, 3));
+  cap.computeVertexNormals();
+  return cap;
+}
+
+function extrudeCutSection(
+  geometry: BufferGeometry,
+  planePoint: Vector3,
+  normal: Vector3,
+  direction: Vector3,
+  depth: number,
+  minZ: number,
+  maxZ: number,
+  wallFraction: number,
+  selectInner = true,
+  capOnly = false,
+  followGeometry?: BufferGeometry,
+): BufferGeometry {
+  const epsilon = 1e-5;
+  const planeDistance = normal.dot(planePoint);
+  const tangent = new Vector3(-normal.y, normal.x, 0);
+  const surfaceTriangles: Array<[Vector3, Vector3, Vector3]> = [];
+
+  // As intersecoes das faces verticais fornecem diretamente um intervalo
+  // independente para cada parede atravessada pelo plano.
+  const profileSections = wallProfilesAtPlane(followGeometry ?? geometry, planePoint, normal);
+  if (profileSections.length && maxZ > minZ + epsilon) {
+    const at = (coordinate: number, z: number) =>
+      tangent.clone().multiplyScalar(coordinate).addScaledVector(normal, planeDistance).setZ(z);
+    for (const profile of profileSections) {
+      const a = at(profile.minT, minZ);
+      const b = at(profile.maxT, minZ);
+      const c = at(profile.maxT, maxZ);
+      const d = at(profile.minT, maxZ);
+      surfaceTriangles.push([a, b, c], [a, c, d]);
+    }
+  }
+
+  // Cada ilha da secao representa uma parede atravessada pelo plano.
+  const parent = surfaceTriangles.map((_, index) => index);
+  const find = (value: number): number => {
+    while (parent[value] !== value) {
+      parent[value] = parent[parent[value]!]!;
+      value = parent[value]!;
+    }
+    return value;
+  };
+  const union = (a: number, b: number) => {
+    const rootA = find(a);
+    const rootB = find(b);
+    if (rootA !== rootB) parent[rootA] = rootB;
+  };
+  const vertexOwners = new Map<string, number>();
+  const vertexKey = (point: Vector3) =>
+    point.toArray().map((value) => Math.round(value * 1e5)).join(",");
+  surfaceTriangles.forEach((triangle, triangleIndex) => {
+    for (const point of triangle) {
+      const key = vertexKey(point);
+      const owner = vertexOwners.get(key);
+      if (owner !== undefined) union(triangleIndex, owner);
+      else vertexOwners.set(key, triangleIndex);
+    }
+  });
+  const groups = new Map<number, Array<[Vector3, Vector3, Vector3]>>();
+  surfaceTriangles.forEach((triangle, index) => {
+    const root = find(index);
+    groups.set(root, [...(groups.get(root) ?? []), triangle]);
+  });
+  const connectorTriangles: Array<[Vector3, Vector3, Vector3]> = [];
+  const fraction = Math.min(Math.max(wallFraction, 0), 1);
+  if (fraction <= 1e-6) return new BufferGeometry();
+  const sections = [...groups.values()]
+    .map((triangles) => {
+      const coordinates = triangles.flat().map((point) => tangent.dot(point));
+      const minT = Math.min(...coordinates);
+      const maxT = Math.max(...coordinates);
+      return { triangles, minT, maxT, centerT: (minT + maxT) / 2 };
+    })
+    .sort((a, b) => a.centerT - b.centerT);
+  const targetProfiles = followGeometry
+    ? wallProfilesAtPlane(
+        followGeometry,
+        planePoint.clone().add(direction.clone().multiplyScalar(depth)),
         normal,
       )
     : [];
