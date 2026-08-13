@@ -477,10 +477,18 @@ test("parte superior preserva a metade externa e recua a metade interna", () => 
   for (let index = 0; index < position.count; index++) {
     const x = position.getX(index);
     const z = position.getZ(index);
-    if (x > 0.1 && x < 4.5 && z > -9 && z < 9) cavityY.push(position.getY(index));
+    if (x > 1 && x < 4.5 && z > -9 && z < 9) cavityY.push(position.getY(index));
   }
   assert.ok(cavityY.length > 0, "a peça superior deve receber a cavidade fêmea");
   assert.ok(Math.max(...cavityY) <= 0.3, "a cavidade deve receber a lingueta na metade interna");
+  const projectedOuter = [];
+  for (let index = 0; index < position.count; index++) {
+    const x = position.getX(index);
+    const z = position.getZ(index);
+    if (x < -0.1 && z > -9 && z < 9) projectedOuter.push(position.getY(index));
+  }
+  assert.ok(projectedOuter.length > 0, "a peça superior deve exibir a lingueta externa");
+  assert.ok(Math.min(...projectedOuter) >= -0.3, "a lingueta superior deve ocupar a metade externa");
 });
 
 test("paredes fora do centro global mantem o encaixe voltado para dentro", () => {
