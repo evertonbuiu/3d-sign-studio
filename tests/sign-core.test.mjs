@@ -180,6 +180,27 @@ test("corta uma peça grande conforme a mesa da impressora", () => {
   }
 });
 
+test("corte automático não fecha o vazio entre paredes separadas", () => {
+  const lower = new BoxGeometry(300, 20, 20).translate(0, -40, 0);
+  const upper = new BoxGeometry(300, 20, 20).translate(0, 40, 0);
+  const geometry = mergeGeometries([lower, upper], false);
+  assert.ok(geometry);
+  const pieces = splitGeometryForBuildPlate(geometry, { width: 170, depth: 200, margin: 10 });
+  assert.equal(pieces.length, 2);
+  for (const piece of pieces) {
+    const source = piece.geometry.index ? piece.geometry.toNonIndexed() : piece.geometry;
+    const position = source.getAttribute("position");
+    let bridgesGap = false;
+    for (let index = 0; index + 2 < position.count; index += 3) {
+      const xs = [0, 1, 2].map((offset) => position.getX(index + offset));
+      if (Math.max(...xs) - Math.min(...xs) > 1e-4) continue;
+      const ys = [0, 1, 2].map((offset) => position.getY(index + offset));
+      if (Math.min(...ys) < -20 && Math.max(...ys) > 20) bridgesGap = true;
+    }
+    assert.equal(bridgesGap, false, "a tampa automática não pode atravessar o vazio da peça");
+  }
+});
+
 test("corta uma peça em duas metades por um plano manual rotacionado", () => {
   const geometry = new BoxGeometry(300, 180, 20);
   const pieces = splitGeometryByPlane(geometry, { angle: 35, offset: 0 });
