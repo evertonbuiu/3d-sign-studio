@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { toast } from "sonner";
 import { Eye, EyeOff, RotateCcw, Scissors, Trash2, Undo2, Upload, X } from "lucide-react";
 import { Box3, Vector3 } from "three";
