@@ -1,6 +1,4 @@
 import {
-  Box3,
-  BoxGeometry,
   BufferGeometry,
   Float32BufferAttribute,
   ShapeUtils,
@@ -8,7 +6,6 @@ import {
   Vector3,
 } from "three";
 import { mergeGeometries, mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
-import { Brush, Evaluator, INTERSECTION } from "three-bvh-csg";
 
 export interface SplitPiece {
   geometry: BufferGeometry;
@@ -1143,43 +1140,32 @@ export function splitGeometryForBuildPlate(
   if (columns === 1 && rows === 1) {
     return [{ geometry: geometry.clone(), column: 1, row: 1, index: 1, total: 1 }];
   }
-  const sourceGeometry = geometry.clone();
-  const source = new Brush(sourceGeometry);
-  source.updateMatrixWorld(true);
-  const evaluator = new Evaluator();
-  evaluator.attributes = ["position"];
-  const pieces: Omit<SplitPiece, "total">[] = [];
-  const zPadding = Math.max(size.z, 1) + 2;
-  for (let row = 0; row < rows; row++) {
-    for (let column = 0; column < columns; column++) {
-      const minX = bounds.min.x + column * usableWidth;
-      const minY = bounds.min.y + row * usableDepth;
-      const maxX = Math.min(minX + usableWidth, bounds.max.x);
-      const maxY = Math.min(minY + usableDepth, bounds.max.y);
-      const cell = new Box3(
-        new Vector3(minX, minY, bounds.min.z - 1),
-        new Vector3(maxX, maxY, bounds.max.z + 1),
-      );
-      const cellSize = cell.getSize(new Vector3());
-      const cutterGeometry = new BoxGeometry(cellSize.x, cellSize.y, zPadding);
-      cutterGeometry.translate(...cell.getCenter(new Vector3()).toArray());
-      const cutter = new Brush(cutterGeometry);
-      cutter.updateMatrixWorld(true);
-      const result = evaluator.evaluate(source, cutter, INTERSECTION);
-      const clipped = result.geometry.clone();
-      clipped.computeVertexNormals();
-      clipped.computeBoundingBox();
-      const clippedSize = clipped.boundingBox?.getSize(new Vector3());
-      if (!clippedSize || clipped.getAttribute("position").count === 0) continue;
-      if (clippedSize.x < 1e-5 || clippedSize.y < 1e-5 || clippedSize.z < 1e-5) continue;
-      pieces.push({
-        geometry: clipped,
-        column: column + 1,
-        row: row + 1,
-        index: pieces.length + 1,
-      });
-    }
+  // O CSG com uma caixa por célula triangulava novamente toda a seção e podia
+  // criar placas fechando vazados e cavidades. Os planos abaixo usam a mesma
+  // reconstrução topológica do corte manual: cada tampa nasce somente dos
+  // contornos efetivamente atravessados pelo respectivo limite da mesa.
+  const origin = bounds.getCenter(new Vector3());
+  const cuts: SequentialSplitOptions[] = [];
+  for (let column = 1; column < columns; column++) {
+    const boundary = bounds.min.x + column * usableWidth;
+    cuts.push({ angle: 0, offset: boundary - origin.x, connector: "none" });
   }
-  return pieces.map((piece) => ({ ...piece, total: pieces.length }));
+  for (let row = 1; row < rows; row++) {
+    const boundary = bounds.min.y + row * usableDepth;
+    cuts.push({ angle: 90, offset: boundary - origin.y, connector: "none" });
+  }
+  const split = splitGeometryByPlanes(geometry, cuts, { x: origin.x, y: origin.y });
+  const pieces = split.map((piece) => {
+    piece.geometry.computeBoundingBox();
+    const center = piece.geometry.boundingBox!.getCenter(new Vector3());
+    const column = Math.min(columns, Math.max(1, Math.floor((center.x - bounds.min.x) / usableWidth) + 1));
+    const row = Math.min(rows, Math.max(1, Math.floor((center.y - bounds.min.y) / usableDepth) + 1));
+    return { ...piece, column, row };
+  }).sort((left, right) => left.row - right.row || left.column - right.column);
+  return pieces.map((piece, index) => ({
+    ...piece,
+    index: index + 1,
+    total: pieces.length,
+  }));
 }
 
