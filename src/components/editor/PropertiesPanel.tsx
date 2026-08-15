@@ -61,13 +61,36 @@ export function NumberSlider({
 }) {
   const { params, setParam } = useEditor();
   const value = Number(params[keyName]);
+  const [draft, setDraft] = useState<string | null>(null);
+
+  const commit = (raw: string) => {
+    const parsed = Number(raw.replace(",", "."));
+    setDraft(null);
+    if (!Number.isFinite(parsed)) return;
+    setParam(keyName, Math.min(max, Math.max(min, parsed)) as never);
+  };
+
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <Label className="text-sm font-medium text-muted-foreground">{label}</Label>
-        <span className="text-sm tabular-nums text-foreground">
-          {value.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} {unit}
-        </span>
+        <div className="flex items-center gap-1">
+          <Input
+            type="text"
+            inputMode="decimal"
+            value={draft ?? String(Number(value.toFixed(3)))}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={(e) => commit(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                commit((e.target as HTMLInputElement).value);
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
+            className="h-7 w-20 bg-card px-2 text-right text-sm tabular-nums"
+          />
+          <span className="w-6 text-xs text-muted-foreground">{unit}</span>
+        </div>
       </div>
       <Slider
         value={[value]}
@@ -79,6 +102,7 @@ export function NumberSlider({
     </div>
   );
 }
+
 
 function ColorField({ label, keyName }: { label: string; keyName: keyof SignParams }) {
   const { params, setParam } = useEditor();
