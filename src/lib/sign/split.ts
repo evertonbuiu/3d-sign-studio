@@ -896,7 +896,7 @@ export function splitGeometryByPlane(
   // O encaixe Ã© extraÃ­do da prÃ³pria seÃ§Ã£o das paredes junto ao plano de corte.
   // Assim, a metade macho prolonga o perfil real da parede em vez de receber
   // apenas um pino retangular isolado.
-  // O macho usa a metade interna da espessura e percorre toda a parede,
+  // O macho usa a metade externa da espessura e percorre toda a parede,
   // preservando uma pele fina no fundo e na frente para fechar as extremidades.
   // A extensão começa exatamente no plano para compartilhar a mesma borda da
   // parede. O antigo volume de sobreposição deixava a lingueta como um sólido
@@ -915,7 +915,7 @@ export function splitGeometryByPlane(
     bounds.min.z + backClosure,
     bounds.max.z - frontClosure,
     widthPercent,
-    true,
+    false,
     false,
     geometry,
     frontClosure > endClosure,
@@ -1021,7 +1021,7 @@ export function splitGeometryByPlane(
     bounds.min.z + backClosure,
     bounds.max.z - frontClosure,
     1 - widthPercent,
-    false,
+    true,
     true,
     geometry,
   );
@@ -1045,7 +1045,7 @@ export function splitGeometryByPlane(
   const replacementCap = capParts.length === 1
     ? capParts[0]
     : mergeGeometries(capParts, false);
-  // Abre a metade interna da parede original e remove a tampa traseira do
+  // Abre a metade externa da parede original e remove a tampa traseira do
   // prolongamento. As duas cascas compartilham a mesma borda no plano de corte.
   const openedMale = replaceExactPlanarCap(
     maleBaseGeometry,
