@@ -355,6 +355,34 @@ test("macho prolonga a parede interna sem tampa ou elemento sobreposto", () => {
   assert.equal(internalCap, false, "não pode existir uma tampa separando parede e extensão");
 });
 
+test("extensão da parede acompanha o degrau do rebaixo frontal", () => {
+  const lowerWall = new BoxGeometry(100, 10, 14).translate(0, 0, -3);
+  const recessedFrontWall = new BoxGeometry(100, 4, 6).translate(0, 0, 7);
+  const geometry = mergeGeometries([lowerWall, recessedFrontWall], false);
+  assert.ok(geometry);
+  const male = splitGeometryByPlane(geometry, {
+    angle: 0,
+    connector: "male-female",
+    connectorDepth: 5,
+    connectorWidth: 100,
+    connectorClearance: 0.2,
+    connectorFrontInset: 2,
+  })[0].geometry;
+  const position = male.getAttribute("position");
+  const lowerY = [];
+  const upperY = [];
+  for (let index = 0; index < position.count; index++) {
+    if (position.getX(index) < 0.1) continue;
+    const z = position.getZ(index);
+    if (z < 3.9) lowerY.push(position.getY(index));
+    if (z > 4.1) upperY.push(position.getY(index));
+  }
+  assert.ok(lowerY.length > 0 && upperY.length > 0);
+  const lowerWidth = Math.max(...lowerY) - Math.min(...lowerY);
+  const upperWidth = Math.max(...upperY) - Math.min(...upperY);
+  assert.ok(lowerWidth > upperWidth + 4, "a extensão deve copiar o rebaixo mais estreito da frente");
+});
+
 test("parte femea deixa aberta a metade interna do rebaixo", () => {
   const geometry = new BoxGeometry(100, 60, 20);
   const pieces = splitGeometryByPlane(geometry, {
