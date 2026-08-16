@@ -328,6 +328,33 @@ test("profundidade fêmea deriva da extensão real da parede inferior", () => {
   );
 });
 
+test("macho prolonga a parede interna sem tampa ou elemento sobreposto", () => {
+  const pieces = splitGeometryByPlane(new BoxGeometry(100, 60, 20), {
+    angle: 0,
+    connector: "male-female",
+    connectorDepth: 5,
+    connectorWidth: 50,
+    connectorClearance: 0.2,
+  });
+  const source = pieces[0].geometry.index ? pieces[0].geometry.toNonIndexed() : pieces[0].geometry;
+  const position = source.getAttribute("position");
+  const sampleY = -15;
+  const sampleZ = 0;
+  let internalCap = false;
+  for (let index = 0; index + 2 < position.count; index += 3) {
+    const xs = [0, 1, 2].map((offset) => position.getX(index + offset));
+    if (Math.max(...xs) - Math.min(...xs) > 1e-4 || Math.abs(xs[0]) > 1e-4) continue;
+    const ay = position.getY(index), az = position.getZ(index);
+    const by = position.getY(index + 1), bz = position.getZ(index + 1);
+    const cy = position.getY(index + 2), cz = position.getZ(index + 2);
+    const d1 = (sampleY - by) * (az - bz) - (ay - by) * (sampleZ - bz);
+    const d2 = (sampleY - cy) * (bz - cz) - (by - cy) * (sampleZ - cz);
+    const d3 = (sampleY - ay) * (cz - az) - (cy - ay) * (sampleZ - az);
+    if (!((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0))) internalCap = true;
+  }
+  assert.equal(internalCap, false, "não pode existir uma tampa separando parede e extensão");
+});
+
 test("parte femea deixa aberta a metade interna do rebaixo", () => {
   const geometry = new BoxGeometry(100, 60, 20);
   const pieces = splitGeometryByPlane(geometry, {

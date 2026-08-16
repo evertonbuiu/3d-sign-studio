@@ -864,7 +864,10 @@ export function splitGeometryByPlane(
   // apenas um pino retangular isolado.
   // O macho usa a metade interna da espessura e percorre toda a parede,
   // preservando uma pele fina no fundo e na frente para fechar as extremidades.
-  const overlap = Math.min(0.5, depth * 0.2);
+  // A extensão começa exatamente no plano para compartilhar a mesma borda da
+  // parede. O antigo volume de sobreposição deixava a lingueta como um sólido
+  // separado dentro da peça original.
+  const overlap = 0;
   const endClosure = Math.min(1, size.z * 0.25);
   const backClosure = Math.max(endClosure, options.connectorBackInset ?? 0);
   const frontClosure = Math.max(endClosure, options.connectorFrontInset ?? 0);
@@ -973,17 +976,6 @@ export function splitGeometryByPlane(
   // A lingueta jÃ¡ penetra a parede pelo `overlap`. Concatenar as duas cascas
   // preserva esse volume sobreposto para o fatiador e evita a uniÃ£o CSG entre
   // faces coplanares, que criava pontas/triÃ¢ngulos atravessando letras inteiras.
-  const mergedMale = mergeGeometries(
-    [
-      withoutDegenerateTriangles(pieces[maleIndex]!.geometry),
-      withoutDegenerateTriangles(maleConnector),
-    ],
-    false,
-  );
-  if (!mergedMale) throw new Error("Falha ao montar o rebaixo prolongado da peÃ§a macho");
-  mergedMale.computeVertexNormals();
-  mergedMale.computeBoundingBox();
-  pieces[maleIndex] = { ...pieces[maleIndex]!, geometry: mergedMale };
   const femaleSide: -1 | 1 = maleIndex === 0 ? 1 : -1;
   const outerCap = extrudeCutSection(
     maleBaseGeometry,
@@ -1018,6 +1010,29 @@ export function splitGeometryByPlane(
   const replacementCap = capParts.length === 1
     ? capParts[0]
     : mergeGeometries(capParts, false);
+  // Abre a metade interna da parede original e remove a tampa traseira do
+  // prolongamento. As duas cascas compartilham a mesma borda no plano de corte.
+  const openedMale = replaceExactPlanarCap(
+    maleBaseGeometry,
+    replacementCap ?? outerCap,
+    center,
+    normal,
+  );
+  const openMaleConnector = replaceExactPlanarCap(
+    maleConnector,
+    new BufferGeometry(),
+    center,
+    normal,
+  );
+  const joinedMale = mergeGeometries(
+    [withoutDegenerateTriangles(openedMale), withoutDegenerateTriangles(openMaleConnector)],
+    false,
+  );
+  if (!joinedMale) throw new Error("Falha ao prolongar a parede interna da peça macho");
+  const maleGeometry = mergeVertices(withoutDegenerateTriangles(joinedMale), 1e-4);
+  maleGeometry.computeVertexNormals();
+  maleGeometry.computeBoundingBox();
+  pieces[maleIndex] = { ...pieces[maleIndex]!, geometry: maleGeometry };
   const openedFemale = replaceExactPlanarCap(
     pieces[femaleIndex]!.geometry,
     replacementCap ?? outerCap,
