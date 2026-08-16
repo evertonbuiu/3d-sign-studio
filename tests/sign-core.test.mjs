@@ -385,7 +385,7 @@ test("macho e parede externa formam um unico componente conectado", () => {
     for (let corner = 0; corner < 3; corner++) {
       const vertex = triangle * 3 + corner;
       const key = [position.getX(vertex), position.getY(vertex), position.getZ(vertex)]
-        .map((value) => Math.round(value * 1e3)).join(",");
+        .map((value) => Math.round(value * 1e5)).join(",");
       const owner = vertexOwner.get(key);
       if (owner === undefined) vertexOwner.set(key, triangle);
       else union(triangle, owner);
