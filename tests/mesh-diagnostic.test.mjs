@@ -195,6 +195,30 @@ const archivo = opentype.parse(
   fs.readFileSync(new URL("../src/assets/fonts/archivo-black.ttf", import.meta.url)).buffer,
 );
 
+test("letra C da caixa iluminada mantém o encaixe visível e exportável", () => {
+  const style = getStyle("caixa-iluminada");
+  const params = { ...DEFAULT_PARAMS, ...style.preset, text: "C", mountHoles: false };
+  const build = buildSign(glyphShapes(archivo, "C", params.letterHeight), params, style);
+  const walls = build.parts.find((part) => part.kind === "laterais");
+  assert.ok(walls);
+  const plain = splitGeometryByPlane(walls.geometry, { angle: 90 });
+  const pieces = splitGeometryByPlane(walls.geometry, {
+    angle: 90,
+    connector: "male-female",
+    connectorDepth: 4,
+    connectorWidth: 50,
+    connectorClearance: 0.2,
+  });
+  assert.equal(pieces.length, 2);
+  pieces[0].geometry.computeBoundingBox();
+  plain[0].geometry.computeBoundingBox();
+  assert.ok(
+    pieces[0].geometry.boundingBox.max.y >= plain[0].geometry.boundingBox.max.y + 3.9,
+    "o macho deve permanecer visível na letra C",
+  );
+  assert.equal(topology(pieces[0].geometry).components, 1);
+});
+
 test("a letra G gera componentes fechados e manifold", () => {
   const params = { ...DEFAULT_PARAMS, text: "G", mountHoles: false };
   const build = buildSign(
