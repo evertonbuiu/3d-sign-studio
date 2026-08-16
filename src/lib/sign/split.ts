@@ -163,6 +163,19 @@ function withoutDegenerateTriangles(geometry: BufferGeometry): BufferGeometry {
   return cleaned;
 }
 
+function weldShellByPosition(geometry: BufferGeometry, tolerance = 1e-3): BufferGeometry {
+  const shell = withoutDegenerateTriangles(geometry);
+  // A soldagem deve usar somente posição; normais diferentes nas quinas
+  // impedem que vértices coincidentes da parede e do encaixe sejam unidos.
+  for (const attribute of Object.keys(shell.attributes)) {
+    if (attribute !== "position") shell.deleteAttribute(attribute);
+  }
+  const welded = mergeVertices(shell, tolerance);
+  welded.computeVertexNormals();
+  welded.computeBoundingBox();
+  return welded;
+}
+
 function pointInPolygon(point: Vector2, polygon: Vector2[]): boolean {
   let inside = false;
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
@@ -1063,9 +1076,7 @@ export function splitGeometryByPlane(
     false,
   );
   if (!joinedMale) throw new Error("Falha ao prolongar a parede interna da peça macho");
-  // Os perfis de parede são quantizados durante a detecção da seção. Use uma\n  // tolerância ligeiramente maior na costura final para que a boca do encaixe\n  // reutilize os mesmos vértices da parede, em vez de sair como outro shell.\n  const maleGeometry = mergeVertices(withoutDegenerateTriangles(joinedMale), 1e-3);
-  maleGeometry.computeVertexNormals();
-  maleGeometry.computeBoundingBox();
+  const maleGeometry = weldShellByPosition(joinedMale);
   pieces[maleIndex] = { ...pieces[maleIndex]!, geometry: maleGeometry };
   const openedFemale = replaceExactPlanarCap(
     pieces[femaleIndex]!.geometry,
@@ -1087,9 +1098,7 @@ export function splitGeometryByPlane(
     false,
   );
   if (!joinedFemale) throw new Error("Falha ao montar a cavidade fÃªmea aberta");
-  const femaleGeometry = mergeVertices(withoutDegenerateTriangles(joinedFemale), 1e-3);
-  femaleGeometry.computeVertexNormals();
-  femaleGeometry.computeBoundingBox();
+  const femaleGeometry = weldShellByPosition(joinedFemale);
   pieces[femaleIndex] = { ...pieces[femaleIndex]!, geometry: femaleGeometry };
   return pieces.map((piece) => ({ ...piece, total: pieces.length }));
 }
