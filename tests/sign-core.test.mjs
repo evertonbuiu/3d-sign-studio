@@ -292,6 +292,42 @@ test("corte manual cria macho e fêmea complementares com folga", () => {
   );
 });
 
+test("profundidade fêmea deriva da extensão real da parede inferior", () => {
+  const angle = 31;
+  const radians = (angle * Math.PI) / 180;
+  const normal = new Vector3(Math.cos(radians), Math.sin(radians), 0);
+  const depth = 7;
+  const clearance = 0.35;
+  const pieces = splitGeometryByPlane(new BoxGeometry(120, 18, 24), {
+    angle,
+    connector: "male-female",
+    connectorDepth: depth,
+    connectorWidth: 50,
+    connectorClearance: clearance,
+  });
+  const signedBounds = (geometry) => {
+    const position = geometry.getAttribute("position");
+    const values = Array.from({ length: position.count }, (_, index) =>
+      normal.x * position.getX(index) + normal.y * position.getY(index));
+    return { min: Math.min(...values), max: Math.max(...values) };
+  };
+  const male = signedBounds(pieces[0].geometry);
+  const female = pieces[1].geometry.index ? pieces[1].geometry.toNonIndexed() : pieces[1].geometry;
+  const position = female.getAttribute("position");
+  const recessedPlanes = [];
+  for (let index = 0; index + 2 < position.count; index += 3) {
+    const values = [0, 1, 2].map((offset) =>
+      normal.x * position.getX(index + offset) + normal.y * position.getY(index + offset));
+    if (Math.max(...values) - Math.min(...values) < 1e-4) recessedPlanes.push(values[0]);
+  }
+  const recessDepth = Math.min(...recessedPlanes.filter((value) => value > 0.1));
+  assert.ok(Math.abs(male.max - depth) < 0.05, "o macho deve avançar a profundidade configurada");
+  assert.ok(
+    Math.abs(recessDepth - (male.max + clearance)) < 0.05,
+    "a fêmea deve usar a profundidade real do macho acrescida somente da folga",
+  );
+});
+
 test("parte femea deixa aberta a metade interna do rebaixo", () => {
   const geometry = new BoxGeometry(100, 60, 20);
   const pieces = splitGeometryByPlane(geometry, {
