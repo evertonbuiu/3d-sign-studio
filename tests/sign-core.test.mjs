@@ -355,7 +355,7 @@ test("macho prolonga a parede externa sem tampa ou elemento sobreposto", () => {
   assert.equal(internalCap, false, "não pode existir uma tampa separando parede e extensão");
 });
 
-test("extensão da parede acompanha o degrau do rebaixo frontal", () => {
+test("extensão externa ignora o degrau interno e chega uniforme à frente útil", () => {
   const lowerWall = new BoxGeometry(100, 10, 14).translate(0, 0, -3);
   const recessedFrontWall = new BoxGeometry(100, 4, 6).translate(0, 0, 7);
   const geometry = mergeGeometries([lowerWall, recessedFrontWall], false);
@@ -380,7 +380,7 @@ test("extensão da parede acompanha o degrau do rebaixo frontal", () => {
   assert.ok(lowerY.length > 0 && upperY.length > 0);
   const lowerWidth = Math.max(...lowerY) - Math.min(...lowerY);
   const upperWidth = Math.max(...upperY) - Math.min(...upperY);
-  assert.ok(lowerWidth > upperWidth + 4, "a extensão deve copiar o rebaixo mais estreito da frente");
+  assert.ok(Math.abs(lowerWidth - upperWidth) < 0.01, "a extensão externa não pode receber o degrau interno");
 });
 
 test("parte femea deixa aberta a metade externa do rebaixo", () => {
