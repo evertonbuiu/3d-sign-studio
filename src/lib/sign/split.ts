@@ -1063,7 +1063,7 @@ export function splitGeometryByPlane(
     false,
   );
   if (!joinedMale) throw new Error("Falha ao prolongar a parede interna da peça macho");
-  const maleGeometry = mergeVertices(withoutDegenerateTriangles(joinedMale), 1e-4);
+  // Os perfis de parede são quantizados durante a detecção da seção. Use uma\n  // tolerância ligeiramente maior na costura final para que a boca do encaixe\n  // reutilize os mesmos vértices da parede, em vez de sair como outro shell.\n  const maleGeometry = mergeVertices(withoutDegenerateTriangles(joinedMale), 1e-3);
   maleGeometry.computeVertexNormals();
   maleGeometry.computeBoundingBox();
   pieces[maleIndex] = { ...pieces[maleIndex]!, geometry: maleGeometry };
@@ -1087,7 +1087,7 @@ export function splitGeometryByPlane(
     false,
   );
   if (!joinedFemale) throw new Error("Falha ao montar a cavidade fÃªmea aberta");
-  const femaleGeometry = mergeVertices(withoutDegenerateTriangles(joinedFemale), 1e-4);
+  const femaleGeometry = mergeVertices(withoutDegenerateTriangles(joinedFemale), 1e-3);
   femaleGeometry.computeVertexNormals();
   femaleGeometry.computeBoundingBox();
   pieces[femaleIndex] = { ...pieces[femaleIndex]!, geometry: femaleGeometry };
