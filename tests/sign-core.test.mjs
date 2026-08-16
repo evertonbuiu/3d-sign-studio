@@ -328,7 +328,7 @@ test("profundidade fêmea deriva da extensão real da parede inferior", () => {
   );
 });
 
-test("macho prolonga a parede interna sem tampa ou elemento sobreposto", () => {
+test("macho prolonga a parede externa sem tampa ou elemento sobreposto", () => {
   const pieces = splitGeometryByPlane(new BoxGeometry(100, 60, 20), {
     angle: 0,
     connector: "male-female",
@@ -338,7 +338,7 @@ test("macho prolonga a parede interna sem tampa ou elemento sobreposto", () => {
   });
   const source = pieces[0].geometry.index ? pieces[0].geometry.toNonIndexed() : pieces[0].geometry;
   const position = source.getAttribute("position");
-  const sampleY = -15;
+  const sampleY = 15;
   const sampleZ = 0;
   let internalCap = false;
   for (let index = 0; index + 2 < position.count; index += 3) {
@@ -383,7 +383,7 @@ test("extensão da parede acompanha o degrau do rebaixo frontal", () => {
   assert.ok(lowerWidth > upperWidth + 4, "a extensão deve copiar o rebaixo mais estreito da frente");
 });
 
-test("parte femea deixa aberta a metade interna do rebaixo", () => {
+test("parte femea deixa aberta a metade externa do rebaixo", () => {
   const geometry = new BoxGeometry(100, 60, 20);
   const pieces = splitGeometryByPlane(geometry, {
     angle: 0,
@@ -394,7 +394,7 @@ test("parte femea deixa aberta a metade interna do rebaixo", () => {
   });
   const source = pieces[1].geometry.index ? pieces[1].geometry.toNonIndexed() : pieces[1].geometry;
   const position = source.getAttribute("position");
-  const sampleY = -15;
+  const sampleY = 15;
   const sampleZ = 0;
     let covered = false;
     for (let index = 0; index + 2 < position.count; index += 3) {
@@ -557,7 +557,7 @@ test("encaixe percorre a parede e preserva as extremidades fechadas", () => {
   assert.ok(Math.abs(Math.max(...extendedZ) - 9) < 0.01);
 });
 
-test("rebaixo ocupa somente metade interna da espessura da parede", () => {
+test("rebaixo ocupa somente metade externa da espessura da parede", () => {
   const geometry = new BoxGeometry(100, 60, 20);
   const pieces = splitGeometryByPlane(geometry, {
     angle: 0,
@@ -572,10 +572,10 @@ test("rebaixo ocupa somente metade interna da espessura da parede", () => {
     if (position.getX(index) > 0.1) extendedY.push(position.getY(index));
   }
   assert.ok(Math.max(...extendedY) - Math.min(...extendedY) <= 30.01);
-  assert.ok(Math.max(...extendedY) <= 0.01, "o macho deve permanecer na metade interna selecionada");
+  assert.ok(Math.min(...extendedY) >= -0.01, "o macho deve permanecer na metade externa selecionada");
 });
 
-test("parte superior preserva a metade externa e recua a metade interna", () => {
+test("parte superior preserva a metade interna e recua a metade externa", () => {
   const geometry = new BoxGeometry(100, 60, 20);
   const pieces = splitGeometryByPlane(geometry, {
     angle: 0,
@@ -592,12 +592,12 @@ test("parte superior preserva a metade externa e recua a metade interna", () => 
     if (x > 0.1 && x < 4.5 && z > -9 && z < 9) cavityY.push(position.getY(index));
   }
   assert.ok(cavityY.length > 0, "a peça superior deve receber a cavidade fêmea");
-  assert.ok(Math.max(...cavityY) <= 0.3, "a cavidade deve receber a lingueta na metade interna");
+  assert.ok(Math.min(...cavityY) >= -0.3, "a cavidade deve receber a lingueta na metade externa");
   const allX = Array.from({ length: position.count }, (_, index) => position.getX(index));
   assert.ok(Math.min(...allX) >= -1e-4, "a parte fêmea não pode criar aba fora da peça");
 });
 
-test("paredes fora do centro global mantem o encaixe voltado para dentro", () => {
+test("paredes fora do centro global mantem o encaixe na metade externa", () => {
   const first = new BoxGeometry(100, 20, 20).translate(0, 100, 0);
   const second = new BoxGeometry(100, 20, 20).translate(0, 140, 0);
   const geometry = mergeGeometries([first, second], false);
@@ -614,11 +614,11 @@ test("paredes fora do centro global mantem o encaixe voltado para dentro", () =>
   for (let index = 0; index < position.count; index++) {
     if (position.getX(index) > 0.1) extendedY.push(position.getY(index));
   }
-  assert.ok(extendedY.some((y) => y >= 100 && y <= 110.01));
-  assert.ok(extendedY.some((y) => y >= 129.99 && y <= 140));
+  assert.ok(extendedY.some((y) => y >= 89.99 && y <= 100.01));
+  assert.ok(extendedY.some((y) => y >= 139.99 && y <= 150.01));
   assert.ok(
-    extendedY.every((y) => (y >= 99.99 && y <= 110.01) || (y >= 129.99 && y <= 140.01)),
-    "nenhum encaixe pode ocupar a metade externa das paredes",
+    extendedY.every((y) => (y >= 89.99 && y <= 100.01) || (y >= 139.99 && y <= 150.01)),
+    "nenhum encaixe pode ocupar a metade interna das paredes",
   );
 });
 
