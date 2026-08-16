@@ -1024,6 +1024,7 @@ export function splitGeometryByPlane(
     true,
     true,
     geometry,
+    frontClosure > endClosure,
   );
   const backCap = capProfiles(
     wallProfilesAtPlane(geometry, center, normal),
