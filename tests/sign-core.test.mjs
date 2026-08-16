@@ -355,6 +355,46 @@ test("macho prolonga a parede externa sem tampa ou elemento sobreposto", () => {
   assert.equal(internalCap, false, "não pode existir uma tampa separando parede e extensão");
 });
 
+test("macho e parede externa formam um unico componente conectado", () => {
+  const geometry = new BoxGeometry(100, 10, 20);
+  geometry.rotateZ(0.371);
+  geometry.translate(7.1234, -3.4567, 0);
+  const male = splitGeometryByPlane(geometry, {
+    angle: 90,
+    connector: "male-female",
+    connectorDepth: 5,
+    connectorWidth: 50,
+  })[0].geometry;
+  const source = male.index ? male.toNonIndexed() : male;
+  const position = source.getAttribute("position");
+  const triangleCount = position.count / 3;
+  const parent = Array.from({ length: triangleCount }, (_, triangle) => triangle);
+  const find = (triangle) => {
+    while (parent[triangle] !== triangle) {
+      parent[triangle] = parent[parent[triangle]];
+      triangle = parent[triangle];
+    }
+    return triangle;
+  };
+  const union = (left, right) => {
+    const leftRoot = find(left), rightRoot = find(right);
+    if (leftRoot !== rightRoot) parent[leftRoot] = rightRoot;
+  };
+  const vertexOwner = new Map();
+  for (let triangle = 0; triangle < triangleCount; triangle++) {
+    for (let corner = 0; corner < 3; corner++) {
+      const vertex = triangle * 3 + corner;
+      const key = [position.getX(vertex), position.getY(vertex), position.getZ(vertex)]
+        .map((value) => Math.round(value * 1e3)).join(",");
+      const owner = vertexOwner.get(key);
+      if (owner === undefined) vertexOwner.set(key, triangle);
+      else union(triangle, owner);
+    }
+  }
+  const usedRoots = new Set(Array.from({ length: triangleCount }, (_, triangle) => find(triangle)));
+  assert.equal(usedRoots.size, 1, "o encaixe não pode ser exportado como shell separado da parede");
+});
+
 test("extensão externa ignora o degrau interno e chega uniforme à frente útil", () => {
   const lowerWall = new BoxGeometry(100, 10, 14).translate(0, 0, -3);
   const recessedFrontWall = new BoxGeometry(100, 4, 6).translate(0, 0, 7);
