@@ -535,6 +535,7 @@ function extrudeCutSection(
   selectInner = true,
   capOnly = false,
   followGeometry?: BufferGeometry,
+  preserveSectionProfile = false,
 ): BufferGeometry {
   const epsilon = 1e-5;
   const planeDistance = normal.dot(planePoint);
@@ -544,7 +545,7 @@ function extrudeCutSection(
   // As intersecoes das faces verticais fornecem diretamente um intervalo
   // independente para cada parede atravessada pelo plano.
   const profileSections = wallProfilesAtPlane(followGeometry ?? geometry, planePoint, normal);
-  if (profileSections.length && maxZ > minZ + epsilon) {
+  if (!preserveSectionProfile && profileSections.length && maxZ > minZ + epsilon) {
     const at = (coordinate: number, z: number) =>
       tangent.clone().multiplyScalar(coordinate).addScaledVector(normal, planeDistance).setZ(z);
     for (const profile of profileSections) {
@@ -581,6 +582,32 @@ function extrudeCutSection(
       else vertexOwners.set(key, triangleIndex);
     }
   });
+  if (preserveSectionProfile) {
+    // Um rebaixo cria juncoes em T: a faixa estreita da frente encosta na
+    // parede principal, mas sua borda termina no meio do triangulo inferior.
+    // Como nao ha vertices identicos nessa emenda, una tambem triangulos cujas
+    // projecoes (tangente/Z) se tocam. Assim todo o degrau continua sendo uma
+    // unica secao de parede, sem transformar cada nivel em um encaixe separado.
+    const bounds2d = surfaceTriangles.map((triangle) => {
+      const transverse = triangle.map((point) => tangent.dot(point));
+      const vertical = triangle.map((point) => point.z);
+      return {
+        minT: Math.min(...transverse),
+        maxT: Math.max(...transverse),
+        minZ: Math.min(...vertical),
+        maxZ: Math.max(...vertical),
+      };
+    });
+    for (let left = 0; left < bounds2d.length; left++) {
+      for (let right = left + 1; right < bounds2d.length; right++) {
+        const a = bounds2d[left]!;
+        const b = bounds2d[right]!;
+        const transverseOverlap = Math.min(a.maxT, b.maxT) - Math.max(a.minT, b.minT);
+        const verticalOverlap = Math.min(a.maxZ, b.maxZ) - Math.max(a.minZ, b.minZ);
+        if (transverseOverlap > epsilon && verticalOverlap >= -epsilon) union(left, right);
+      }
+    }
+  }
   const groups = new Map<number, Array<[Vector3, Vector3, Vector3]>>();
   surfaceTriangles.forEach((triangle, index) => {
     const root = find(index);
@@ -682,6 +709,13 @@ function extrudeCutSection(
     const projectToTarget = (point: Vector3) => {
       const result = point.clone().addScaledVector(direction, depth);
       if (!targetProfile) return result;
+      // No perfil escalonado, preserve cada largura local do rebaixo. Apenas
+      // desloque a secao pelo centro da parede encontrado na profundidade de
+      // destino; redimensionar todos os vertices pela largura total eliminava
+      // o degrau frontal e recriava uma lingueta retangular independente.
+      if (preserveSectionProfile) {
+        return result.addScaledVector(tangent, targetProfile.centerT - sourceSectionCenter);
+      }
       const sourceWidth = sections[nearestSectionIndex]!.maxT - sections[nearestSectionIndex]!.minT;
       const ratio = sourceWidth > epsilon
         ? (tangent.dot(point) - sections[nearestSectionIndex]!.minT) / sourceWidth
@@ -884,6 +918,7 @@ export function splitGeometryByPlane(
     true,
     false,
     geometry,
+    frontClosure > endClosure,
   );
   if (maleConnector.getAttribute("position").count === 0) {
     return pieces.map((piece) => ({ ...piece, total: pieces.length }));
