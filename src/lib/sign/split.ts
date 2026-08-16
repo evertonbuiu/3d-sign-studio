@@ -890,20 +890,10 @@ export function splitGeometryByPlane(
   // Expande uma Ãºnica cÃ³pia do perfil nos eixos normal, tangente e Z. Uma
   // Ãºnica subtraÃ§Ã£o Ã© mais estÃ¡vel em contornos complexos do que unir ou
   // subtrair vÃ¡rias cÃ³pias quase coincidentes.
-  const femaleCavity = extrudeCutSection(
-    maleBaseGeometry,
-    center,
-    normal,
-    direction,
-    depth + overlap,
-    bounds.min.z + backClosure,
-    bounds.max.z - frontClosure,
-    widthPercent,
-    true,
-    false,
-    geometry,
-  );
-  femaleCavity.translate(-direction.x * overlap, -direction.y * overlap, 0);
+  // A fêmea é o negativo direto da extensão realmente criada na peça de
+  // baixo. Isso mantém o mesmo perfil da parede/rebaixo e impede divergências
+  // quando a inclinação reduz ou desloca a profundidade efetiva do macho.
+  const femaleCavity = maleConnector.clone();
   if (clearance > 0) {
     femaleCavity.computeBoundingBox();
     const cavityBounds = femaleCavity.boundingBox!;
@@ -941,7 +931,16 @@ export function splitGeometryByPlane(
       bounds.max = Math.max(bounds.max, coordinate);
       componentT.set(root, bounds);
     }
-    const normalScale = (depth + clearance * 2) / depth;
+    let minNormal = Number.POSITIVE_INFINITY;
+    let maxNormal = Number.NEGATIVE_INFINITY;
+    for (let i = 0; i < cavityPosition.count; i++) {
+      const coordinate = normal.x * cavityPosition.getX(i) + normal.y * cavityPosition.getY(i);
+      minNormal = Math.min(minNormal, coordinate);
+      maxNormal = Math.max(maxNormal, coordinate);
+    }
+    const normalCenter = (minNormal + maxNormal) / 2;
+    const normalExtent = Math.max(maxNormal - minNormal, 1e-6);
+    const normalScale = (normalExtent + clearance * 2) / normalExtent;
     const zScale = cavitySize.z > 1e-6 ? (cavitySize.z + clearance * 2) / cavitySize.z : 1;
     for (let i = 0; i < cavityPosition.count; i++) {
       const relative = new Vector3(
@@ -949,7 +948,8 @@ export function splitGeometryByPlane(
         cavityPosition.getY(i) - cavityCenter.y,
         cavityPosition.getZ(i) - cavityCenter.z,
       );
-      const normalDistance = normal.dot(relative) * normalScale;
+      const currentNormal = normal.x * cavityPosition.getX(i) + normal.y * cavityPosition.getY(i);
+      const expandedNormal = normalCenter + (currentNormal - normalCenter) * normalScale;
       const component = componentT.get(find(i))!;
       const componentCenter = (component.min + component.max) / 2;
       const tangentCoordinate = tangent.x * cavityPosition.getX(i) + tangent.y * cavityPosition.getY(i);
@@ -958,8 +958,10 @@ export function splitGeometryByPlane(
         (tangentCoordinate - componentCenter) * ((tangentExtent + clearance) / tangentExtent);
       cavityPosition.setXYZ(
         i,
-        cavityCenter.x + normal.x * normalDistance + tangent.x * (expandedTangent - tangent.dot(cavityCenter)),
-        cavityCenter.y + normal.y * normalDistance + tangent.y * (expandedTangent - tangent.dot(cavityCenter)),
+        cavityPosition.getX(i) + normal.x * (expandedNormal - currentNormal) +
+          tangent.x * (expandedTangent - tangentCoordinate),
+        cavityPosition.getY(i) + normal.y * (expandedNormal - currentNormal) +
+          tangent.y * (expandedTangent - tangentCoordinate),
         cavityCenter.z + relative.z * zScale,
       );
     }
