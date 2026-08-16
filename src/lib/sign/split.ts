@@ -904,15 +904,6 @@ export function splitGeometryByPlane(
     geometry,
   );
   femaleCavity.translate(-direction.x * overlap, -direction.y * overlap, 0);
-  // A segunda metade do encaixe avança no sentido oposto e usa a faixa
-  // externa da parede. Assim as duas peças separadas exibem um degrau.
-  const femaleBaseGeometry = pieces[femaleIndex]!.geometry;
-  const upperConnector = extrudeCutSection(
-    femaleBaseGeometry, center, normal, direction.clone().negate(),
-    depth + overlap, bounds.min.z + backClosure, bounds.max.z - frontClosure,
-    widthPercent, false, false, geometry,
-  );
-  upperConnector.translate(direction.x * overlap, direction.y * overlap, 0);
   if (clearance > 0) {
     femaleCavity.computeBoundingBox();
     const cavityBounds = femaleCavity.boundingBox!;
@@ -1005,11 +996,6 @@ export function splitGeometryByPlane(
     true,
     geometry,
   );
-  const innerCap = extrudeCutSection(
-    maleBaseGeometry, center, normal, direction, 0,
-    bounds.min.z + backClosure, bounds.max.z - frontClosure,
-    widthPercent, true, true, geometry,
-  );
   const backCap = capProfiles(
     wallProfilesAtPlane(geometry, center, normal),
     center,
@@ -1038,15 +1024,6 @@ export function splitGeometryByPlane(
   );
   // Recorta primeiro no semiespaÃ§o feminino. A face traseira do sÃ³lido macho
   // fica do outro lado do plano e nÃ£o pode mais fechar a boca do encaixe.
-  const maleCapParts = [innerCap, backCap, frontCap].filter(
-    (cap) => (cap.getAttribute("position")?.count ?? 0) > 0,
-  );
-  const maleReplacementCap = maleCapParts.length === 1
-    ? maleCapParts[0]
-    : mergeGeometries(maleCapParts, false);
-  const openedMale = replaceExactPlanarCap(
-    maleBaseGeometry, maleReplacementCap ?? innerCap, center, normal,
-  );
   let cavityShell = reverseTriangleWinding(
     clipGeometryHalf(femaleCavity, center, normal, femaleSide),
   );
@@ -1054,29 +1031,8 @@ export function splitGeometryByPlane(
   // necessÃ¡ria para fechar o macho, mas deve ser removida da cÃ³pia invertida
   // usada como fÃªmea; caso contrÃ¡rio, vira uma tampa sobre o encaixe.
   cavityShell = replaceExactPlanarCap(cavityShell, new BufferGeometry(), center, normal);
-  let maleCavityShell = reverseTriangleWinding(
-    clipGeometryHalf(upperConnector, center, normal, (femaleSide * -1) as -1 | 1),
-  );
-  maleCavityShell = replaceExactPlanarCap(maleCavityShell, new BufferGeometry(), center, normal);
-  const joinedMale = mergeGeometries(
-    [
-      withoutDegenerateTriangles(openedMale),
-      withoutDegenerateTriangles(maleConnector),
-      withoutDegenerateTriangles(maleCavityShell),
-    ],
-    false,
-  );
-  if (!joinedMale) throw new Error("Falha ao montar o encaixe externo da peça superior");
-  const symmetricMale = mergeVertices(withoutDegenerateTriangles(joinedMale), 1e-4);
-  symmetricMale.computeVertexNormals();
-  symmetricMale.computeBoundingBox();
-  pieces[maleIndex] = { ...pieces[maleIndex]!, geometry: symmetricMale };
   const joinedFemale = mergeGeometries(
-    [
-      withoutDegenerateTriangles(openedFemale),
-      withoutDegenerateTriangles(cavityShell),
-      withoutDegenerateTriangles(upperConnector),
-    ],
+    [withoutDegenerateTriangles(openedFemale), withoutDegenerateTriangles(cavityShell)],
     false,
   );
   if (!joinedFemale) throw new Error("Falha ao montar a cavidade fÃªmea aberta");
