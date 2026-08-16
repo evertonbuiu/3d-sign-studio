@@ -918,7 +918,6 @@ export function splitGeometryByPlane(
     false,
     false,
     geometry,
-    frontClosure > endClosure,
   );
   if (maleConnector.getAttribute("position").count === 0) {
     return pieces.map((piece) => ({ ...piece, total: pieces.length }));
@@ -1024,7 +1023,6 @@ export function splitGeometryByPlane(
     true,
     true,
     geometry,
-    frontClosure > endClosure,
   );
   const backCap = capProfiles(
     wallProfilesAtPlane(geometry, center, normal),
