@@ -723,7 +723,13 @@ export default function PropertiesPanel() {
                               max={20}
                               step={0.2}
                             />
-                            {style.id === "fundo-acrilico-frente-acrilica" ? (
+                            {style.id === "fundo-impresso-frente-impressa-aba" ? (
+                              <Field label="Largura do encaixe">
+                                <div className="rounded-md border border-border bg-card px-3 py-2 text-sm">
+                                  Espessura completa da parede
+                                </div>
+                              </Field>
+                            ) : style.id === "fundo-acrilico-frente-acrilica" ? (
                               <Field label="Largura do encaixe">
                                 <div className="rounded-md border border-border bg-card px-3 py-2 text-sm">
                                   {params.recessLip.toFixed(2)} mm (igual ao rebaixo frontal)
