@@ -90,6 +90,12 @@ export const signParamsSchema = z.object({
   energyPrice: finite(0, 1_000),
   printerPower: finite(0, 100_000),
   margin: finite(0, 10_000),
+  sketch: z
+    .object({
+      entities: z.array(z.record(z.string(), z.unknown())).max(500),
+      extrusions: z.array(z.record(z.string(), z.unknown())).max(200),
+    })
+    .optional(),
 });
 
 export const styleIdSchema = z.enum(STYLES.map((style) => style.id) as [string, ...string[]]);

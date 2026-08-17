@@ -7,6 +7,17 @@ import { dxfToShapes } from "@/lib/sign/dxf";
 import { buildSign, type SignBuild } from "@/lib/sign/build";
 import { computeCost, type CostBreakdown } from "@/lib/sign/cost";
 import { paramsForPrinter } from "@/lib/sign/printers";
+import { geometryVolumeCm3 } from "@/lib/sign/build";
+import {
+  createSketchHistory,
+  commitSketch,
+  extrudeSketchEntity,
+  redoSketch as redoSketchHistory,
+  undoSketch as undoSketchHistory,
+  type SketchHistory,
+  type SketchState,
+} from "@/lib/sign/sketch";
+import type { BufferGeometry } from "three";
 import {
   DEFAULT_PARAMS,
   getStyle,
@@ -35,6 +46,12 @@ export interface EditorState {
   setSvg: (name: string, content: string) => void;
   setDxf: (name: string, content: string) => void;
   clearSvg: () => void;
+  sketch: SketchHistory;
+  sketchParts: SketchPart[];
+  updateSketch: (updater: (state: SketchState) => SketchState) => void;
+  undoSketch: () => void;
+  redoSketch: () => void;
+  setSketchState: (state: SketchState) => void;
   projectId: string | null;
   projectName: string;
   setParam: <K extends keyof SignParams>(key: K, value: SignParams[K]) => void;
@@ -51,8 +68,18 @@ export interface EditorState {
     styleId: string;
     params: Partial<SignParams>;
     vectorSource?: { name: string; content: string; kind: "svg" | "dxf" } | null;
+    sketch?: SketchState | null;
   }) => void;
   setProject: (id: string | null, name: string) => void;
+}
+
+export interface SketchPart {
+  id: string;
+  entityId: string;
+  name: string;
+  height: number;
+  geometry: BufferGeometry;
+  volumeCm3: number;
 }
 
 const EditorContext = createContext<EditorState | null>(null);
@@ -81,6 +108,7 @@ export function useEditorState(): EditorState {
     content: string;
     kind: "svg" | "dxf";
   } | null>(null);
+  const [sketch, setSketch] = useState<SketchHistory>(() => createSketchHistory());
   const [projectId, setProjectId] = useState<string | null>(null);
   const [projectName, setProjectName] = useState("Novo projeto");
 
@@ -129,6 +157,25 @@ export function useEditorState(): EditorState {
     }
   }, [font, customFont, svg, deferredParams, style]);
 
+  const sketchParts = useMemo<SketchPart[]>(() => {
+    const parts: SketchPart[] = [];
+    for (const extrusion of sketch.present.extrusions) {
+      const entity = sketch.present.entities.find((item) => item.id === extrusion.entityId);
+      if (!entity) continue;
+      const geometry = extrudeSketchEntity(entity, extrusion.height);
+      if (!geometry) continue;
+      parts.push({
+        id: extrusion.id,
+        entityId: extrusion.entityId,
+        name: `Esboço ${entity.type}`,
+        height: extrusion.height,
+        geometry,
+        volumeCm3: geometryVolumeCm3(geometry),
+      });
+    }
+    return parts;
+  }, [sketch]);
+
   const cost = useMemo(
     () => (build ? computeCost(build, deferredParams) : null),
     [build, deferredParams],
@@ -164,6 +211,12 @@ export function useEditorState(): EditorState {
     clearSvg: () => setSvgState(null),
     setWireframe,
     setShowOutlines,
+    sketch,
+    sketchParts,
+    updateSketch: (updater) => setSketch((prev) => commitSketch(prev, updater)),
+    undoSketch: () => setSketch((prev) => undoSketchHistory(prev)),
+    redoSketch: () => setSketch((prev) => redoSketchHistory(prev)),
+    setSketchState: (state) => setSketch(createSketchHistory(state)),
     projectId,
     projectName,
     setParam: (key, value) => setParamsState((prev) => ({ ...prev, [key]: value })),
@@ -188,6 +241,7 @@ export function useEditorState(): EditorState {
       setProjectId(p.id);
       setProjectName(p.name);
       setSvgState(p.vectorSource ?? null);
+      setSketch(createSketchHistory(p.sketch ?? undefined));
       setHidden(new Set());
     },
     setProject: (id, name) => {

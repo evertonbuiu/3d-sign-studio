@@ -43,6 +43,7 @@ import {
   resolveCutConnectorWidth,
 } from "@/lib/sign/split";
 import { transformGeometryForPlacement } from "@/lib/sign/placement";
+import { parseSketch, serializeSketch } from "@/lib/sign/sketch";
 import {
   deleteSignProject,
   getSignProject,
@@ -87,7 +88,10 @@ export default function Toolbar() {
           name: editor.projectName,
           styleId: editor.style.id,
           text: editor.params.text,
-          params: editor.params as unknown as Record<string, unknown>,
+          params: {
+            ...editor.params,
+            sketch: serializeSketch(editor.sketch.present),
+          } as unknown as Record<string, unknown>,
           vectorSource: editor.vectorSource,
         },
       }),
@@ -103,7 +107,7 @@ export default function Toolbar() {
     const build = editor.build;
     if (!build) return;
     const sourceParts = build.parts.filter((p) => !editor.hidden.has(p.id));
-    if (!sourceParts.length) {
+    if (!sourceParts.length && !editor.sketchParts.length) {
       toast.error("Nenhuma peça visível para exportar");
       return;
     }
@@ -130,8 +134,9 @@ export default function Toolbar() {
     }
     const cutCenter = cutBounds.getCenter(new Vector3());
     const cutOrigin = { x: cutCenter.x, y: cutCenter.y };
+    const sketchGeometries = editor.sketchParts.map((part) => part.geometry);
     if (mode === "unico" && !editor.params.splitForBuildPlate) {
-      const buffer = geometriesToStl(parts.map((p) => p.geometry));
+      const buffer = geometriesToStl([...parts.map((p) => p.geometry), ...sketchGeometries]);
       downloadBlob(buffer, `${base}.stl`, "model/stl");
       toast.success("STL exportado");
       return;
@@ -218,6 +223,12 @@ export default function Toolbar() {
         zip.file(`${base}-${slugify(part.name)}${suffix}.stl`, geometriesToStl([segment.geometry]));
       }
     }
+    editor.sketchParts.forEach((part, index) => {
+      zip.file(
+        `${base}-esboco-${String(index + 1).padStart(2, "0")}.stl`,
+        geometriesToStl([part.geometry]),
+      );
+    });
     void zip.generateAsync({ type: "blob" }).then((blob) => {
       downloadBlob(blob, `${base}-pecas.zip`, "application/zip");
       toast.success(
@@ -236,6 +247,7 @@ export default function Toolbar() {
       name: row.name,
       styleId: row.style_id,
       params: (row.params ?? {}) as never,
+      sketch: parseSketch((row.params as { sketch?: unknown } | null)?.sketch),
       vectorSource:
         row.vector_kind && row.vector_name && row.vector_content
           ? {
