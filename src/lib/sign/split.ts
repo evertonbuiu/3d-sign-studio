@@ -205,11 +205,48 @@ function resolveTJunctions(geometry: BufferGeometry, tolerance = 1e-4): BufferGe
     unique.set(keyFor(point), point);
   }
   const points = [...unique.values()];
+  // Indexe os pontos pelo eixo dominante. A busca anterior varria todos os
+  // vértices para cada aresta (O(arestas × vértices)) e congelava palavras
+  // complexas. Com buckets de 1 mm, cada aresta examina apenas sua faixa.
+  const bucketSize = Math.max(tolerance * 10, 1);
+  const buckets = [
+    new Map<number, Vector3[]>(),
+    new Map<number, Vector3[]>(),
+    new Map<number, Vector3[]>(),
+  ];
+  for (const point of points) {
+    for (let axis = 0; axis < 3; axis++) {
+      const bucket = Math.floor(point.getComponent(axis) / bucketSize);
+      const axisBuckets = buckets[axis]!;
+      axisBuckets.set(bucket, [...(axisBuckets.get(bucket) ?? []), point]);
+    }
+  }
   const output: number[] = [];
   const edgePoints = (start: Vector3, end: Vector3) => {
     const edge = end.clone().sub(start);
     const lengthSq = edge.lengthSq();
-    return points
+    if (lengthSq <= tolerance * tolerance) return [];
+    const axis = [Math.abs(edge.x), Math.abs(edge.y), Math.abs(edge.z)].reduce(
+      (best, value, index, values) => (value > values[best]! ? index : best),
+      0,
+    );
+    const firstBucket = Math.floor(
+      Math.min(start.getComponent(axis), end.getComponent(axis)) / bucketSize,
+    );
+    const lastBucket = Math.floor(
+      Math.max(start.getComponent(axis), end.getComponent(axis)) / bucketSize,
+    );
+    const candidates: Vector3[] = [];
+    const seen = new Set<Vector3>();
+    for (let bucket = firstBucket; bucket <= lastBucket; bucket++) {
+      for (const point of buckets[axis]!.get(bucket) ?? []) {
+        if (!seen.has(point)) {
+          seen.add(point);
+          candidates.push(point);
+        }
+      }
+    }
+    return candidates
       .map((point) => ({ point, ratio: point.clone().sub(start).dot(edge) / lengthSq }))
       .filter(
         ({ point, ratio }) =>
@@ -259,6 +296,27 @@ function resolveTJunctions(geometry: BufferGeometry, tolerance = 1e-4): BufferGe
   const repaired = new BufferGeometry();
   repaired.setAttribute("position", new Float32BufferAttribute(output, 3));
   return repaired;
+}
+
+function shellIssueCount(geometry: BufferGeometry, tolerance = 1e-4): number {
+  const source = geometry.index ? geometry.toNonIndexed() : geometry;
+  const position = source.getAttribute("position");
+  const edges = new Map<string, number>();
+  const key = (index: number) =>
+    [position.getX(index), position.getY(index), position.getZ(index)]
+      .map((value) => Math.round(value / tolerance))
+      .join(",");
+  for (let index = 0; index + 2 < position.count; index += 3) {
+    for (let edge = 0; edge < 3; edge++) {
+      const a = key(index + edge);
+      const b = key(index + ((edge + 1) % 3));
+      const edgeKey = a < b ? `${a}|${b}` : `${b}|${a}`;
+      edges.set(edgeKey, (edges.get(edgeKey) ?? 0) + 1);
+    }
+  }
+  let issues = 0;
+  for (const count of edges.values()) if (count !== 2) issues++;
+  return issues;
 }
 
 function closeBoundaryLoops(geometry: BufferGeometry, tolerance = 1e-4): BufferGeometry {
@@ -400,6 +458,7 @@ function repairShell(geometry: BufferGeometry): BufferGeometry {
     repaired = weldShellByPosition(
       closeBoundaryLoops(pruneNonManifoldTriangles(resolveTJunctions(repaired))),
     );
+    if (shellIssueCount(repaired) === 0) break;
   }
   return repaired;
 }
