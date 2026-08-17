@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -23,13 +22,9 @@ import SketchLayer, { type SketchTool } from "./SketchLayer";
 import {
   canRedo,
   canUndo,
-  duplicateEntities,
   isClosedProfile,
   removeEntities,
-  rotateEntities,
-  scaleEntities,
   setExtrusion,
-  translateEntities,
   type SketchPoint,
 } from "@/lib/sign/sketch";
 import type { SignOutline, SignPart } from "@/lib/sign/build";
@@ -55,58 +50,6 @@ const EXPLODE_ORDER: Record<string, number> = {
   "camada-2": 5,
   "camada-3": 6,
 };
-
-type CutPreviewPieces = ReturnType<typeof splitGeometryByPlane>;
-
-// A separação, seleção e opções de visualização recriam o objeto manualCut.
-// A geometria, porém, só muda quando um parâmetro geométrico muda. Manter uma
-// cache curta evita repetir o CSG/reparo topológico em cada render da lateral.
-const CUT_PREVIEW_CACHE_LIMIT = 32;
-const cutPreviewCache = new Map<string, CutPreviewPieces>();
-
-function cutPreviewKey(
-  part: SignPart,
-  cut: NonNullable<Parameters<typeof PartMesh>[0]["manualCut"]>,
-) {
-  return JSON.stringify([
-    part.geometry.uuid,
-    cut.angle,
-    cut.offset,
-    cut.connectorEnabled ? cut.connector : "none",
-    cut.maleSide,
-    cut.connectorDepth,
-    cut.connectorWidth,
-    cut.connectorThickness,
-    cut.connectorClearance,
-    cut.connectorBackInset,
-    cut.connectorFrontInset,
-    cut.origin.x,
-    cut.origin.y,
-    cut.cuts.map((item) => [
-      item.angle,
-      item.offset,
-      item.connector,
-      item.maleSide,
-      item.connectorDepth,
-      item.connectorWidth,
-      item.connectorThickness,
-      item.connectorClearance,
-      item.connectorBackInset,
-      item.connectorFrontInset,
-    ]),
-  ]);
-}
-
-function rememberCutPreview(key: string, pieces: CutPreviewPieces) {
-  if (cutPreviewCache.has(key)) cutPreviewCache.delete(key);
-  cutPreviewCache.set(key, pieces);
-  while (cutPreviewCache.size > CUT_PREVIEW_CACHE_LIMIT) {
-    const oldest = cutPreviewCache.keys().next().value;
-    if (oldest === undefined) break;
-    cutPreviewCache.delete(oldest);
-  }
-  return pieces;
-}
 
 export interface PickedEdge {
   key: string;
@@ -294,51 +237,33 @@ function PartMesh({
   const edges = useMemo(() => new EdgesGeometry(part.geometry, 1), [part.geometry]);
   const manualPieces = useMemo(() => {
     if (!manualCut) return null;
-    const cacheKey = cutPreviewKey(part, manualCut);
-    const cached = cutPreviewCache.get(cacheKey);
-    if (cached) {
-      // Atualiza a recência para manter na cache os cortes em uso.
-      cutPreviewCache.delete(cacheKey);
-      cutPreviewCache.set(cacheKey, cached);
-      return cached;
-    }
     // O encaixe pertence às paredes. Frente, fundo e acessórios recebem apenas
     // o corte, evitando CSG desnecessário e mantendo macho/fêmea na peça certa.
-    // Durante o posicionamento do primeiro plano, mostre as duas metades reais
-    // sem executar o CSG do macho/fêmea a cada passo do slider. O encaixe exato
-    // passa a ser calculado assim que o usuário aplica o corte (manualCuts), e
-    // continua sendo gerado integralmente na exportação.
-    const previewConnector = "none";
+    const previewConnector = manualCut.connectorEnabled ? manualCut.connector : "none";
     try {
       if (manualCut.cuts.length) {
-        return rememberCutPreview(
-          cacheKey,
-          splitGeometryByPlanes(
-            part.geometry,
-            manualCut.cuts.map((cut) => ({
-              ...cut,
-              connector: manualCut.connectorEnabled ? (cut.connector ?? "none") : "none",
-            })),
-            manualCut.origin,
-          ),
+        return splitGeometryByPlanes(
+          part.geometry,
+          manualCut.cuts.map((cut) => ({
+            ...cut,
+            connector: manualCut.connectorEnabled ? (cut.connector ?? "none") : "none",
+          })),
+          manualCut.origin,
         );
       }
-      return rememberCutPreview(
-        cacheKey,
-        splitGeometryByPlane(part.geometry, {
-          angle: manualCut.angle,
-          offset: manualCut.offset,
-          connector: previewConnector,
-          maleSide: manualCut.maleSide,
-          connectorDepth: manualCut.connectorDepth,
-          connectorWidth: manualCut.connectorWidth,
-          connectorThickness: manualCut.connectorThickness,
-          connectorClearance: manualCut.connectorClearance,
-          connectorBackInset: manualCut.connectorBackInset,
-          connectorFrontInset: manualCut.connectorFrontInset,
-          origin: manualCut.origin,
-        }),
-      );
+      return splitGeometryByPlane(part.geometry, {
+        angle: manualCut.angle,
+        offset: manualCut.offset,
+        connector: previewConnector,
+        maleSide: manualCut.maleSide,
+        connectorDepth: manualCut.connectorDepth,
+        connectorWidth: manualCut.connectorWidth,
+        connectorThickness: manualCut.connectorThickness,
+        connectorClearance: manualCut.connectorClearance,
+        connectorBackInset: manualCut.connectorBackInset,
+        connectorFrontInset: manualCut.connectorFrontInset,
+        origin: manualCut.origin,
+      });
     } catch (error) {
       console.error(`Falha ao gerar prévia de corte para ${part.name}`, error);
       try {
@@ -358,7 +283,7 @@ function PartMesh({
         });
       }
     }
-  }, [manualCut, part]);
+  }, [manualCut, part.geometry, part.name]);
 
   const pointerProps = interactive
     ? {
@@ -715,8 +640,7 @@ function OutlineLine({ outline }: { outline: SignOutline }) {
   );
 }
 
-export type ToolMode =
-  "orbit" | "pan" | "select" | "measure" | "pushpull" | "transform" | "cut" | "sketch";
+export type ToolMode = "orbit" | "pan" | "select" | "measure" | "pushpull" | "cut" | "sketch";
 
 type PushPullKey =
   | "depth"
@@ -953,8 +877,8 @@ function Model({
       </group>
       <SketchLayer
         scale={1}
-        active={mode === "sketch" || mode === "transform"}
-        tool={mode === "transform" ? "select" : sketchTool}
+        active={mode === "sketch"}
+        tool={sketchTool}
         snapGrid={snapGrid}
         snapEndpoints={snapEndpoints}
         gridSize={gridSize}
@@ -991,21 +915,11 @@ const MODE_LABEL: Record<ToolMode, string> = {
   select: "Selecionar peça (Espaço)",
   measure: "Medir arestas (M)",
   pushpull: "Empurrar/Puxar (P)",
-  transform: "Transformar (G)",
   cut: "Plano de corte (C)",
   sketch: "Esboço 2D (S)",
 };
 
-const MODE_ORDER: ToolMode[] = [
-  "orbit",
-  "pan",
-  "select",
-  "measure",
-  "pushpull",
-  "transform",
-  "cut",
-  "sketch",
-];
+const MODE_ORDER: ToolMode[] = ["orbit", "pan", "select", "measure", "pushpull", "cut", "sketch"];
 
 export default function Viewport() {
   const {
@@ -1039,10 +953,6 @@ export default function Viewport() {
   const [gridSize, setGridSize] = useState(5);
   const [sketchCursor, setSketchCursor] = useState<SketchPoint | null>(null);
   const [extrudeHeight, setExtrudeHeight] = useState(10);
-  const [moveX, setMoveX] = useState(10);
-  const [moveY, setMoveY] = useState(0);
-  const [rotateAngle, setRotateAngle] = useState(15);
-  const [scalePercent, setScalePercent] = useState(110);
 
   const edgeSelect = mode === "measure";
   const totalLength = selected.reduce((sum, e) => sum + e.length, 0);
@@ -1074,15 +984,10 @@ export default function Viewport() {
       const target = event.target as HTMLElement | null;
       if (target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
       if (event.metaKey || event.ctrlKey) {
-        const command = event.key.toLowerCase();
-        if (command === "z" && (mode === "sketch" || mode === "transform")) {
+        if (event.key.toLowerCase() === "z" && mode === "sketch") {
           event.preventDefault();
           if (event.shiftKey) redoSketch();
           else undoSketch();
-        }
-        if (command === "d" && mode === "transform" && sketch.present.selectedIds.length) {
-          event.preventDefault();
-          updateSketch((prev) => duplicateEntities(prev));
         }
         return;
       }
@@ -1093,7 +998,6 @@ export default function Viewport() {
         " ": "select",
         m: "measure",
         p: "pushpull",
-        g: "transform",
         c: "cut",
         s: "sketch",
       };
@@ -1102,31 +1006,6 @@ export default function Viewport() {
         event.preventDefault();
         activateMode(nextMode);
         return;
-      }
-      if (mode === "transform" && sketch.present.selectedIds.length) {
-        const step = event.shiftKey ? 10 : 1;
-        const movement: Record<string, [number, number]> = {
-          arrowleft: [-step, 0],
-          arrowright: [step, 0],
-          arrowup: [0, step],
-          arrowdown: [0, -step],
-        };
-        if (movement[key]) {
-          event.preventDefault();
-          const [dx, dy] = movement[key];
-          updateSketch((prev) => translateEntities(prev, undefined, dx, dy));
-          return;
-        }
-        if (key === "[" || key === "]") {
-          event.preventDefault();
-          updateSketch((prev) => rotateEntities(prev, undefined, key === "[" ? -15 : 15));
-          return;
-        }
-        if (key === "-" || key === "=" || key === "+") {
-          event.preventDefault();
-          updateSketch((prev) => scaleEntities(prev, undefined, key === "-" ? 0.9 : 1.1));
-          return;
-        }
       }
       if (key === "1") applyView("iso");
       if (key === "2") applyView("frente");
@@ -1207,7 +1086,7 @@ export default function Viewport() {
         />
         <OrbitControls
           makeDefault
-          enabled={!cutPlaneDragging && mode !== "sketch" && mode !== "transform"}
+          enabled={!cutPlaneDragging && mode !== "sketch"}
           enableRotate={mode !== "pan"}
           enablePan
           target={[0, 0, 0]}
@@ -1292,124 +1171,6 @@ export default function Viewport() {
             ) : (
               <p className="text-xs text-muted-foreground">Clique em uma peça para selecionar.</p>
             )}
-          </div>
-        )}
-
-        {mode === "transform" && (
-          <div className="space-y-2 rounded-md border border-border bg-background/60 p-2">
-            <div className="flex items-center justify-between text-xs">
-              <span>Entidades selecionadas</span>
-              <span className="tabular-nums">{sketchState.selectedIds.length}</span>
-            </div>
-            <div className="grid grid-cols-2 gap-1.5">
-              <Label className="space-y-1 text-[11px]">
-                <span>Deslocar X (mm)</span>
-                <Input
-                  type="number"
-                  step="1"
-                  className="h-8 text-xs"
-                  value={moveX}
-                  onChange={(event) => setMoveX(Number(event.target.value) || 0)}
-                />
-              </Label>
-              <Label className="space-y-1 text-[11px]">
-                <span>Deslocar Y (mm)</span>
-                <Input
-                  type="number"
-                  step="1"
-                  className="h-8 text-xs"
-                  value={moveY}
-                  onChange={(event) => setMoveY(Number(event.target.value) || 0)}
-                />
-              </Label>
-              <Label className="space-y-1 text-[11px]">
-                <span>Rotação (graus)</span>
-                <Input
-                  type="number"
-                  step="1"
-                  className="h-8 text-xs"
-                  value={rotateAngle}
-                  onChange={(event) => setRotateAngle(Number(event.target.value) || 0)}
-                />
-              </Label>
-              <Label className="space-y-1 text-[11px]">
-                <span>Escala (%)</span>
-                <Input
-                  type="number"
-                  min="1"
-                  step="1"
-                  className="h-8 text-xs"
-                  value={scalePercent}
-                  onChange={(event) =>
-                    setScalePercent(Math.max(1, Number(event.target.value) || 1))
-                  }
-                />
-              </Label>
-            </div>
-            <div className="grid grid-cols-3 gap-1.5">
-              <Button
-                size="sm"
-                className="h-8 px-1 text-xs"
-                disabled={!sketchState.selectedIds.length || (!moveX && !moveY)}
-                onClick={() =>
-                  updateSketch((prev) => translateEntities(prev, undefined, moveX, moveY))
-                }
-              >
-                Mover
-              </Button>
-              <Button
-                size="sm"
-                className="h-8 px-1 text-xs"
-                disabled={!sketchState.selectedIds.length || !rotateAngle}
-                onClick={() => updateSketch((prev) => rotateEntities(prev, undefined, rotateAngle))}
-              >
-                Rotacionar
-              </Button>
-              <Button
-                size="sm"
-                className="h-8 px-1 text-xs"
-                disabled={!sketchState.selectedIds.length || scalePercent === 100}
-                onClick={() =>
-                  updateSketch((prev) => scaleEntities(prev, undefined, scalePercent / 100))
-                }
-              >
-                Escalar
-              </Button>
-            </div>
-            <div className="grid grid-cols-2 gap-1.5">
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 text-xs"
-                disabled={!sketchState.selectedIds.length}
-                onClick={() => updateSketch((prev) => duplicateEntities(prev))}
-              >
-                Duplicar
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 text-xs"
-                disabled={!sketchState.selectedIds.length}
-                onClick={() =>
-                  updateSketch((prev) => removeEntities(prev, sketchState.selectedIds))
-                }
-              >
-                Excluir
-              </Button>
-            </div>
-            <div className="grid grid-cols-2 gap-1.5">
-              <Button size="sm" variant="outline" className="h-8 text-xs" onClick={undoSketch}>
-                Desfazer
-              </Button>
-              <Button size="sm" variant="outline" className="h-8 text-xs" onClick={redoSketch}>
-                Refazer
-              </Button>
-            </div>
-            <p className="text-[11px] text-muted-foreground">
-              Clique nas entidades · Shift seleciona várias · Setas movem 1 mm · Shift+setas 10 mm ·
-              [ e ] giram 15° · +/- escala · Ctrl+D duplica.
-            </p>
           </div>
         )}
 

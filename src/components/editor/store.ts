@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useDeferredValue, useEffect, useMemo, useState } from "react";
 import type { Font } from "opentype.js";
 
 import { loadFont, parseCustomFont, textToShapes } from "@/lib/sign/fonts";
@@ -84,59 +84,6 @@ export interface SketchPart {
 
 const EditorContext = createContext<EditorState | null>(null);
 
-const NON_GEOMETRY_PARAMS = new Set<keyof SignParams>([
-  "printerId",
-  "buildWidth",
-  "buildDepth",
-  "buildHeight",
-  "nozzleDiameter",
-  "filamentDiameter",
-  "maxPrintSpeed",
-  "splitForBuildPlate",
-  "splitMargin",
-  "splitMode",
-  "manualCutAngle",
-  "manualCutOffset",
-  "manualCutSeparation",
-  "manualCutTarget",
-  "manualCuts",
-  "cutConnector",
-  "cutMaleSide",
-  "cutConnectorDepth",
-  "cutConnectorWidth",
-  "cutConnectorThickness",
-  "cutConnectorClearance",
-  "filamentPrice",
-  "density",
-  "printSpeed",
-  "hourlyRate",
-  "energyPrice",
-  "printerPower",
-  "margin",
-]);
-
-let previousGeometryKey = "";
-let previousGeometryParams: SignParams | null = null;
-
-function paramsForGeometry(params: SignParams): SignParams {
-  const key = JSON.stringify(
-    Object.entries(params).filter(([name]) => !NON_GEOMETRY_PARAMS.has(name as keyof SignParams)),
-  );
-  if (key === previousGeometryKey && previousGeometryParams) return previousGeometryParams;
-  previousGeometryKey = key;
-  previousGeometryParams = params;
-  return params;
-}
-
-function useDebouncedValue<T>(value: T, delay: number): T {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const timer = window.setTimeout(() => setDebounced(value), delay);
-    return () => window.clearTimeout(timer);
-  }, [delay, value]);
-  return debounced;
-}
-
 export function useEditor(): EditorState {
   const ctx = useContext(EditorContext);
   if (!ctx) throw new Error("useEditor deve ser usado dentro de EditorProvider");
@@ -186,10 +133,7 @@ export function useEditorState(): EditorState {
   }, [params.fontId]);
 
   const style = useMemo(() => getStyle(styleId), [styleId]);
-  // A construção 3D é síncrona e cara. Alterações rápidas de sliders são
-  // consolidadas para evitar uma fila de reconstruções que bloqueia a interface.
-  const deferredParams = useDebouncedValue(params, 120);
-  const geometryParams = paramsForGeometry(deferredParams);
+  const deferredParams = useDeferredValue(params);
 
   const build = useMemo(() => {
     try {
@@ -200,18 +144,18 @@ export function useEditorState(): EditorState {
         : (customFont ?? font)
           ? textToShapes(
               (customFont ?? font)!,
-              geometryParams.text.toUpperCase(),
-              geometryParams.letterHeight,
-              geometryParams.tracking,
+              deferredParams.text.toUpperCase(),
+              deferredParams.letterHeight,
+              deferredParams.tracking,
             )
           : [];
       if (!shapes.length) return null;
-      return buildSign(shapes, geometryParams, style);
+      return buildSign(shapes, deferredParams, style);
     } catch (error) {
       console.error("Falha ao gerar geometria", error);
       return null;
     }
-  }, [font, customFont, svg, geometryParams, style]);
+  }, [font, customFont, svg, deferredParams, style]);
 
   const sketchParts = useMemo<SketchPart[]>(() => {
     const parts: SketchPart[] = [];

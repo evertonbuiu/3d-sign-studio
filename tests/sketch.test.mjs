@@ -7,21 +7,16 @@ import {
   canUndo,
   commitSketch,
   createSketchHistory,
-  duplicateEntities,
   entityPoints,
   extrudeSketchEntity,
   isClosedProfile,
   parseSketch,
   redoSketch,
   removeEntities,
-  rotateEntities,
-  scaleEntities,
   selectEntity,
-  selectionCenter,
   serializeSketch,
   setExtrusion,
   snapPoint,
-  translateEntities,
   undoSketch,
 } from "../src/lib/sign/sketch.ts";
 
@@ -155,44 +150,5 @@ test("persistência mantém entidades e extrusões e aceita projetos antigos", (
   assert.equal(
     parseSketch({ entities: [], extrusions: [{ entityId: "x", height: 4 }] }).extrusions.length,
     0,
-  );
-});
-
-test("move, rotaciona e escala entidades selecionadas", () => {
-  let state = createSketchHistory().present;
-  state = addEntity(state, rect);
-  state = translateEntities(state, undefined, 10, -5);
-  assert.deepEqual(entityPoints(state.entities[0])[0], { x: 10, y: -5 });
-  assert.deepEqual(selectionCenter(state), { x: 30, y: 5 });
-
-  state = rotateEntities(state, undefined, 90);
-  assert.equal(state.entities[0].type, "polyline");
-  const rotatedCenter = selectionCenter(state);
-  assert.ok(Math.abs(rotatedCenter.x - 30) < 1e-9);
-  assert.ok(Math.abs(rotatedCenter.y - 5) < 1e-9);
-
-  state = scaleEntities(state, undefined, 2);
-  const points = entityPoints(state.entities[0]);
-  const width =
-    Math.max(...points.map((point) => point.x)) - Math.min(...points.map((point) => point.x));
-  const height =
-    Math.max(...points.map((point) => point.y)) - Math.min(...points.map((point) => point.y));
-  assert.ok(Math.abs(width - 40) < 1e-9);
-  assert.ok(Math.abs(height - 80) < 1e-9);
-});
-
-test("duplicação preserva extrusão e seleciona apenas a cópia", () => {
-  let state = createSketchHistory().present;
-  state = addEntity(state, rect);
-  state = setExtrusion(state, "r1", 12);
-  const duplicated = duplicateEntities(state, undefined, { x: 25, y: 5 });
-  assert.equal(duplicated.entities.length, 2);
-  assert.equal(duplicated.extrusions.length, 2);
-  assert.equal(duplicated.selectedIds.length, 1);
-  const copy = duplicated.entities.find((entity) => entity.id === duplicated.selectedIds[0]);
-  assert.deepEqual(entityPoints(copy)[0], { x: 25, y: 5 });
-  assert.equal(
-    duplicated.extrusions.find((extrusion) => extrusion.entityId === copy.id)?.height,
-    12,
   );
 });
