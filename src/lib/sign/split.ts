@@ -6,7 +6,6 @@ import {
   Vector3,
 } from "three";
 import { mergeGeometries, mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
-import { ADDITION, Brush, Evaluator } from "three-bvh-csg";
 
 export interface SplitPiece {
   geometry: BufferGeometry;
@@ -277,15 +276,10 @@ function closeBoundaryLoops(geometry: BufferGeometry, tolerance = 1e-4): BufferG
   return closed;
 }
 
-function unionClosedSolids(left: BufferGeometry, right: BufferGeometry): BufferGeometry {
-  const leftBrush = new Brush(left);
-  const rightBrush = new Brush(right);
-  leftBrush.updateMatrixWorld(true);
-  rightBrush.updateMatrixWorld(true);
-  const evaluator = new Evaluator();
-  evaluator.attributes = ["position", "normal"];
-  const result = evaluator.evaluate(leftBrush, rightBrush, ADDITION).geometry;
-  return weldShellByPosition(closeBoundaryLoops(resolveTJunctions(result)));
+function joinOpenShells(parts: BufferGeometry[]): BufferGeometry {
+  const joined = mergeGeometries(parts.map(withoutDegenerateTriangles), false);
+  if (!joined) throw new Error("Falha ao unir as faixas contínuas do encaixe");
+  return weldShellByPosition(closeBoundaryLoops(resolveTJunctions(joined)));
 }
 
 function pointInPolygon(point: Vector2, polygon: Vector2[]): boolean {
@@ -1026,7 +1020,7 @@ export function splitGeometryByPlane(
   // parede. O antigo volume de sobreposição deixava a lingueta como um sólido
   // separado dentro da peça original.
   // Uma sobreposição microscópica permite remover a face divisória no plano.
-  const overlap = 0.1;
+  const overlap = 0;
   // Sem placa unificada, o encaixe alcança os limites do fundo e da frente.
   const closureSeam = 0.1;
   const backClosure = Math.max(options.connectorBackInset ?? 0, closureSeam);
@@ -1175,7 +1169,21 @@ export function splitGeometryByPlane(
   // Abre a metade externa da parede original e remove a tampa traseira do
   // prolongamento. As duas cascas compartilham a mesma borda no plano de corte.
   // A união booleana elimina as tampas na área de contato e cria um único sólido.
-  const maleGeometry = unionClosedSolids(maleBaseGeometry, maleConnector);
+  // Como no rebaixo frontal, remove as tampas de contato e costura as faixas
+  // pela mesma borda. Não existe uma face intermediária entre parede e lingueta.
+  const openedMale = replaceExactPlanarCap(
+    maleBaseGeometry,
+    outerCap,
+    center,
+    normal,
+  );
+  const openMaleConnector = replaceExactPlanarCap(
+    maleConnector,
+    new BufferGeometry(),
+    center,
+    normal,
+  );
+  const maleGeometry = joinOpenShells([openedMale, openMaleConnector]);
   pieces[maleIndex] = { ...pieces[maleIndex]!, geometry: maleGeometry };
   const openedFemale = replaceExactPlanarCap(
     pieces[femaleIndex]!.geometry,
