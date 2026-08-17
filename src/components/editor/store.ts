@@ -186,7 +186,10 @@ export function useEditorState(): EditorState {
   }, [params.fontId]);
 
   const style = useMemo(() => getStyle(styleId), [styleId]);
-  // A construção 3D é síncrona e cara. Alterações rápidas de sliders são\n  // consolidadas para evitar uma fila de reconstruções que bloqueia a interface.\n  const deferredParams = useDebouncedValue(params, 120);\n  const geometryParams = paramsForGeometry(deferredParams);
+  // A construção 3D é síncrona e cara. Alterações rápidas de sliders são
+  // consolidadas para evitar uma fila de reconstruções que bloqueia a interface.
+  const deferredParams = useDebouncedValue(params, 120);
+  const geometryParams = paramsForGeometry(deferredParams);
 
   const build = useMemo(() => {
     try {
