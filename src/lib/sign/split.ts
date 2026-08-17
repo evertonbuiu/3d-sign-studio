@@ -50,6 +50,9 @@ export function resolveCutConnectorWidth(
   wallWidth: number,
   frontRecessWidth: number,
 ): number {
+  if (styleId === "fundo-impresso-frente-impressa-aba") {
+    return 100;
+  }
   if (styleId !== "fundo-acrilico-frente-acrilica" || wallWidth <= 0) {
     return requestedPercent;
   }
