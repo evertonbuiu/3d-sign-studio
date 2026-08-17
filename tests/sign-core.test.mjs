@@ -395,6 +395,28 @@ test("macho e parede externa formam um unico componente conectado", () => {
   assert.equal(usedRoots.size, 1, "o encaixe não pode ser exportado como shell separado da parede");
 });
 
+test("união entre parede e encaixe não deixa arestas abertas", () => {
+  const male = splitGeometryByPlane(new BoxGeometry(100, 60, 20), {
+    angle: 0,
+    connector: "male-female",
+    connectorDepth: 4,
+    connectorWidth: 50,
+  })[0].geometry.toNonIndexed();
+  const position = male.getAttribute("position");
+  const edges = new Map();
+  for (let triangle = 0; triangle + 2 < position.count; triangle += 3) {
+    const vertices = [0, 1, 2].map((offset) =>
+      [position.getX(triangle + offset), position.getY(triangle + offset), position.getZ(triangle + offset)]
+        .map((value) => Math.round(value * 1e4)).join(","));
+    for (let edge = 0; edge < 3; edge++) {
+      const start = vertices[edge], end = vertices[(edge + 1) % 3];
+      const key = start < end ? `${start}|${end}` : `${end}|${start}`;
+      edges.set(key, (edges.get(key) ?? 0) + 1);
+    }
+  }
+  assert.equal([...edges.values()].filter((count) => count === 1).length, 0);
+});
+
 test("extensão externa ignora o degrau interno e chega uniforme à frente útil", () => {
   const lowerWall = new BoxGeometry(100, 10, 14).translate(0, 0, -3);
   const recessedFrontWall = new BoxGeometry(100, 4, 6).translate(0, 0, 7);

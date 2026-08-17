@@ -177,6 +177,59 @@ function weldShellByPosition(geometry: BufferGeometry, tolerance = 1e-3): Buffer
   return welded;
 }
 
+function resolveTJunctions(geometry: BufferGeometry, tolerance = 1e-4): BufferGeometry {
+  const source = geometry.index ? geometry.toNonIndexed() : geometry;
+  const position = source.getAttribute("position");
+  const unique = new Map<string, Vector3>();
+  const keyFor = (point: Vector3) => point.toArray()
+    .map((value) => Math.round(value / tolerance)).join(",");
+  for (let index = 0; index < position.count; index++) {
+    const point = new Vector3(position.getX(index), position.getY(index), position.getZ(index));
+    unique.set(keyFor(point), point);
+  }
+  const points = [...unique.values()];
+  const output: number[] = [];
+  const edgePoints = (start: Vector3, end: Vector3) => {
+    const edge = end.clone().sub(start);
+    const lengthSq = edge.lengthSq();
+    return points
+      .map((point) => ({ point, ratio: point.clone().sub(start).dot(edge) / lengthSq }))
+      .filter(({ point, ratio }) =>
+        ratio > tolerance && ratio < 1 - tolerance &&
+        start.clone().addScaledVector(edge, ratio).distanceToSquared(point) <= tolerance * tolerance)
+      .sort((left, right) => left.ratio - right.ratio)
+      .map(({ point }) => point);
+  };
+  for (let index = 0; index + 2 < position.count; index += 3) {
+    const triangle = [0, 1, 2].map((offset) =>
+      new Vector3(position.getX(index + offset), position.getY(index + offset), position.getZ(index + offset)));
+    const boundary: Vector3[] = [];
+    let split = false;
+    for (let edgeIndex = 0; edgeIndex < 3; edgeIndex++) {
+      const start = triangle[edgeIndex]!;
+      const end = triangle[(edgeIndex + 1) % 3]!;
+      const intermediate = edgePoints(start, end);
+      boundary.push(start, ...intermediate);
+      split ||= intermediate.length > 0;
+    }
+    if (!split) {
+      output.push(...triangle.flatMap((point) => point.toArray()));
+      continue;
+    }
+    const center = triangle[0]!.clone().add(triangle[1]!).add(triangle[2]!).multiplyScalar(1 / 3);
+    for (let boundaryIndex = 0; boundaryIndex < boundary.length; boundaryIndex++) {
+      output.push(
+        ...center.toArray(),
+        ...boundary[boundaryIndex]!.toArray(),
+        ...boundary[(boundaryIndex + 1) % boundary.length]!.toArray(),
+      );
+    }
+  }
+  const repaired = new BufferGeometry();
+  repaired.setAttribute("position", new Float32BufferAttribute(output, 3));
+  return repaired;
+}
+
 function unionClosedSolids(left: BufferGeometry, right: BufferGeometry): BufferGeometry {
   const leftBrush = new Brush(left);
   const rightBrush = new Brush(right);
@@ -185,7 +238,7 @@ function unionClosedSolids(left: BufferGeometry, right: BufferGeometry): BufferG
   const evaluator = new Evaluator();
   evaluator.attributes = ["position", "normal"];
   const result = evaluator.evaluate(leftBrush, rightBrush, ADDITION).geometry;
-  return weldShellByPosition(result);
+  return weldShellByPosition(resolveTJunctions(result));
 }
 
 function pointInPolygon(point: Vector2, polygon: Vector2[]): boolean {
@@ -926,11 +979,13 @@ export function splitGeometryByPlane(
   // parede. O antigo volume de sobreposição deixava a lingueta como um sólido
   // separado dentro da peça original.
   // Uma sobreposição microscópica permite remover a face divisória no plano.
-  const overlap = 0.02;
+  const overlap = 0.1;
   // Sem placa unificada, o encaixe alcança os limites do fundo e da frente.
-  const closureSeam = 1e-3;
+  const closureSeam = 0.1;
   const backClosure = Math.max(options.connectorBackInset ?? 0, closureSeam);
   const frontClosure = Math.max(options.connectorFrontInset ?? 0, closureSeam);
+  const connectorBack = options.connectorBackInset ?? 0;
+  const connectorFront = options.connectorFrontInset ?? 0;
   const maleBaseGeometry = pieces[maleIndex]!.geometry;
   const maleConnector = extrudeCutSection(
     maleBaseGeometry,
@@ -938,8 +993,8 @@ export function splitGeometryByPlane(
     normal,
     direction,
     depth + overlap,
-    bounds.min.z + backClosure,
-    bounds.max.z - frontClosure,
+    bounds.min.z + connectorBack,
+    bounds.max.z - connectorFront,
     widthPercent,
     false,
     false,
