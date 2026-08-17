@@ -132,4 +132,3 @@ export function textToShapes(
 
   return path.toShapes();
 }
-

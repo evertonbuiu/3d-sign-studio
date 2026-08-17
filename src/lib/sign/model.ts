@@ -536,4 +536,3 @@ export function paramsForStyle(style: SignStyle, base: SignParams = DEFAULT_PARA
     ...style.preset,
   };
 }
-

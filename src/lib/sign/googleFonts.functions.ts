@@ -20,9 +20,7 @@ export const fetchGoogleFont = createServerFn({ method: "POST" })
     const buffer = await response.arrayBuffer();
     const zip = await JSZip.loadAsync(buffer);
 
-    const entries = Object.values(zip.files).filter(
-      (f) => !f.dir && /\.(ttf|otf)$/i.test(f.name),
-    );
+    const entries = Object.values(zip.files).filter((f) => !f.dir && /\.(ttf|otf)$/i.test(f.name));
     if (!entries.length) {
       throw new Error(`Nenhum arquivo de fonte encontrado para ${data.family}`);
     }
