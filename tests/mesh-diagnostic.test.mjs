@@ -589,10 +589,12 @@ test("fundo impresso com frente impressa recebe encaixe somente nas paredes da f
     if (frontPosition.getX(index) > cutLimit + 0.1) connectorZ.push(frontPosition.getZ(index));
   }
   assert.ok(connectorZ.length > 0, "o macho deve prolongar as paredes cortadas");
-  assert.ok(Math.abs(Math.min(...connectorZ) - 1) < 1e-3);
+  assert.ok(
+    Math.abs(Math.min(...connectorZ) - frontWalls.geometry.boundingBox.min.z) <= 1.01e-3,
+  );
   assert.ok(
     Math.abs(Math.max(...connectorZ) - (params.depth - params.faceThickness)) < 1e-3,
-    "o encaixe deve terminar sob a frente impressa, como no modelo SKP",
+    "o encaixe deve alcançar o final frontal da parede",
   );
 });
 

@@ -592,9 +592,9 @@ test("encaixe percorre a parede e preserva as extremidades fechadas", () => {
   for (let i = 0; i < position.count; i++) {
     if (position.getX(i) > 0.1) extendedZ.push(position.getZ(i));
   }
-  assert.ok(Math.max(...extendedZ) - Math.min(...extendedZ) >= 17.99);
-  assert.ok(Math.abs(Math.min(...extendedZ) + 9) < 0.01);
-  assert.ok(Math.abs(Math.max(...extendedZ) - 9) < 0.01);
+  assert.ok(Math.max(...extendedZ) - Math.min(...extendedZ) >= 19.99);
+  assert.ok(Math.abs(Math.min(...extendedZ) + 10) < 0.01);
+  assert.ok(Math.abs(Math.max(...extendedZ) - 10) < 0.01);
 });
 
 test("rebaixo ocupa somente metade externa da espessura da parede", () => {
@@ -677,8 +677,8 @@ test("encaixe reproduz as medidas extraídas do modelo c.skp", () => {
   for (let i = 0; i < position.count; i++) {
     if (position.getX(i) > 0.1) extendedZ.push(position.getZ(i));
   }
-  assert.ok(Math.abs(Math.min(...extendedZ) - 1) < 0.01);
-  assert.ok(Math.abs(Math.max(...extendedZ) - 44) < 0.01);
+  assert.ok(Math.abs(Math.min(...extendedZ)) < 0.01);
+  assert.ok(Math.abs(Math.max(...extendedZ) - 45) < 0.01);
   pieces[0].geometry.computeBoundingBox();
   assert.ok(pieces[0].geometry.boundingBox.max.x >= 3.99);
 });

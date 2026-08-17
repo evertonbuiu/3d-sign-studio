@@ -871,7 +871,6 @@ export function splitGeometryByPlane(
   geometry.computeBoundingBox();
   const bounds = geometry.boundingBox?.clone();
   if (!bounds || bounds.isEmpty()) return [];
-  const size = bounds.getSize(new Vector3());
   const center = bounds.getCenter(new Vector3());
   if (options.origin) center.set(options.origin.x, options.origin.y, center.z);
   const radians = (options.angle * Math.PI) / 180;
@@ -915,9 +914,10 @@ export function splitGeometryByPlane(
   // parede. O antigo volume de sobreposição deixava a lingueta como um sólido
   // separado dentro da peça original.
   const overlap = 0;
-  const endClosure = Math.min(1, size.z * 0.25);
-  const backClosure = Math.max(endClosure, options.connectorBackInset ?? 0);
-  const frontClosure = Math.max(endClosure, options.connectorFrontInset ?? 0);
+  // Sem placa unificada, o encaixe alcança os limites do fundo e da frente.
+  const closureSeam = 1e-3;
+  const backClosure = Math.max(options.connectorBackInset ?? 0, closureSeam);
+  const frontClosure = Math.max(options.connectorFrontInset ?? 0, closureSeam);
   const maleBaseGeometry = pieces[maleIndex]!.geometry;
   const maleConnector = extrudeCutSection(
     maleBaseGeometry,
@@ -948,7 +948,6 @@ export function splitGeometryByPlane(
     femaleCavity.computeBoundingBox();
     const cavityBounds = femaleCavity.boundingBox!;
     const cavityCenter = cavityBounds.getCenter(new Vector3());
-    const cavitySize = cavityBounds.getSize(new Vector3());
     const cavityPosition = femaleCavity.getAttribute("position");
     const tangent = new Vector3(-normal.y, normal.x, 0);
     const parent = Array.from({ length: cavityPosition.count }, (_, index) => index);
@@ -991,7 +990,8 @@ export function splitGeometryByPlane(
     const normalCenter = (minNormal + maxNormal) / 2;
     const normalExtent = Math.max(maxNormal - minNormal, 1e-6);
     const normalScale = (normalExtent + clearance * 2) / normalExtent;
-    const zScale = cavitySize.z > 1e-6 ? (cavitySize.z + clearance * 2) / cavitySize.z : 1;
+    // A folga lateral não deve ultrapassar a frente nem o fundo da parede.
+    const zScale = 1;
     for (let i = 0; i < cavityPosition.count; i++) {
       const relative = new Vector3(
         cavityPosition.getX(i) - cavityCenter.x,
