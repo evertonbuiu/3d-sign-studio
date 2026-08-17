@@ -40,6 +40,7 @@ import {
   splitGeometryByPlanes,
   splitGeometryForBuildPlate,
   partSupportsCutConnector,
+  resolveCutConnectorWidth,
 } from "@/lib/sign/split";
 import { transformGeometryForPlacement } from "@/lib/sign/placement";
 import {
@@ -145,6 +146,12 @@ export default function Toolbar() {
       const connectorEnabled = partSupportsCutConnector(part.kind, styleHasWalls);
       let segments;
       try {
+        const connectorWidth = resolveCutConnectorWidth(
+          editor.style.id,
+          editor.params.cutConnectorWidth,
+          editor.params.wall,
+          editor.params.recessLip,
+        );
         segments = editor.params.splitForBuildPlate
           ? editor.params.splitMode === "manual"
             ? editor.params.manualCuts.length
@@ -157,7 +164,12 @@ export default function Toolbar() {
                       connector: connectorEnabled ? cut.connector : "none" as const,
                       maleSide: cut.maleSide,
                       connectorDepth: cut.connectorDepth,
-                      connectorWidth: cut.connectorWidth,
+                      connectorWidth: resolveCutConnectorWidth(
+                        editor.style.id,
+                        cut.connectorWidth,
+                        editor.params.wall,
+                        editor.params.recessLip,
+                      ),
                       connectorThickness: cut.connectorThickness,
                       connectorClearance: cut.connectorClearance,
                       connectorBackInset:
@@ -175,7 +187,7 @@ export default function Toolbar() {
                   connector: connectorEnabled ? editor.params.cutConnector : "none",
                   maleSide: editor.params.cutMaleSide,
                   connectorDepth: editor.params.cutConnectorDepth,
-                  connectorWidth: editor.params.cutConnectorWidth,
+                  connectorWidth,
                   connectorThickness: editor.params.cutConnectorThickness,
                   connectorClearance: editor.params.cutConnectorClearance,
                   connectorBackInset:
