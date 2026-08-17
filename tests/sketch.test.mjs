@@ -22,11 +22,23 @@ import {
 
 const rect = { id: "r1", type: "rect", x: 0, y: 0, width: 40, height: 20 };
 const circle = { id: "c1", type: "circle", cx: 5, cy: 5, radius: 10 };
-const openLine = { id: "l1", type: "polyline", points: [{ x: 0, y: 0 }, { x: 10, y: 0 }], closed: false };
+const openLine = {
+  id: "l1",
+  type: "polyline",
+  points: [
+    { x: 0, y: 0 },
+    { x: 10, y: 0 },
+  ],
+  closed: false,
+};
 const closedTriangle = {
   id: "t1",
   type: "polyline",
-  points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 0, y: 10 }],
+  points: [
+    { x: 0, y: 0 },
+    { x: 10, y: 0 },
+    { x: 0, y: 10 },
+  ],
   closed: true,
 };
 
@@ -36,7 +48,15 @@ test("detecta perfis fechados e abertos", () => {
   assert.equal(isClosedProfile(closedTriangle), true);
   assert.equal(isClosedProfile(openLine), false);
   assert.equal(
-    isClosedProfile({ id: "z", type: "polyline", points: [{ x: 0, y: 0 }, { x: 1, y: 1 }], closed: true }),
+    isClosedProfile({
+      id: "z",
+      type: "polyline",
+      points: [
+        { x: 0, y: 0 },
+        { x: 1, y: 1 },
+      ],
+      closed: true,
+    }),
     false,
   );
 });
@@ -103,11 +123,12 @@ test("snap prioriza pontos finais e depois a grade", () => {
   assert.deepEqual(onEndpoint, { x: 40, y: 0 });
   const onGrid = snapPoint({ x: 101.2, y: 98.4 }, [rect], options);
   assert.deepEqual(onGrid, { x: 100, y: 100 });
-  const free = snapPoint(
-    { x: 101.2, y: 98.4 },
-    [rect],
-    { gridEnabled: false, gridSize: 5, endpointEnabled: false, tolerance: 3 },
-  );
+  const free = snapPoint({ x: 101.2, y: 98.4 }, [rect], {
+    gridEnabled: false,
+    gridSize: 5,
+    endpointEnabled: false,
+    tolerance: 3,
+  });
   assert.deepEqual(free, { x: 101.2, y: 98.4 });
 });
 
@@ -126,5 +147,8 @@ test("persistência mantém entidades e extrusões e aceita projetos antigos", (
   assert.deepEqual(parseSketch(undefined).entities, []);
   assert.deepEqual(parseSketch({}).entities, []);
   assert.deepEqual(parseSketch({ entities: [{ type: "bogus" }] }).entities, []);
-  assert.equal(parseSketch({ entities: [], extrusions: [{ entityId: "x", height: 4 }] }).extrusions.length, 0);
+  assert.equal(
+    parseSketch({ entities: [], extrusions: [{ entityId: "x", height: 4 }] }).extrusions.length,
+    0,
+  );
 });

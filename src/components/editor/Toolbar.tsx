@@ -166,7 +166,7 @@ export default function Toolbar() {
                     .map((cut) => ({
                       angle: cut.angle,
                       offset: cut.offset,
-                      connector: connectorEnabled ? cut.connector : "none" as const,
+                      connector: connectorEnabled ? cut.connector : ("none" as const),
                       maleSide: cut.maleSide,
                       connectorDepth: cut.connectorDepth,
                       connectorWidth: resolveCutConnectorWidth(
@@ -402,4 +402,3 @@ export default function Toolbar() {
     </header>
   );
 }
-

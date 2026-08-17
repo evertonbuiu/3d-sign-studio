@@ -37,10 +37,7 @@ import {
   splitGeometryByPlanes,
   type SequentialSplitOptions,
 } from "@/lib/sign/split";
-import {
-  transformGeometryForPlacement,
-  transformPlacementPoint,
-} from "@/lib/sign/placement";
+import { transformGeometryForPlacement, transformPlacementPoint } from "@/lib/sign/placement";
 
 const EXPLODE_ORDER: Record<string, number> = {
   poste: -2,
@@ -286,21 +283,7 @@ function PartMesh({
         });
       }
     }
-  }, [
-    part.geometry,
-    manualCut?.angle,
-    manualCut?.offset,
-    manualCut?.connector,
-    manualCut?.maleSide,
-    manualCut?.connectorDepth,
-    manualCut?.connectorWidth,
-    manualCut?.connectorThickness,
-    manualCut?.connectorClearance,
-    manualCut?.connectorBackInset,
-    manualCut?.connectorFrontInset,
-    manualCut?.cuts,
-    manualCut?.origin,
-  ]);
+  }, [manualCut, part.geometry, part.name]);
 
   const pointerProps = interactive
     ? {
@@ -826,10 +809,8 @@ function Model({
                     ),
                     connectorThickness: params.cutConnectorThickness,
                     connectorClearance: params.cutConnectorClearance,
-                    connectorBackInset:
-                      part.id === "fundo-laterais" ? params.backThickness : 0,
-                    connectorFrontInset:
-                      part.id === "frente-laterais" ? params.faceThickness : 0,
+                    connectorBackInset: part.id === "fundo-laterais" ? params.backThickness : 0,
+                    connectorFrontInset: part.id === "frente-laterais" ? params.faceThickness : 0,
                     origin: { x: center.x, y: center.y },
                     cuts: params.manualCuts
                       .filter((cut) => cut.target === "all" || cut.target === part.kind)
@@ -847,8 +828,7 @@ function Model({
                         ),
                         connectorThickness: cut.connectorThickness,
                         connectorClearance: cut.connectorClearance,
-                        connectorBackInset:
-                          part.id === "fundo-laterais" ? params.backThickness : 0,
+                        connectorBackInset: part.id === "fundo-laterais" ? params.backThickness : 0,
                         connectorFrontInset:
                           part.id === "frente-laterais" ? params.faceThickness : 0,
                       })),

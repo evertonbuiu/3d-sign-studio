@@ -94,7 +94,10 @@ export function removeEntities(state: SketchState, ids: string[]): SketchState {
 
 export function selectEntity(state: SketchState, id: string, additive = false): SketchState {
   if (!additive) {
-    return { ...state, selectedIds: state.selectedIds.includes(id) && state.selectedIds.length === 1 ? [] : [id] };
+    return {
+      ...state,
+      selectedIds: state.selectedIds.includes(id) && state.selectedIds.length === 1 ? [] : [id],
+    };
   }
   return {
     ...state,
@@ -124,10 +127,7 @@ export function setExtrusion(state: SketchState, entityId: string, height: numbe
   }
   return {
     ...state,
-    extrusions: [
-      ...state.extrusions,
-      { id: nextSketchId("x"), entityId, height: safeHeight },
-    ],
+    extrusions: [...state.extrusions, { id: nextSketchId("x"), entityId, height: safeHeight }],
   };
 }
 
@@ -163,7 +163,8 @@ export function entityPoints(entity: SketchEntity, segments = 64): SketchPoint[]
 
 /** Um perfil é fechado quando pode virar uma face extrudável. */
 export function isClosedProfile(entity: SketchEntity): boolean {
-  if (entity.type === "rect") return Math.abs(entity.width) > 1e-6 && Math.abs(entity.height) > 1e-6;
+  if (entity.type === "rect")
+    return Math.abs(entity.width) > 1e-6 && Math.abs(entity.height) > 1e-6;
   if (entity.type === "circle") return entity.radius > 1e-6;
   if (!entity.closed) return false;
   const unique = dedupePoints(entity.points);
@@ -179,7 +180,12 @@ export function dedupePoints(points: SketchPoint[], epsilon = 1e-4): SketchPoint
   }
   const first = result[0];
   const last = result[result.length - 1];
-  if (result.length > 1 && first && last && Math.hypot(first.x - last.x, first.y - last.y) <= epsilon) {
+  if (
+    result.length > 1 &&
+    first &&
+    last &&
+    Math.hypot(first.x - last.x, first.y - last.y) <= epsilon
+  ) {
     result.pop();
   }
   return result;
@@ -337,7 +343,8 @@ function parseEntity(input: unknown): SketchEntity | null {
   }
   if (value.type === "rect") {
     const { x, y, width, height } = value;
-    if (![x, y, width, height].every((n) => typeof n === "number" && Number.isFinite(n))) return null;
+    if (![x, y, width, height].every((n) => typeof n === "number" && Number.isFinite(n)))
+      return null;
     return {
       id,
       type: "rect",
