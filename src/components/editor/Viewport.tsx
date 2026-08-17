@@ -119,6 +119,48 @@ function EdgeHighlight({ edge, color }: { edge: PickedEdge; color: string }) {
   );
 }
 
+function CutPieceMesh({
+  geometry,
+  color,
+  opacity,
+  position,
+  wireframe,
+}: {
+  geometry: BufferGeometry;
+  color: string;
+  opacity: number;
+  position: [number, number, number];
+  wireframe: boolean;
+}) {
+  const edges = useMemo(() => new EdgesGeometry(geometry, 1), [geometry]);
+  return (
+    <group position={position}>
+      {!wireframe && (
+        <mesh geometry={geometry} castShadow receiveShadow>
+          <meshStandardMaterial
+            color={color}
+            transparent={opacity < 1}
+            opacity={opacity}
+            roughness={0.55}
+            metalness={0.05}
+            side={DoubleSide}
+          />
+        </mesh>
+      )}
+      {wireframe && (
+        <>
+          <mesh geometry={geometry}>
+            <meshBasicMaterial color={color} transparent opacity={0.05} depthWrite={false} />
+          </mesh>
+          <lineSegments geometry={edges}>
+            <lineBasicMaterial color={color} transparent opacity={0.8} />
+          </lineSegments>
+        </>
+      )}
+    </group>
+  );
+}
+
 function PartMesh({
   part,
   explode,
@@ -229,22 +271,14 @@ function PartMesh({
             0,
           ];
           return (
-            <mesh
+            <CutPieceMesh
               key={piece.index}
               geometry={piece.geometry}
+              color={part.color}
+              opacity={part.opacity}
               position={displacement}
-              castShadow
-              receiveShadow
-            >
-              <meshStandardMaterial
-                color={part.color}
-                transparent={part.opacity < 1}
-                opacity={part.opacity}
-                roughness={0.55}
-                metalness={0.05}
-                side={DoubleSide}
-              />
-            </mesh>
+              wireframe={wireframe}
+            />
           );
         })}
       </group>
