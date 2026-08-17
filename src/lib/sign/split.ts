@@ -39,6 +39,23 @@ export interface SequentialSplitOptions extends ManualSplitOptions {
   id?: string;
 }
 
+/**
+ * O rebaixo duplo acrílico já define a faixa estrutural disponível na parede.
+ * O encaixe do corte reutiliza exatamente essa largura para não criar degraus
+ * ou faces sobrepostas entre o rebaixo frontal e a lingueta.
+ */
+export function resolveCutConnectorWidth(
+  styleId: string,
+  requestedPercent: number,
+  wallWidth: number,
+  frontRecessWidth: number,
+): number {
+  if (styleId !== "fundo-acrilico-frente-acrilica" || wallWidth <= 0) {
+    return requestedPercent;
+  }
+  return Math.min(100, Math.max(10, (frontRecessWidth / wallWidth) * 100));
+}
+
 /** Seleciona onde o encaixe estrutural pode ser criado em cada estilo. */
 export function partSupportsCutConnector(kind: string, styleHasWalls: boolean): boolean {
   if (styleHasWalls) return kind === "laterais";

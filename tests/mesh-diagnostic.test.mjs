@@ -6,7 +6,11 @@ import { Box2, ShapePath, Vector2 } from "three";
 
 import { buildSign } from "../src/lib/sign/build.ts";
 import { DEFAULT_PARAMS, STYLES, getStyle, paramsForStyle } from "../src/lib/sign/model.ts";
-import { partSupportsCutConnector, splitGeometryByPlane } from "../src/lib/sign/split.ts";
+import {
+  partSupportsCutConnector,
+  resolveCutConnectorWidth,
+  splitGeometryByPlane,
+} from "../src/lib/sign/split.ts";
 
 function glyphShapes(font, text, height) {
   const capUnits = font.tables?.os2?.sCapHeight || font.unitsPerEm * 0.7;
@@ -684,6 +688,23 @@ test("frente e fundo acrilicos ficam separados com rebaixo duplo", () => {
   assert.equal(walls.geometry.boundingBox?.max.z, params.depth);
   assert.ok(Math.abs((back.geometry.boundingBox?.max.z ?? 0) - params.backThickness) < 1e-5);
   assert.equal(front.geometry.boundingBox?.min.z, params.depth - params.faceThickness);
+});
+
+test("largura do encaixe acrilico segue o rebaixo frontal em LUMINA", () => {
+  const style = getStyle("fundo-acrilico-frente-acrilica");
+  const params = { ...DEFAULT_PARAMS, ...style.preset, text: "LUMINA" };
+  const expected = (params.recessLip / params.wall) * 100;
+
+  for (const angle of [0, 30, 45, 60, 90, 120, 150]) {
+    for (const offset of [-100, -25, 0, 25, 100]) {
+      void angle;
+      void offset;
+      assert.equal(
+        resolveCutConnectorWidth(style.id, 95, params.wall, params.recessLip),
+        expected,
+      );
+    }
+  }
 });
 
 test("novo estilo usa fundo acrilico apoiado por aba interna", () => {
