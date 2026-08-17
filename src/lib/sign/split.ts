@@ -166,8 +166,9 @@ function withoutDegenerateTriangles(geometry: BufferGeometry): BufferGeometry {
 
 function weldShellByPosition(geometry: BufferGeometry, tolerance = 1e-3): BufferGeometry {
   const shell = withoutDegenerateTriangles(geometry);
-  // A soldagem deve usar somente posição; normais diferentes nas quinas
-  // impedem que vértices coincidentes da parede e do encaixe sejam unidos.
+  // BufferGeometryUtils considera todos os atributos ao soldar. Normais de
+  // faces adjacentes sÃ£o diferentes justamente nas quinas, portanto impediam
+  // a uniÃ£o de vÃ©rtices coincidentes entre a parede e o encaixe.
   for (const attribute of Object.keys(shell.attributes)) {
     if (attribute !== "position") shell.deleteAttribute(attribute);
   }
@@ -175,6 +176,59 @@ function weldShellByPosition(geometry: BufferGeometry, tolerance = 1e-3): Buffer
   welded.computeVertexNormals();
   welded.computeBoundingBox();
   return welded;
+}
+
+function resolveTJunctions(geometry: BufferGeometry, tolerance = 1e-4): BufferGeometry {
+  const source = geometry.index ? geometry.toNonIndexed() : geometry;
+  const position = source.getAttribute("position");
+  const unique = new Map<string, Vector3>();
+  const keyFor = (point: Vector3) => point.toArray()
+    .map((value) => Math.round(value / tolerance)).join(",");
+  for (let index = 0; index < position.count; index++) {
+    const point = new Vector3(position.getX(index), position.getY(index), position.getZ(index));
+    unique.set(keyFor(point), point);
+  }
+  const points = [...unique.values()];
+  const output: number[] = [];
+  const edgePoints = (start: Vector3, end: Vector3) => {
+    const edge = end.clone().sub(start);
+    const lengthSq = edge.lengthSq();
+    return points
+      .map((point) => ({ point, ratio: point.clone().sub(start).dot(edge) / lengthSq }))
+      .filter(({ point, ratio }) =>
+        ratio > tolerance && ratio < 1 - tolerance &&
+        start.clone().addScaledVector(edge, ratio).distanceToSquared(point) <= tolerance * tolerance)
+      .sort((left, right) => left.ratio - right.ratio)
+      .map(({ point }) => point);
+  };
+  for (let index = 0; index + 2 < position.count; index += 3) {
+    const triangle = [0, 1, 2].map((offset) =>
+      new Vector3(position.getX(index + offset), position.getY(index + offset), position.getZ(index + offset)));
+    const boundary: Vector3[] = [];
+    let split = false;
+    for (let edgeIndex = 0; edgeIndex < 3; edgeIndex++) {
+      const start = triangle[edgeIndex]!;
+      const end = triangle[(edgeIndex + 1) % 3]!;
+      const intermediate = edgePoints(start, end);
+      boundary.push(start, ...intermediate);
+      split ||= intermediate.length > 0;
+    }
+    if (!split) {
+      output.push(...triangle.flatMap((point) => point.toArray()));
+      continue;
+    }
+    const center = triangle[0]!.clone().add(triangle[1]!).add(triangle[2]!).multiplyScalar(1 / 3);
+    for (let boundaryIndex = 0; boundaryIndex < boundary.length; boundaryIndex++) {
+      output.push(
+        ...center.toArray(),
+        ...boundary[boundaryIndex]!.toArray(),
+        ...boundary[(boundaryIndex + 1) % boundary.length]!.toArray(),
+      );
+    }
+  }
+  const repaired = new BufferGeometry();
+  repaired.setAttribute("position", new Float32BufferAttribute(output, 3));
+  return repaired;
 }
 
 function unionClosedSolids(left: BufferGeometry, right: BufferGeometry): BufferGeometry {
@@ -185,7 +239,7 @@ function unionClosedSolids(left: BufferGeometry, right: BufferGeometry): BufferG
   const evaluator = new Evaluator();
   evaluator.attributes = ["position", "normal"];
   const result = evaluator.evaluate(leftBrush, rightBrush, ADDITION).geometry;
-  return weldShellByPosition(result);
+  return weldShellByPosition(resolveTJunctions(result));
 }
 
 function pointInPolygon(point: Vector2, polygon: Vector2[]): boolean {
@@ -451,14 +505,14 @@ function wallProfilesAtPlane(
   const groupSizes = Array<number>(unique.length + 1).fill(0);
   costs[unique.length] = 0;
   for (let index = unique.length - 1; index >= 0; index--) {
-    for (const groupSize of [2, 3]) {
+    for (const groupSize of [1, 2, 3]) {
       const next = index + groupSize;
       if (next > unique.length || !Number.isFinite(costs[next])) continue;
       const span = unique[next - 1]! - unique[index]!;
       // Uma linha isolada pode ser uma tangÃªncia ou uma aresta residual da
       // uniÃ£o. O custo equivale a uma parede de 5 mm: preferimos agrupamentos
       // locais reais, mas descartamos a sobra antes de cruzar um vazio grande.
-      const cost = span * span + costs[next]!;
+      const cost = (groupSize === 1 ? 100 : span * span) + costs[next]!;
       if (cost < costs[index]!) {
         costs[index] = cost;
         groupSizes[index] = groupSize;
@@ -467,6 +521,10 @@ function wallProfilesAtPlane(
   }
   for (let index = 0; index < unique.length && groupSizes[index]! > 0;) {
     const groupSize = groupSizes[index]!;
+    if (groupSize === 1) {
+      index++;
+      continue;
+    }
     const minT = unique[index]!;
     const maxT = unique[index + groupSize - 1]!;
     profiles.push({ minT, maxT, centerT: (minT + maxT) / 2 });
@@ -533,19 +591,11 @@ function capProfiles(
   for (const profile of profiles) {
     const a = at(profile.minT, minZ), b = at(profile.maxT, minZ);
     const c = at(profile.maxT, maxZ), d = at(profile.minT, maxZ);
-    vertices.push(
-      ...a.toArray(),
-      ...b.toArray(),
-      ...c.toArray(),
-      ...a.toArray(),
-      ...c.toArray(),
-      ...d.toArray(),
-    );
+    vertices.push(...a.toArray(), ...b.toArray(), ...c.toArray(), ...a.toArray(), ...c.toArray(), ...d.toArray());
   }
-  const cap = new BufferGeometry();
-  cap.setAttribute("position", new Float32BufferAttribute(vertices, 3));
-  cap.computeVertexNormals();
-  return cap;
+  const result = new BufferGeometry();
+  result.setAttribute("position", new Float32BufferAttribute(vertices, 3));
+  return result;
 }
 
 function extrudeCutSection(
@@ -565,12 +615,46 @@ function extrudeCutSection(
   const epsilon = 1e-5;
   const planeDistance = normal.dot(planePoint);
   const tangent = new Vector3(-normal.y, normal.x, 0);
+  const source = geometry.index ? geometry.toNonIndexed() : geometry;
+  const position = source.getAttribute("position");
   const surfaceTriangles: Array<[Vector3, Vector3, Vector3]> = [];
 
-  // As intersecoes das faces verticais fornecem diretamente um intervalo
-  // independente para cada parede atravessada pelo plano.
+  const clipZ = (polygon: Vector3[], limit: number, keepAbove: boolean) => {
+    const clipped: Vector3[] = [];
+    for (let index = 0; index < polygon.length; index++) {
+      const current = polygon[index]!;
+      const next = polygon[(index + 1) % polygon.length]!;
+      const currentInside = keepAbove ? current.z >= limit - epsilon : current.z <= limit + epsilon;
+      const nextInside = keepAbove ? next.z >= limit - epsilon : next.z <= limit + epsilon;
+      if (currentInside) clipped.push(current.clone());
+      if (currentInside !== nextInside) {
+        const ratio = (limit - current.z) / (next.z - current.z);
+        clipped.push(current.clone().lerp(next, ratio));
+      }
+    }
+    return clipped;
+  };
+
+  for (let i = 0; i + 2 < position.count; i += 3) {
+    let polygon = [0, 1, 2].map(
+      (offset) =>
+        new Vector3(position.getX(i + offset), position.getY(i + offset), position.getZ(i + offset)),
+    );
+    if (!polygon.every((point) => Math.abs(normal.dot(point) - planeDistance) <= epsilon)) continue;
+    polygon = clipZ(polygon, minZ, true);
+    polygon = clipZ(polygon, maxZ, false);
+    for (let vertex = 1; vertex + 1 < polygon.length; vertex++) {
+      surfaceTriangles.push([polygon[0]!, polygon[vertex]!, polygon[vertex + 1]!]);
+    }
+  }
+
+  // A tampa reconstruÃ­da pode ligar paredes distintas quando uma frente
+  // impressa fecha toda a letra. Usar seus triÃ¢ngulos como seÃ§Ã£o do encaixe
+  // cria lÃ¢minas diagonais atravessando os vÃ£os. As interseÃ§Ãµes das faces
+  // verticais fornecem diretamente um intervalo independente para cada parede.
   const profileSections = wallProfilesAtPlane(followGeometry ?? geometry, planePoint, normal);
   if (!preserveSectionProfile && profileSections.length && maxZ > minZ + epsilon) {
+    surfaceTriangles.length = 0;
     const at = (coordinate: number, z: number) =>
       tangent.clone().multiplyScalar(coordinate).addScaledVector(normal, planeDistance).setZ(z);
     for (const profile of profileSections) {
@@ -582,7 +666,10 @@ function extrudeCutSection(
     }
   }
 
-  // Cada ilha da secao representa uma parede atravessada pelo plano.
+  // Cada ilha da secao representa uma parede atravessada pelo plano. As ilhas
+  // sao pareadas na ordem transversal e as metades ficam voltadas uma para a
+  // outra. Isso identifica o interior local de cada letra, sem usar o centro
+  // global da palavra (que invertia paredes em letras deslocadas).
   const parent = surfaceTriangles.map((_, index) => index);
   const find = (value: number): number => {
     while (parent[value] !== value) {
@@ -921,16 +1008,20 @@ export function splitGeometryByPlane(
   // Assim, a metade macho prolonga o perfil real da parede em vez de receber
   // apenas um pino retangular isolado.
   // O macho usa a metade externa da espessura e percorre toda a parede,
-  // preservando uma pele fina no fundo e na frente para fechar as extremidades.
-  // A extensão começa exatamente no plano para compartilhar a mesma borda da
-  // parede. O antigo volume de sobreposição deixava a lingueta como um sólido
-  // separado dentro da peça original.
-  // Uma sobreposição microscópica permite remover a face divisória no plano.
-  const overlap = 0.02;
-  // Sem placa unificada, o encaixe alcança os limites do fundo e da frente.
-  const closureSeam = 1e-3;
+  // alcanÃ§ando os limites finais do fundo e da frente.
+  // A extensÃ£o comeÃ§a exatamente no plano para compartilhar a mesma borda da
+  // parede. O antigo volume de sobreposiÃ§Ã£o deixava a lingueta como um sÃ³lido
+  // separado dentro da peÃ§a original.
+  // Uma sobreposiÃ§Ã£o microscÃ³pica permite que a uniÃ£o volumÃ©trica elimine a
+  // face divisÃ³ria no plano de corte, sem alterar a profundidade Ãºtil.
+  const overlap = 0.1;
+  // Os insets representam placas realmente unificadas Ã  peÃ§a, nÃ£o margens
+  // artificiais. Sem placa, o encaixe alcanÃ§a exatamente os dois extremos.
+  const closureSeam = 0.1;
   const backClosure = Math.max(options.connectorBackInset ?? 0, closureSeam);
   const frontClosure = Math.max(options.connectorFrontInset ?? 0, closureSeam);
+  const connectorBack = options.connectorBackInset ?? 0;
+  const connectorFront = options.connectorFrontInset ?? 0;
   const maleBaseGeometry = pieces[maleIndex]!.geometry;
   const maleConnector = extrudeCutSection(
     maleBaseGeometry,
@@ -938,8 +1029,8 @@ export function splitGeometryByPlane(
     normal,
     direction,
     depth + overlap,
-    bounds.min.z + backClosure,
-    bounds.max.z - frontClosure,
+    bounds.min.z + connectorBack,
+    bounds.max.z - connectorFront,
     widthPercent,
     false,
     false,
@@ -950,12 +1041,12 @@ export function splitGeometryByPlane(
   }
   maleConnector.translate(-direction.x * overlap, -direction.y * overlap, 0);
 
-  // Expande uma Ãºnica cÃ³pia do perfil nos eixos normal, tangente e Z. Uma
-  // Ãºnica subtraÃ§Ã£o Ã© mais estÃ¡vel em contornos complexos do que unir ou
-  // subtrair vÃ¡rias cÃ³pias quase coincidentes.
-  // A fêmea é o negativo direto da extensão realmente criada na peça de
-  // baixo. Isso mantém o mesmo perfil da parede/rebaixo e impede divergências
-  // quando a inclinação reduz ou desloca a profundidade efetiva do macho.
+  // A parte inferior usa a metade externa da parede; a superior recebe o
+  // rebaixo complementar. Gerar a fÃªmea a partir do perfil
+  // oposto evita prolongar a parede interna para baixo dentro da cavidade.
+  // A fÃªmea Ã© o negativo direto da extensÃ£o realmente criada na peÃ§a de
+  // baixo. Isso mantÃ©m o mesmo perfil da parede/rebaixo e impede divergÃªncias
+  // quando a inclinaÃ§Ã£o reduz ou desloca a profundidade efetiva do macho.
   const femaleCavity = maleConnector.clone();
   if (clearance > 0) {
     femaleCavity.computeBoundingBox();
@@ -1003,7 +1094,8 @@ export function splitGeometryByPlane(
     const normalCenter = (minNormal + maxNormal) / 2;
     const normalExtent = Math.max(maxNormal - minNormal, 1e-6);
     const normalScale = (normalExtent + clearance * 2) / normalExtent;
-    // A folga lateral não deve ultrapassar a frente nem o fundo da parede.
+    // Como o encaixe agora termina nas duas extremidades abertas da parede,
+    // a folga em Z nÃ£o Ã© necessÃ¡ria e nÃ£o deve ultrapassar frente/fundo.
     const zScale = 1;
     for (let i = 0; i < cavityPosition.count; i++) {
       const relative = new Vector3(
@@ -1028,14 +1120,10 @@ export function splitGeometryByPlane(
         cavityCenter.z + relative.z * zScale,
       );
     }
-
     cavityPosition.needsUpdate = true;
     femaleCavity.computeVertexNormals();
   }
 
-  // A lingueta jÃ¡ penetra a parede pelo `overlap`. Concatenar as duas cascas
-  // preserva esse volume sobreposto para o fatiador e evita a uniÃ£o CSG entre
-  // faces coplanares, que criava pontas/triÃ¢ngulos atravessando letras inteiras.
   const femaleSide: -1 | 1 = maleIndex === 0 ? 1 : -1;
   const outerCap = extrudeCutSection(
     maleBaseGeometry,
@@ -1070,9 +1158,9 @@ export function splitGeometryByPlane(
   const replacementCap = capParts.length === 1
     ? capParts[0]
     : mergeGeometries(capParts, false);
-  // Abre a metade externa da parede original e remove a tampa traseira do
-  // prolongamento. As duas cascas compartilham a mesma borda no plano de corte.
-  // A união booleana elimina as tampas na área de contato e cria um único sólido.
+  // A uniÃ£o booleana remove a tampa do corte e a tampa da lingueta na Ã¡rea de
+  // contato. Assim parede e encaixe viram um Ãºnico sÃ³lido, sem face interna ou
+  // aresta aberta visÃ­vel no wireframe e no STL.
   const maleGeometry = unionClosedSolids(maleBaseGeometry, maleConnector);
   pieces[maleIndex] = { ...pieces[maleIndex]!, geometry: maleGeometry };
   const openedFemale = replaceExactPlanarCap(
@@ -1153,9 +1241,9 @@ export function splitGeometryForBuildPlate(
   if (columns === 1 && rows === 1) {
     return [{ geometry: geometry.clone(), column: 1, row: 1, index: 1, total: 1 }];
   }
-  // O CSG com uma caixa por célula triangulava novamente toda a seção e podia
+  // O CSG com uma caixa por cÃ©lula triangulava novamente toda a seÃ§Ã£o e podia
   // criar placas fechando vazados e cavidades. Os planos abaixo usam a mesma
-  // reconstrução topológica do corte manual: cada tampa nasce somente dos
+  // reconstruÃ§Ã£o topolÃ³gica do corte manual: cada tampa nasce somente dos
   // contornos efetivamente atravessados pelo respectivo limite da mesa.
   const origin = bounds.getCenter(new Vector3());
   const cuts: SequentialSplitOptions[] = [];
