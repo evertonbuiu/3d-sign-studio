@@ -35,7 +35,7 @@ function validateVectorFile(file: File): boolean {
   return false;
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+export function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
       <Label className="text-sm font-medium text-muted-foreground">{label}</Label>
@@ -44,7 +44,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function NumberSlider({
+export function NumberSlider({
   label,
   keyName,
   min,
@@ -95,7 +95,7 @@ function ColorField({ label, keyName }: { label: string; keyName: keyof SignPara
   );
 }
 
-function MoneyField({
+export function MoneyField({
   label,
   keyName,
   step = 1,
