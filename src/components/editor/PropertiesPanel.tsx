@@ -24,7 +24,7 @@ import {
 import { FONTS, type FontId } from "@/lib/sign/fonts";
 import type { PartKind, SignParams } from "@/lib/sign/model";
 import { PRINTER_PROFILES } from "@/lib/sign/printers";
-import { geometryCrossesCutPlane } from "@/lib/sign/split";
+import { geometryCrossesCutPlane, resolveCutConnectorWidth } from "@/lib/sign/split";
 import { useEditor } from "./store";
 
 const MAX_VECTOR_FILE_BYTES = 2_000_000;
@@ -723,14 +723,22 @@ export default function PropertiesPanel() {
                               max={20}
                               step={0.2}
                             />
-                            <NumberSlider
-                              label="Largura na espessura da parede"
-                              keyName="cutConnectorWidth"
-                              min={10}
-                              max={100}
-                              step={5}
-                              unit="%"
-                            />
+                            {style.id === "fundo-acrilico-frente-acrilica" ? (
+                              <Field label="Largura do encaixe">
+                                <div className="rounded-md border border-border bg-card px-3 py-2 text-sm">
+                                  {params.recessLip.toFixed(2)} mm (igual ao rebaixo frontal)
+                                </div>
+                              </Field>
+                            ) : (
+                              <NumberSlider
+                                label="Largura na espessura da parede"
+                                keyName="cutConnectorWidth"
+                                min={10}
+                                max={100}
+                                step={5}
+                                unit="%"
+                              />
+                            )}
                             <p className="text-xs leading-relaxed text-muted-foreground">
                               Em estilos de caixa, o encaixe fica somente nas paredes. Em estilos
                               sem paredes, ele é aplicado ao volume estrutural impresso.
@@ -793,7 +801,12 @@ export default function PropertiesPanel() {
                                 connector: params.cutConnector,
                                 maleSide: "part-1" as const,
                                 connectorDepth: params.cutConnectorDepth,
-                                connectorWidth: params.cutConnectorWidth,
+                                connectorWidth: resolveCutConnectorWidth(
+                                  style.id,
+                                  params.cutConnectorWidth,
+                                  params.wall,
+                                  params.recessLip,
+                                ),
                                 connectorThickness: params.cutConnectorThickness,
                                 connectorClearance: params.cutConnectorClearance,
                               };
