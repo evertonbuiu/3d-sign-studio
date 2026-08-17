@@ -107,7 +107,7 @@ export default function Toolbar() {
     const build = editor.build;
     if (!build) return;
     const sourceParts = build.parts.filter((p) => !editor.hidden.has(p.id));
-    if (!sourceParts.length) {
+    if (!sourceParts.length && !editor.sketchParts.length) {
       toast.error("Nenhuma peça visível para exportar");
       return;
     }
