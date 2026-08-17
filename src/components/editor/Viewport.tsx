@@ -56,6 +56,58 @@ const EXPLODE_ORDER: Record<string, number> = {
   "camada-3": 6,
 };
 
+type CutPreviewPieces = ReturnType<typeof splitGeometryByPlane>;
+
+// A separação, seleção e opções de visualização recriam o objeto manualCut.
+// A geometria, porém, só muda quando um parâmetro geométrico muda. Manter uma
+// cache curta evita repetir o CSG/reparo topológico em cada render da lateral.
+const CUT_PREVIEW_CACHE_LIMIT = 32;
+const cutPreviewCache = new Map<string, CutPreviewPieces>();
+
+function cutPreviewKey(
+  part: SignPart,
+  cut: NonNullable<Parameters<typeof PartMesh>[0]["manualCut"]>,
+) {
+  return JSON.stringify([
+    part.geometry.uuid,
+    cut.angle,
+    cut.offset,
+    cut.connectorEnabled ? cut.connector : "none",
+    cut.maleSide,
+    cut.connectorDepth,
+    cut.connectorWidth,
+    cut.connectorThickness,
+    cut.connectorClearance,
+    cut.connectorBackInset,
+    cut.connectorFrontInset,
+    cut.origin.x,
+    cut.origin.y,
+    cut.cuts.map((item) => [
+      item.angle,
+      item.offset,
+      item.connector,
+      item.maleSide,
+      item.connectorDepth,
+      item.connectorWidth,
+      item.connectorThickness,
+      item.connectorClearance,
+      item.connectorBackInset,
+      item.connectorFrontInset,
+    ]),
+  ]);
+}
+
+function rememberCutPreview(key: string, pieces: CutPreviewPieces) {
+  if (cutPreviewCache.has(key)) cutPreviewCache.delete(key);
+  cutPreviewCache.set(key, pieces);
+  while (cutPreviewCache.size > CUT_PREVIEW_CACHE_LIMIT) {
+    const oldest = cutPreviewCache.keys().next().value;
+    if (oldest === undefined) break;
+    cutPreviewCache.delete(oldest);
+  }
+  return pieces;
+}
+
 export interface PickedEdge {
   key: string;
   partId: string;
@@ -242,33 +294,51 @@ function PartMesh({
   const edges = useMemo(() => new EdgesGeometry(part.geometry, 1), [part.geometry]);
   const manualPieces = useMemo(() => {
     if (!manualCut) return null;
+    const cacheKey = cutPreviewKey(part, manualCut);
+    const cached = cutPreviewCache.get(cacheKey);
+    if (cached) {
+      // Atualiza a recência para manter na cache os cortes em uso.
+      cutPreviewCache.delete(cacheKey);
+      cutPreviewCache.set(cacheKey, cached);
+      return cached;
+    }
     // O encaixe pertence às paredes. Frente, fundo e acessórios recebem apenas
     // o corte, evitando CSG desnecessário e mantendo macho/fêmea na peça certa.
-    const previewConnector = manualCut.connectorEnabled ? manualCut.connector : "none";
+    // Durante o posicionamento do primeiro plano, mostre as duas metades reais
+    // sem executar o CSG do macho/fêmea a cada passo do slider. O encaixe exato
+    // passa a ser calculado assim que o usuário aplica o corte (manualCuts), e
+    // continua sendo gerado integralmente na exportação.
+    const previewConnector = "none";
     try {
       if (manualCut.cuts.length) {
-        return splitGeometryByPlanes(
-          part.geometry,
-          manualCut.cuts.map((cut) => ({
-            ...cut,
-            connector: manualCut.connectorEnabled ? (cut.connector ?? "none") : "none",
-          })),
-          manualCut.origin,
+        return rememberCutPreview(
+          cacheKey,
+          splitGeometryByPlanes(
+            part.geometry,
+            manualCut.cuts.map((cut) => ({
+              ...cut,
+              connector: manualCut.connectorEnabled ? (cut.connector ?? "none") : "none",
+            })),
+            manualCut.origin,
+          ),
         );
       }
-      return splitGeometryByPlane(part.geometry, {
-        angle: manualCut.angle,
-        offset: manualCut.offset,
-        connector: previewConnector,
-        maleSide: manualCut.maleSide,
-        connectorDepth: manualCut.connectorDepth,
-        connectorWidth: manualCut.connectorWidth,
-        connectorThickness: manualCut.connectorThickness,
-        connectorClearance: manualCut.connectorClearance,
-        connectorBackInset: manualCut.connectorBackInset,
-        connectorFrontInset: manualCut.connectorFrontInset,
-        origin: manualCut.origin,
-      });
+      return rememberCutPreview(
+        cacheKey,
+        splitGeometryByPlane(part.geometry, {
+          angle: manualCut.angle,
+          offset: manualCut.offset,
+          connector: previewConnector,
+          maleSide: manualCut.maleSide,
+          connectorDepth: manualCut.connectorDepth,
+          connectorWidth: manualCut.connectorWidth,
+          connectorThickness: manualCut.connectorThickness,
+          connectorClearance: manualCut.connectorClearance,
+          connectorBackInset: manualCut.connectorBackInset,
+          connectorFrontInset: manualCut.connectorFrontInset,
+          origin: manualCut.origin,
+        }),
+      );
     } catch (error) {
       console.error(`Falha ao gerar prévia de corte para ${part.name}`, error);
       try {
@@ -288,7 +358,7 @@ function PartMesh({
         });
       }
     }
-  }, [manualCut, part.geometry, part.name]);
+  }, [manualCut, part]);
 
   const pointerProps = interactive
     ? {
