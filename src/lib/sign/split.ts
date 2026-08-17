@@ -296,7 +296,59 @@ function closeBoundaryLoops(geometry: BufferGeometry, tolerance = 1e-4): BufferG
 function joinOpenShells(parts: BufferGeometry[]): BufferGeometry {
   const joined = mergeGeometries(parts.map(withoutDegenerateTriangles), false);
   if (!joined) throw new Error("Falha ao unir as faixas contínuas do encaixe");
-  return weldShellByPosition(closeBoundaryLoops(resolveTJunctions(joined)));
+  return repairShell(joined);
+}
+
+function pruneNonManifoldTriangles(geometry: BufferGeometry, tolerance = 1e-4): BufferGeometry {
+  const source = geometry.index ? geometry.toNonIndexed() : geometry;
+  const position = source.getAttribute("position");
+  const triangles: Array<{ points: [Vector3, Vector3, Vector3]; area: number }> = [];
+  const edgeUses = new Map<string, number[]>();
+  const keyFor = (point: Vector3) =>
+    point.toArray().map((value) => Math.round(value / tolerance)).join(",");
+  for (let index = 0; index + 2 < position.count; index += 3) {
+    const points = [0, 1, 2].map(
+      (offset) =>
+        new Vector3(
+          position.getX(index + offset),
+          position.getY(index + offset),
+          position.getZ(index + offset),
+        ),
+    ) as [Vector3, Vector3, Vector3];
+    const area = points[1].clone().sub(points[0]).cross(points[2].clone().sub(points[0])).length();
+    const triangleIndex = triangles.push({ points, area }) - 1;
+    for (let edge = 0; edge < 3; edge++) {
+      const a = keyFor(points[edge]!);
+      const b = keyFor(points[(edge + 1) % 3]!);
+      const key = a < b ? `${a}|${b}` : `${b}|${a}`;
+      edgeUses.set(key, [...(edgeUses.get(key) ?? []), triangleIndex]);
+    }
+  }
+  const removed = new Set<number>();
+  for (const uses of edgeUses.values()) {
+    const active = uses.filter((index) => !removed.has(index));
+    if (active.length <= 2) continue;
+    active
+      .sort((left, right) => triangles[right]!.area - triangles[left]!.area)
+      .slice(2)
+      .forEach((index) => removed.add(index));
+  }
+  const vertices = triangles
+    .filter((_, index) => !removed.has(index))
+    .flatMap(({ points }) => points.flatMap((point) => point.toArray()));
+  const pruned = new BufferGeometry();
+  pruned.setAttribute("position", new Float32BufferAttribute(vertices, 3));
+  return pruned;
+}
+
+function repairShell(geometry: BufferGeometry): BufferGeometry {
+  let repaired = geometry;
+  for (let pass = 0; pass < 3; pass++) {
+    repaired = weldShellByPosition(
+      closeBoundaryLoops(pruneNonManifoldTriangles(resolveTJunctions(repaired))),
+    );
+  }
+  return repaired;
 }
 
 function pointInPolygon(point: Vector2, polygon: Vector2[]): boolean {
@@ -818,19 +870,18 @@ function extrudeCutSection(
     const existing = faces.get(key);
     faces.set(key, { vertices, count: (existing?.count ?? 0) + 1 });
   };
-  for (const [a, b, c] of connectorTriangles) {
-    const sourceCenter = tangent.dot(a.clone().add(b).add(c).multiplyScalar(1 / 3));
-    const nearestSectionIndex = sections.reduce(
+  const nearestSectionFor = (point: Vector3) =>
+    sections.reduce(
       (best, section, index) =>
-        Math.abs(section.centerT - sourceCenter) < Math.abs(sections[best]!.centerT - sourceCenter)
+        Math.abs(section.centerT - tangent.dot(point)) <
+        Math.abs(sections[best]!.centerT - tangent.dot(point))
           ? index
           : best,
       0,
     );
+  const projectToTarget = (point: Vector3) => {
+    const nearestSectionIndex = nearestSectionFor(point);
     const sourceSectionCenter = sections[nearestSectionIndex]!.centerT;
-    // Quando a quantidade de paredes permanece igual, a ordem transversal Ã©
-    // a correspondÃªncia topolÃ³gica correta. Escolher apenas pela proximidade
-    // podia ligar uma parede Ã  vizinha em curvas apertadas e criar espigÃµes.
     const targetProfile = targetProfiles.length === sections.length
       ? targetProfiles[nearestSectionIndex]
       : targetProfiles.reduce<WallProfile | undefined>(
@@ -842,36 +893,72 @@ function extrudeCutSection(
               : best,
           undefined,
         );
-    const projectToTarget = (point: Vector3) => {
-      const result = point.clone().addScaledVector(direction, depth);
-      if (!targetProfile) return result;
-      // No perfil escalonado, preserve cada largura local do rebaixo. Apenas
-      // desloque a secao pelo centro da parede encontrado na profundidade de
-      // destino; redimensionar todos os vertices pela largura total eliminava
-      // o degrau frontal e recriava uma lingueta retangular independente.
-      if (preserveSectionProfile) {
-        return result.addScaledVector(tangent, targetProfile.centerT - sourceSectionCenter);
-      }
-      const sourceWidth = sections[nearestSectionIndex]!.maxT - sections[nearestSectionIndex]!.minT;
-      const ratio = sourceWidth > epsilon
-        ? (tangent.dot(point) - sections[nearestSectionIndex]!.minT) / sourceWidth
-        : 0.5;
-      const targetT = targetProfile.minT + ratio * (targetProfile.maxT - targetProfile.minT);
-      return result.addScaledVector(tangent, targetT - tangent.dot(point));
-    };
+    const result = point.clone().addScaledVector(direction, depth);
+    if (!targetProfile) return result;
+    if (preserveSectionProfile) {
+      return result.addScaledVector(tangent, targetProfile.centerT - sourceSectionCenter);
+    }
+    const sourceWidth = sections[nearestSectionIndex]!.maxT - sections[nearestSectionIndex]!.minT;
+    const ratio = sourceWidth > epsilon
+      ? (tangent.dot(point) - sections[nearestSectionIndex]!.minT) / sourceWidth
+      : 0.5;
+    const targetT = targetProfile.minT + ratio * (targetProfile.maxT - targetProfile.minT);
+    return result.addScaledVector(tangent, targetT - tangent.dot(point));
+  };
+
+  // A seção pode conter vários triângulos e junções em T. Extrudar cada
+  // triângulo como um prisma cria faces internas sobrepostas. Resolva as
+  // junções e gere paredes somente nas arestas externas da seção.
+  const sectionGeometry = new BufferGeometry();
+  sectionGeometry.setAttribute(
+    "position",
+    new Float32BufferAttribute(
+      connectorTriangles.flatMap((triangle) => triangle.flatMap((point) => point.toArray())),
+      3,
+    ),
+  );
+  const resolvedSection = resolveTJunctions(sectionGeometry);
+  const sectionPosition = resolvedSection.getAttribute("position");
+  const boundaryEdges = new Map<
+    string,
+    { start: Vector3; end: Vector3; count: number }
+  >();
+  const boundaryKey = (point: Vector3) =>
+    point.toArray().map((value) => Math.round(value * 1e5)).join(",");
+
+  for (let index = 0; index + 2 < sectionPosition.count; index += 3) {
+    const triangle = [0, 1, 2].map(
+      (offset) =>
+        new Vector3(
+          sectionPosition.getX(index + offset),
+          sectionPosition.getY(index + offset),
+          sectionPosition.getZ(index + offset),
+        ),
+    );
+    const [a, b, c] = triangle as [Vector3, Vector3, Vector3];
     const aa = projectToTarget(a);
     const bb = projectToTarget(b);
     const cc = projectToTarget(c);
     addFace(a, c, b);
     addFace(aa, bb, cc);
-    for (const [start, end, endTop, startTop] of [
-      [a, b, bb, aa],
-      [b, c, cc, bb],
-      [c, a, aa, cc],
-    ] as const) {
-      addFace(start, end, endTop);
-      addFace(start, endTop, startTop);
+    for (const [edgeStart, edgeEnd] of [[a, b], [b, c], [c, a]] as const) {
+      const startKey = boundaryKey(edgeStart);
+      const endKey = boundaryKey(edgeEnd);
+      const key = startKey < endKey ? `${startKey}|${endKey}` : `${endKey}|${startKey}`;
+      const current = boundaryEdges.get(key);
+      boundaryEdges.set(key, {
+        start: current?.start ?? edgeStart,
+        end: current?.end ?? edgeEnd,
+        count: (current?.count ?? 0) + 1,
+      });
     }
+  }
+  for (const { start: edgeStart, end: edgeEnd, count } of boundaryEdges.values()) {
+    if (count !== 1) continue;
+    const startTop = projectToTarget(edgeStart);
+    const endTop = projectToTarget(edgeEnd);
+    addFace(edgeStart, edgeEnd, endTop);
+    addFace(edgeStart, endTop, startTop);
   }
   const vertices = [...faces.values()]
     .filter((face) => face.count === 1)
@@ -1125,13 +1212,21 @@ export function splitGeometryByPlane(
         cavityPosition.getZ(i) - cavityCenter.z,
       );
       const currentNormal = normal.x * cavityPosition.getX(i) + normal.y * cavityPosition.getY(i);
-      const expandedNormal = normalCenter + (currentNormal - normalCenter) * normalScale;
+      // Preserve a boca coincidente com a aresta da parede e aplique a
+      // folga progressivamente para dentro da cavidade.
+      const mouthDistance = Math.abs(currentNormal - normal.dot(center));
+      const clearanceWeight = Math.min(Math.max(mouthDistance / depth, 0), 1);
+      const fullyExpandedNormal = normalCenter + (currentNormal - normalCenter) * normalScale;
+      const expandedNormal = currentNormal +
+        (fullyExpandedNormal - currentNormal) * clearanceWeight;
       const component = componentT.get(find(i))!;
       const componentCenter = (component.min + component.max) / 2;
       const tangentCoordinate = tangent.x * cavityPosition.getX(i) + tangent.y * cavityPosition.getY(i);
       const tangentExtent = Math.max((component.max - component.min) / 2, 1e-6);
-      const expandedTangent = componentCenter +
+      const fullyExpandedTangent = componentCenter +
         (tangentCoordinate - componentCenter) * ((tangentExtent + clearance) / tangentExtent);
+      const expandedTangent = tangentCoordinate +
+        (fullyExpandedTangent - tangentCoordinate) * clearanceWeight;
       cavityPosition.setXYZ(
         i,
         cavityPosition.getX(i) + normal.x * (expandedNormal - currentNormal) +
@@ -1222,7 +1317,7 @@ export function splitGeometryByPlane(
     false,
   );
   if (!joinedFemale) throw new Error("Falha ao montar a cavidade fÃªmea aberta");
-  const femaleGeometry = weldShellByPosition(joinedFemale);
+  const femaleGeometry = repairShell(joinedFemale);
   pieces[femaleIndex] = { ...pieces[femaleIndex]!, geometry: femaleGeometry };
   return pieces.map((piece) => ({ ...piece, total: pieces.length }));
 }
