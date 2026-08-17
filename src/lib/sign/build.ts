@@ -422,7 +422,7 @@ function backFlangeRingGeometry(
   return geometry;
 }
 
-function geometryVolumeCm3(geometry: BufferGeometry): number {
+export function geometryVolumeCm3(geometry: BufferGeometry): number {
   const pos = geometry.getAttribute("position");
   if (!pos) return 0;
   const index = geometry.getIndex();
