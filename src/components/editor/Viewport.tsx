@@ -132,7 +132,9 @@ function CutPieceMesh({
   position: [number, number, number];
   wireframe: boolean;
 }) {
-  const edges = useMemo(() => new EdgesGeometry(geometry, 1), [geometry]);
+  // O CSG triangula novamente superfícies planas. O limiar maior esconde
+  // diagonais auxiliares e mantém apenas contornos e quinas estruturais.
+  const edges = useMemo(() => new EdgesGeometry(geometry, 45), [geometry]);
   return (
     <group position={position}>
       {!wireframe && (
