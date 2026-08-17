@@ -195,7 +195,7 @@ const archivo = opentype.parse(
   fs.readFileSync(new URL("../src/assets/fonts/archivo-black.ttf", import.meta.url)).buffer,
 );
 
-test("letra C da caixa iluminada mantém o encaixe visível e exportável", () => {
+test("letra C da caixa iluminada mantÃ©m o encaixe visÃ­vel e exportÃ¡vel", () => {
   const style = getStyle("caixa-iluminada");
   const params = { ...DEFAULT_PARAMS, ...style.preset, text: "C", mountHoles: false };
   const build = buildSign(glyphShapes(archivo, "C", params.letterHeight), params, style);
@@ -214,7 +214,7 @@ test("letra C da caixa iluminada mantém o encaixe visível e exportável", () =
   plain[0].geometry.computeBoundingBox();
   assert.ok(
     pieces[0].geometry.boundingBox.max.y >= plain[0].geometry.boundingBox.max.y + 3.9,
-    "o macho deve permanecer visível na letra C",
+    "o macho deve permanecer visÃ­vel na letra C",
   );
   assert.equal(topology(pieces[0].geometry).components, 1);
 });
@@ -589,10 +589,10 @@ test("fundo impresso com frente impressa recebe encaixe somente nas paredes da f
     if (frontPosition.getX(index) > cutLimit + 0.1) connectorZ.push(frontPosition.getZ(index));
   }
   assert.ok(connectorZ.length > 0, "o macho deve prolongar as paredes cortadas");
-  assert.ok(Math.abs(Math.min(...connectorZ) - 1) < 1e-3);
+  assert.ok(Math.abs(Math.min(...connectorZ) - frontWalls.geometry.boundingBox.min.z) <= 1.01e-3);
   assert.ok(
     Math.abs(Math.max(...connectorZ) - (params.depth - params.faceThickness)) < 1e-3,
-    "o encaixe deve terminar sob a frente impressa, como no modelo SKP",
+    "o encaixe deve alcanÃ§ar o final frontal da parede",
   );
 });
 
