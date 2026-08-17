@@ -37,10 +37,7 @@ test("espelha horizontal e verticalmente ao redor da origem escolhida", () => {
 
 test("preserva a orientacao das faces depois de um unico espelho", () => {
   const geometry = new BufferGeometry();
-  geometry.setAttribute(
-    "position",
-    new Float32BufferAttribute([1, 0, 0, 3, 0, 0, 1, 2, 0], 3),
-  );
+  geometry.setAttribute("position", new Float32BufferAttribute([1, 0, 0, 3, 0, 0, 1, 2, 0], 3));
   const transformed = transformGeometryForPlacement(
     geometry,
     { rotation: 0, mirrorX: true, mirrorY: false },

@@ -2,11 +2,12 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 import opentype from "opentype.js";
-import { Box2, ShapePath, Vector2 } from "three";
+import { Box2, ShapePath, Vector2, Vector3 } from "three";
 
 import { buildSign } from "../src/lib/sign/build.ts";
 import { DEFAULT_PARAMS, STYLES, getStyle, paramsForStyle } from "../src/lib/sign/model.ts";
 import {
+  geometryCrossesCutPlane,
   partSupportsCutConnector,
   resolveCutConnectorWidth,
   splitGeometryByPlane,
@@ -239,7 +240,7 @@ test("a letra G gera componentes fechados e manifold", () => {
   );
 });
 
-test("plano manual corta todas as malhas reais da letra sem lanÃ§ar erro", () => {
+test("plano manual corta todas as malhas reais da letra sem lançar erro", () => {
   const params = { ...DEFAULT_PARAMS, text: "G", mountHoles: false };
   const build = buildSign(
     glyphShapes(archivo, "G", params.letterHeight),
@@ -248,13 +249,17 @@ test("plano manual corta todas as malhas reais da letra sem lanÃ§ar erro", () 
   );
   for (const part of build.parts) {
     const pieces = splitGeometryByPlane(part.geometry, { angle: 90, offset: 0 });
-    assert.ok(pieces.length >= 1, `${part.id} nÃ£o produziu segmentos`);
+    assert.ok(pieces.length >= 1, `${part.id} não produziu segmentos`);
   }
 });
 
 test("corte das paredes nao tampa o vazio interno da letra", () => {
   const params = { ...DEFAULT_PARAMS, text: "O", mountHoles: false };
-  const build = buildSign(glyphShapes(archivo, "O", params.letterHeight), params, getStyle("caixa-iluminada"));
+  const build = buildSign(
+    glyphShapes(archivo, "O", params.letterHeight),
+    params,
+    getStyle("caixa-iluminada"),
+  );
   const walls = build.parts.find((part) => part.kind === "laterais");
   assert.ok(walls);
   walls.geometry.computeBoundingBox();
@@ -271,10 +276,22 @@ test("corte das paredes nao tampa o vazio interno da letra", () => {
   });
   const sampleZ = (bounds.min.z + bounds.max.z) / 2;
   const coversCavity = pieces.some((piece) => {
-    const position = (piece.geometry.index ? piece.geometry.toNonIndexed() : piece.geometry).getAttribute("position");
+    const position = (
+      piece.geometry.index ? piece.geometry.toNonIndexed() : piece.geometry
+    ).getAttribute("position");
     for (let i = 0; i + 2 < position.count; i += 3) {
-      if (![position.getX(i), position.getX(i + 1), position.getX(i + 2)].every((x) => Math.abs(x - centerX) < 1e-4)) continue;
-      const ay = position.getY(i), az = position.getZ(i), by = position.getY(i + 1), bz = position.getZ(i + 1), cy = position.getY(i + 2), cz = position.getZ(i + 2);
+      if (
+        ![position.getX(i), position.getX(i + 1), position.getX(i + 2)].every(
+          (x) => Math.abs(x - centerX) < 1e-4,
+        )
+      )
+        continue;
+      const ay = position.getY(i),
+        az = position.getZ(i),
+        by = position.getY(i + 1),
+        bz = position.getZ(i + 1),
+        cy = position.getY(i + 2),
+        cz = position.getZ(i + 2);
       const d1 = (centerY - by) * (az - bz) - (ay - by) * (sampleZ - bz);
       const d2 = (centerY - cy) * (bz - cz) - (by - cy) * (sampleZ - cz);
       const d3 = (centerY - ay) * (cz - az) - (cy - ay) * (sampleZ - az);
@@ -285,7 +302,7 @@ test("corte das paredes nao tampa o vazio interno da letra", () => {
   assert.equal(coversCavity, false, "o rebaixo criou uma tampa sobre o vazio interno");
 });
 
-test("encaixe macho e fÃªmea Ã© gerado nas paredes de uma palavra", () => {
+test("encaixe macho e fêmea é gerado nas paredes de uma palavra", () => {
   const params = { ...DEFAULT_PARAMS, text: "LUMINA", mountHoles: false };
   const build = buildSign(
     glyphShapes(archivo, params.text, params.letterHeight),
@@ -310,7 +327,7 @@ test("encaixe macho e fÃªmea Ã© gerado nas paredes de uma palavra", () => {
   pieces[0].geometry.computeBoundingBox();
   assert.ok(
     pieces[0].geometry.boundingBox.max.y >= plainPieces[0].geometry.boundingBox.max.y + 3.9,
-    "a lingueta macho deve avanÃ§ar pela profundidade configurada",
+    "a lingueta macho deve avançar pela profundidade configurada",
   );
   for (const piece of pieces) {
     const position = piece.geometry.getAttribute("position");
@@ -375,7 +392,7 @@ test("frente acrilica e fundo impresso preservam os vazados internos", () => {
 
 test("Neon Flex gera fundo e paredes unidos sem tampa", () => {
   const style = getStyle("neon-flex-fundo-impresso");
-  assert.equal(style.name, "Neon Flex â€” Fundo Impresso sem Tampa");
+  assert.equal(style.name, "Neon Flex — Fundo Impresso sem Tampa");
   const params = {
     ...DEFAULT_PARAMS,
     ...style.preset,
@@ -593,9 +610,7 @@ test("fundo impresso com frente impressa recebe encaixe somente nas paredes da f
     if (frontPosition.getX(index) > cutLimit + 0.1) connectorZ.push(frontPosition.getZ(index));
   }
   assert.ok(connectorZ.length > 0, "o macho deve prolongar as paredes cortadas");
-  assert.ok(
-    Math.abs(Math.min(...connectorZ) - frontWalls.geometry.boundingBox.min.z) <= 1.01e-3,
-  );
+  assert.ok(Math.abs(Math.min(...connectorZ) - frontWalls.geometry.boundingBox.min.z) <= 1.01e-3);
   assert.ok(
     Math.abs(Math.max(...connectorZ) - (params.depth - params.faceThickness)) < 1e-3,
     "o encaixe deve alcançar o final frontal da parede",
@@ -617,20 +632,21 @@ test("encaixe impresso reproduz as arestas manifold do modelo c.skp", () => {
     connectorFrontInset: params.faceThickness,
   });
   assert.equal(pieces.length, 2);
-  for (const piece of pieces) {
-    assert.deepEqual(topology(piece.geometry), {
-      boundary: 0,
-      nonManifold: 0,
-      components: 1,
-    });
+  for (const [pieceIndex, piece] of pieces.entries()) {
+    assert.deepEqual(
+      topology(piece.geometry),
+      {
+        boundary: 0,
+        nonManifold: 0,
+        components: 1,
+      },
+      `peça ${pieceIndex}`,
+    );
   }
 });
 
 test("encaixe impresso continua as duas faces da parede sem criar outra peca", () => {
-  assert.equal(
-    resolveCutConnectorWidth("fundo-impresso-frente-impressa-aba", 35, 2.4, 1.2),
-    100,
-  );
+  assert.equal(resolveCutConnectorWidth("fundo-impresso-frente-impressa-aba", 35, 2.4, 1.2), 100);
 });
 
 test("encaixe da frente impressa nao fecha o canal entre paredes", () => {
@@ -667,9 +683,11 @@ test("encaixe da frente impressa nao fecha o canal entre paredes", () => {
     let closedBackTriangles = 0;
     let closedFrontTriangles = 0;
     for (let index = 0; index + 2 < position.count; index += 3) {
-      const normalValues = [0, 1, 2].map((vertexOffset) =>
-        Math.cos(radians) * position.getX(index + vertexOffset) +
-        Math.sin(radians) * position.getY(index + vertexOffset));
+      const normalValues = [0, 1, 2].map(
+        (vertexOffset) =>
+          Math.cos(radians) * position.getX(index + vertexOffset) +
+          Math.sin(radians) * position.getY(index + vertexOffset),
+      );
       const zValues = [0, 1, 2].map((offset) => position.getZ(index + offset));
       if (!normalValues.every((value) => Math.abs(value - plane) < 1e-3)) continue;
       if (Math.max(...zValues) <= 1 + 1e-3) closedBackTriangles++;
@@ -679,10 +697,13 @@ test("encaixe da frente impressa nao fecha o canal entre paredes", () => {
       if (
         Math.min(...zValues) < 0.9 ||
         Math.max(...zValues) > params.depth - params.faceThickness - 0.01
-      ) continue;
-      const tangentValues = [0, 1, 2].map((vertexOffset) =>
-        -Math.sin(radians) * position.getX(index + vertexOffset) +
-        Math.cos(radians) * position.getY(index + vertexOffset));
+      )
+        continue;
+      const tangentValues = [0, 1, 2].map(
+        (vertexOffset) =>
+          -Math.sin(radians) * position.getX(index + vertexOffset) +
+          Math.cos(radians) * position.getY(index + vertexOffset),
+      );
       assert.ok(
         Math.max(...tangentValues) - Math.min(...tangentValues) < 10,
         `o corte a ${angle} graus criou uma tampa atravessando o canal`,
@@ -721,26 +742,44 @@ test("frente e fundo acrilicos ficam separados com rebaixo duplo", () => {
   assert.equal(front.geometry.boundingBox?.min.z, params.depth - params.faceThickness);
 });
 
-test("largura do encaixe acrilico segue o rebaixo frontal em LUMINA", () => {
+test("encaixe do corte acrilico acompanha o rebaixo frontal em LUMINA", () => {
   const style = getStyle("fundo-acrilico-frente-acrilica");
-  const params = { ...DEFAULT_PARAMS, ...style.preset, text: "LUMINA" };
-  const expected = (params.recessLip / params.wall) * 100;
+  const params = {
+    ...DEFAULT_PARAMS,
+    ...style.preset,
+    text: "LUMINA",
+    mountHoles: false,
+  };
+  const width = resolveCutConnectorWidth(style.id, 95, params.wall, params.recessLip);
+  assert.ok(Math.abs(width - (params.recessLip / params.wall) * 100) < 1e-8);
 
-  for (const angle of [0, 30, 45, 60, 90, 120, 150]) {
-    for (const offset of [-100, -25, 0, 25, 100]) {
-      void angle;
-      void offset;
-      assert.equal(
-        resolveCutConnectorWidth(style.id, 95, params.wall, params.recessLip),
-        expected,
-      );
-    }
+  const build = buildSign(glyphShapes(archivo, params.text, params.letterHeight), params, style);
+  const walls = build.parts.find((part) => part.kind === "laterais");
+  assert.ok(walls);
+  walls.geometry.computeBoundingBox();
+  const bounds = walls.geometry.boundingBox;
+  const center = bounds.getCenter(new Vector3());
+
+  const options = { angle: 45, offset: 0, origin: { x: center.x, y: center.y } };
+  assert.equal(geometryCrossesCutPlane(walls.geometry, options), true);
+  const pieces = splitGeometryByPlane(walls.geometry, {
+    ...options,
+    connector: "male-female",
+    connectorDepth: params.cutConnectorDepth,
+    connectorWidth: width,
+    connectorClearance: params.cutConnectorClearance,
+  });
+  assert.equal(pieces.length, 2);
+  for (const piece of pieces) {
+    const positionAttribute = piece.geometry.getAttribute("position");
+    assert.ok(positionAttribute.count > 0);
+    assert.ok(Array.from(positionAttribute.array).every(Number.isFinite));
   }
 });
 
 test("novo estilo usa fundo acrilico apoiado por aba interna", () => {
   const style = getStyle("fundo-acrilico-frente-acrilica-aba");
-  assert.equal(style.name, "Fundo AcrÃ­lico + Frente AcrÃ­lica com Aba");
+  assert.equal(style.name, "Fundo Acrílico + Frente Acrílica com Aba");
   const params = {
     ...DEFAULT_PARAMS,
     ...style.preset,
@@ -826,4 +865,3 @@ test("estilo acrilico com aba tem preset completo e estilos removidos nao retorn
     },
   );
 });
-

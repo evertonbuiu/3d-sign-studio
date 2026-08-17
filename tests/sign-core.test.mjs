@@ -144,11 +144,34 @@ test("todos os estilos ignoram parâmetros geométricos residuais", () => {
     poleHeight: 1900,
   };
   const geometryKeys = [
-    "depth", "wall", "faceThickness", "backThickness", "clearance", "faceRecess",
-    "recessLip", "backFlangeWidth", "backFlangeThickness", "neonFlexThickness", "led",
-    "ledChannelWidth", "ledChannelHeight", "ledOffset", "ledColor", "ledPowerPerMeter",
-    "layers", "layerThickness", "layerShrink", "mountHoles", "holeDiameter", "tabs",
-    "guides", "bodyMode", "plateMargin", "plateThickness", "cutout", "poleHeight",
+    "depth",
+    "wall",
+    "faceThickness",
+    "backThickness",
+    "clearance",
+    "faceRecess",
+    "recessLip",
+    "backFlangeWidth",
+    "backFlangeThickness",
+    "neonFlexThickness",
+    "led",
+    "ledChannelWidth",
+    "ledChannelHeight",
+    "ledOffset",
+    "ledColor",
+    "ledPowerPerMeter",
+    "layers",
+    "layerThickness",
+    "layerShrink",
+    "mountHoles",
+    "holeDiameter",
+    "tabs",
+    "guides",
+    "bodyMode",
+    "plateMargin",
+    "plateThickness",
+    "cutout",
+    "poleHeight",
   ];
   for (const style of STYLES) {
     const clean = paramsForStyle(style, DEFAULT_PARAMS);
@@ -219,7 +242,10 @@ test("acumula cortes manuais sucessivos usando a mesma origem", () => {
     { angle: 0, offset: 20, connector: "none" },
   ]);
   assert.equal(pieces.length, 3);
-  assert.deepEqual(pieces.map((piece) => piece.total), [3, 3, 3]);
+  assert.deepEqual(
+    pieces.map((piece) => piece.total),
+    [3, 3, 3],
+  );
 });
 
 test("plano manual usa a origem global do modelo em todas as peças", () => {
@@ -307,8 +333,10 @@ test("profundidade fêmea deriva da extensão real da parede inferior", () => {
   });
   const signedBounds = (geometry) => {
     const position = geometry.getAttribute("position");
-    const values = Array.from({ length: position.count }, (_, index) =>
-      normal.x * position.getX(index) + normal.y * position.getY(index));
+    const values = Array.from(
+      { length: position.count },
+      (_, index) => normal.x * position.getX(index) + normal.y * position.getY(index),
+    );
     return { min: Math.min(...values), max: Math.max(...values) };
   };
   const male = signedBounds(pieces[0].geometry);
@@ -316,8 +344,10 @@ test("profundidade fêmea deriva da extensão real da parede inferior", () => {
   const position = female.getAttribute("position");
   const recessedPlanes = [];
   for (let index = 0; index + 2 < position.count; index += 3) {
-    const values = [0, 1, 2].map((offset) =>
-      normal.x * position.getX(index + offset) + normal.y * position.getY(index + offset));
+    const values = [0, 1, 2].map(
+      (offset) =>
+        normal.x * position.getX(index + offset) + normal.y * position.getY(index + offset),
+    );
     if (Math.max(...values) - Math.min(...values) < 1e-4) recessedPlanes.push(values[0]);
   }
   const recessDepth = Math.min(...recessedPlanes.filter((value) => value > 0.1));
@@ -344,9 +374,12 @@ test("macho prolonga a parede externa sem tampa ou elemento sobreposto", () => {
   for (let index = 0; index + 2 < position.count; index += 3) {
     const xs = [0, 1, 2].map((offset) => position.getX(index + offset));
     if (Math.max(...xs) - Math.min(...xs) > 1e-4 || Math.abs(xs[0]) > 1e-4) continue;
-    const ay = position.getY(index), az = position.getZ(index);
-    const by = position.getY(index + 1), bz = position.getZ(index + 1);
-    const cy = position.getY(index + 2), cz = position.getZ(index + 2);
+    const ay = position.getY(index),
+      az = position.getZ(index);
+    const by = position.getY(index + 1),
+      bz = position.getZ(index + 1);
+    const cy = position.getY(index + 2),
+      cz = position.getZ(index + 2);
     const d1 = (sampleY - by) * (az - bz) - (ay - by) * (sampleZ - bz);
     const d2 = (sampleY - cy) * (bz - cz) - (by - cy) * (sampleZ - cz);
     const d3 = (sampleY - ay) * (cz - az) - (cy - ay) * (sampleZ - az);
@@ -377,7 +410,8 @@ test("macho e parede externa formam um unico componente conectado", () => {
     return triangle;
   };
   const union = (left, right) => {
-    const leftRoot = find(left), rightRoot = find(right);
+    const leftRoot = find(left),
+      rightRoot = find(right);
     if (leftRoot !== rightRoot) parent[leftRoot] = rightRoot;
   };
   const vertexOwner = new Map();
@@ -385,7 +419,8 @@ test("macho e parede externa formam um unico componente conectado", () => {
     for (let corner = 0; corner < 3; corner++) {
       const vertex = triangle * 3 + corner;
       const key = [position.getX(vertex), position.getY(vertex), position.getZ(vertex)]
-        .map((value) => Math.round(value * 1e5)).join(",");
+        .map((value) => Math.round(value * 1e5))
+        .join(",");
       const owner = vertexOwner.get(key);
       if (owner === undefined) vertexOwner.set(key, triangle);
       else union(triangle, owner);
@@ -406,10 +441,17 @@ test("união entre parede e encaixe não deixa arestas abertas", () => {
   const edges = new Map();
   for (let triangle = 0; triangle + 2 < position.count; triangle += 3) {
     const vertices = [0, 1, 2].map((offset) =>
-      [position.getX(triangle + offset), position.getY(triangle + offset), position.getZ(triangle + offset)]
-        .map((value) => Math.round(value * 1e4)).join(","));
+      [
+        position.getX(triangle + offset),
+        position.getY(triangle + offset),
+        position.getZ(triangle + offset),
+      ]
+        .map((value) => Math.round(value * 1e4))
+        .join(","),
+    );
     for (let edge = 0; edge < 3; edge++) {
-      const start = vertices[edge], end = vertices[(edge + 1) % 3];
+      const start = vertices[edge],
+        end = vertices[(edge + 1) % 3];
       const key = start < end ? `${start}|${end}` : `${end}|${start}`;
       edges.set(key, (edges.get(key) ?? 0) + 1);
     }
@@ -442,7 +484,10 @@ test("extensão externa ignora o degrau interno e chega uniforme à frente útil
   assert.ok(lowerY.length > 0 && upperY.length > 0);
   const lowerWidth = Math.max(...lowerY) - Math.min(...lowerY);
   const upperWidth = Math.max(...upperY) - Math.min(...upperY);
-  assert.ok(Math.abs(lowerWidth - upperWidth) < 0.01, "a extensão externa não pode receber o degrau interno");
+  assert.ok(
+    Math.abs(lowerWidth - upperWidth) < 0.01,
+    "a extensão externa não pode receber o degrau interno",
+  );
 });
 
 test("parte femea deixa aberta a metade externa do rebaixo", () => {
@@ -458,14 +503,17 @@ test("parte femea deixa aberta a metade externa do rebaixo", () => {
   const position = source.getAttribute("position");
   const sampleY = 15;
   const sampleZ = 0;
-    let covered = false;
-    for (let index = 0; index + 2 < position.count; index += 3) {
-      const xs = [position.getX(index), position.getX(index + 1), position.getX(index + 2)];
-      const meanX = (xs[0] + xs[1] + xs[2]) / 3;
-      if (Math.max(...xs) - Math.min(...xs) > 1e-4 || Math.abs(meanX) > 1) continue;
-    const ay = position.getY(index), az = position.getZ(index);
-    const by = position.getY(index + 1), bz = position.getZ(index + 1);
-    const cy = position.getY(index + 2), cz = position.getZ(index + 2);
+  let covered = false;
+  for (let index = 0; index + 2 < position.count; index += 3) {
+    const xs = [position.getX(index), position.getX(index + 1), position.getX(index + 2)];
+    const meanX = (xs[0] + xs[1] + xs[2]) / 3;
+    if (Math.max(...xs) - Math.min(...xs) > 1e-4 || Math.abs(meanX) > 1) continue;
+    const ay = position.getY(index),
+      az = position.getZ(index);
+    const by = position.getY(index + 1),
+      bz = position.getZ(index + 1);
+    const cy = position.getY(index + 2),
+      cz = position.getZ(index + 2);
     const d1 = (sampleY - by) * (az - bz) - (ay - by) * (sampleZ - bz);
     const d2 = (sampleY - cy) * (bz - cz) - (by - cy) * (sampleZ - cz);
     const d3 = (sampleY - ay) * (cz - az) - (cy - ay) * (sampleZ - az);
@@ -476,9 +524,12 @@ test("parte femea deixa aberta a metade externa do rebaixo", () => {
   for (let index = 0; index + 2 < position.count; index += 3) {
     const xs = [position.getX(index), position.getX(index + 1), position.getX(index + 2)];
     if (Math.min(...xs) < 3.5 || Math.max(...xs) - Math.min(...xs) > 1e-4) continue;
-    const ay = position.getY(index), az = position.getZ(index);
-    const by = position.getY(index + 1), bz = position.getZ(index + 1);
-    const cy = position.getY(index + 2), cz = position.getZ(index + 2);
+    const ay = position.getY(index),
+      az = position.getZ(index);
+    const by = position.getY(index + 1),
+      bz = position.getZ(index + 1);
+    const cy = position.getY(index + 2),
+      cz = position.getZ(index + 2);
     const d1 = (sampleY - by) * (az - bz) - (ay - by) * (sampleZ - bz);
     const d2 = (sampleY - cy) * (bz - cz) - (by - cy) * (sampleZ - cz);
     const d3 = (sampleY - ay) * (cz - az) - (cy - ay) * (sampleZ - az);
@@ -502,8 +553,10 @@ test("encaixe e recuo femea acompanham o angulo do plano de corte", () => {
   });
   const signedDistances = (piece) => {
     const position = piece.geometry.getAttribute("position");
-    return Array.from({ length: position.count }, (_, index) =>
-      normal.x * position.getX(index) + normal.y * position.getY(index));
+    return Array.from(
+      { length: position.count },
+      (_, index) => normal.x * position.getX(index) + normal.y * position.getY(index),
+    );
   };
   assert.ok(
     Math.max(...signedDistances(pieces[0])) >= 3.99,
@@ -513,8 +566,10 @@ test("encaixe e recuo femea acompanham o angulo do plano de corte", () => {
   const position = female.getAttribute("position");
   let recessedBack = false;
   for (let index = 0; index + 2 < position.count; index += 3) {
-    const distances = [0, 1, 2].map((offset) =>
-      normal.x * position.getX(index + offset) + normal.y * position.getY(index + offset));
+    const distances = [0, 1, 2].map(
+      (offset) =>
+        normal.x * position.getX(index + offset) + normal.y * position.getY(index + offset),
+    );
     if (distances.every((distance) => Math.abs(distance - 4.2) < 0.05)) recessedBack = true;
   }
   assert.equal(recessedBack, true, "a Parte 2 deve ter o fundo do recuo paralelo ao corte");
@@ -539,15 +594,35 @@ test("todas as paredes atravessadas recebem o recuo femea", () => {
   const position = female.getAttribute("position");
   const recessedSections = [];
   for (let index = 0; index + 2 < position.count; index += 3) {
-    const points = [0, 1, 2].map((offset) =>
-      new Vector3(position.getX(index + offset), position.getY(index + offset), position.getZ(index + offset)));
+    const points = [0, 1, 2].map(
+      (offset) =>
+        new Vector3(
+          position.getX(index + offset),
+          position.getY(index + offset),
+          position.getZ(index + offset),
+        ),
+    );
     const distances = points.map((point) => normal.dot(point));
     if (distances.every((distance) => Math.abs(distance - 4.2) < 0.05)) {
-      recessedSections.push(tangent.dot(points[0].clone().add(points[1]).add(points[2]).multiplyScalar(1 / 3)));
+      recessedSections.push(
+        tangent.dot(
+          points[0]
+            .clone()
+            .add(points[1])
+            .add(points[2])
+            .multiplyScalar(1 / 3),
+        ),
+      );
     }
   }
-  assert.ok(recessedSections.some((value) => value < -10), "a parede inferior deve ter recuo");
-  assert.ok(recessedSections.some((value) => value > 10), "a parede superior deve ter recuo");
+  assert.ok(
+    recessedSections.some((value) => value < -10),
+    "a parede inferior deve ter recuo",
+  );
+  assert.ok(
+    recessedSections.some((value) => value > 10),
+    "a parede superior deve ter recuo",
+  );
 });
 
 test("encaixe acompanha a inclinacao local da parede", () => {
@@ -572,7 +647,7 @@ test("encaixe acompanha a inclinacao local da parede", () => {
   const baseCenter = (Math.min(...baseY) + Math.max(...baseY)) / 2;
   const tipCenter = (Math.min(...tipY) + Math.max(...tipY)) / 2;
   const expectedShift = Math.tan((wallAngle * Math.PI) / 180) * depth;
-  assert.ok(Math.abs((tipCenter - baseCenter) - expectedShift) < 0.5);
+  assert.ok(Math.abs(tipCenter - baseCenter - expectedShift) < 0.5);
 });
 
 test("largura do encaixe controla a metade interna da parede", () => {
@@ -634,7 +709,10 @@ test("rebaixo ocupa somente metade externa da espessura da parede", () => {
     if (position.getX(index) > 0.1) extendedY.push(position.getY(index));
   }
   assert.ok(Math.max(...extendedY) - Math.min(...extendedY) <= 30.01);
-  assert.ok(Math.min(...extendedY) >= -0.01, "o macho deve permanecer na metade externa selecionada");
+  assert.ok(
+    Math.min(...extendedY) >= -0.01,
+    "o macho deve permanecer na metade externa selecionada",
+  );
 });
 
 test("parte superior preserva a metade interna e recua a metade externa", () => {
@@ -704,4 +782,3 @@ test("encaixe reproduz as medidas extraídas do modelo c.skp", () => {
   pieces[0].geometry.computeBoundingBox();
   assert.ok(pieces[0].geometry.boundingBox.max.x >= 3.99);
 });
-

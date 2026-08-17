@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { toast } from "sonner";
 import { Eye, EyeOff, RotateCcw, Scissors, Trash2, Undo2, Upload, X } from "lucide-react";
 import { Box3, Vector3 } from "three";
@@ -24,7 +23,7 @@ import {
 import { FONTS, type FontId } from "@/lib/sign/fonts";
 import type { PartKind, SignParams } from "@/lib/sign/model";
 import { PRINTER_PROFILES } from "@/lib/sign/printers";
-import { geometryCrossesCutPlane, resolveCutConnectorWidth } from "@/lib/sign/split";
+import { geometryCrossesCutPlane } from "@/lib/sign/split";
 import { useEditor } from "./store";
 
 const MAX_VECTOR_FILE_BYTES = 2_000_000;
@@ -36,7 +35,7 @@ function validateVectorFile(file: File): boolean {
   return false;
 }
 
-export function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
       <Label className="text-sm font-medium text-muted-foreground">{label}</Label>
@@ -45,7 +44,7 @@ export function Field({ label, children }: { label: string; children: React.Reac
   );
 }
 
-export function NumberSlider({
+function NumberSlider({
   label,
   keyName,
   min,
@@ -62,36 +61,13 @@ export function NumberSlider({
 }) {
   const { params, setParam } = useEditor();
   const value = Number(params[keyName]);
-  const [draft, setDraft] = useState<string | null>(null);
-
-  const commit = (raw: string) => {
-    const parsed = Number(raw.replace(",", "."));
-    setDraft(null);
-    if (!Number.isFinite(parsed)) return;
-    setParam(keyName, Math.min(max, Math.max(min, parsed)) as never);
-  };
-
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between">
         <Label className="text-sm font-medium text-muted-foreground">{label}</Label>
-        <div className="flex items-center gap-1">
-          <Input
-            type="text"
-            inputMode="decimal"
-            value={draft ?? String(Number(value.toFixed(3)))}
-            onChange={(e) => setDraft(e.target.value)}
-            onBlur={(e) => commit(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                commit((e.target as HTMLInputElement).value);
-                (e.target as HTMLInputElement).blur();
-              }
-            }}
-            className="h-7 w-20 bg-card px-2 text-right text-sm tabular-nums"
-          />
-          <span className="w-6 text-xs text-muted-foreground">{unit}</span>
-        </div>
+        <span className="text-sm tabular-nums text-foreground">
+          {value.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} {unit}
+        </span>
       </div>
       <Slider
         value={[value]}
@@ -103,7 +79,6 @@ export function NumberSlider({
     </div>
   );
 }
-
 
 function ColorField({ label, keyName }: { label: string; keyName: keyof SignParams }) {
   const { params, setParam } = useEditor();
@@ -120,7 +95,7 @@ function ColorField({ label, keyName }: { label: string; keyName: keyof SignPara
   );
 }
 
-export function MoneyField({
+function MoneyField({
   label,
   keyName,
   step = 1,
@@ -545,6 +520,72 @@ export default function PropertiesPanel() {
           <AccordionItem value="corpo">
             <AccordionTrigger className="text-sm">Placa, totem e camadas</AccordionTrigger>
             <AccordionContent className="space-y-3 pb-4">
+              <Field label="Modo do corpo">
+                <Select
+                  value={params.bodyMode}
+                  onValueChange={(v) => setParam("bodyMode", v as SignParams["bodyMode"])}
+                >
+                  <SelectTrigger className="h-9 bg-card text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="letras" className="text-sm">
+                      Letras soltas
+                    </SelectItem>
+                    <SelectItem value="placa" className="text-sm">
+                      Placa
+                    </SelectItem>
+                    <SelectItem value="totem" className="text-sm">
+                      Totem
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <NumberSlider
+                label="Margem da placa"
+                keyName="plateMargin"
+                min={5}
+                max={200}
+                step={1}
+              />
+              <NumberSlider
+                label="Espessura da placa"
+                keyName="plateThickness"
+                min={2}
+                max={40}
+                step={0.5}
+              />
+              <NumberSlider
+                label="Altura do poste"
+                keyName="poleHeight"
+                min={100}
+                max={2000}
+                step={10}
+              />
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium text-muted-foreground">Letras vazadas</Label>
+                <Switch checked={params.cutout} onCheckedChange={(v) => setParam("cutout", v)} />
+              </div>
+              <NumberSlider
+                label="Espessura da camada"
+                keyName="layerThickness"
+                min={1}
+                max={30}
+                step={0.5}
+              />
+              <NumberSlider
+                label="Redução por camada"
+                keyName="layerShrink"
+                min={1}
+                max={40}
+                step={0.5}
+              />
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="montagem">
+            <AccordionTrigger className="text-sm">Montagem</AccordionTrigger>
+            <AccordionContent className="space-y-3 pb-4">
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium text-muted-foreground">
                   Furos de fixação
@@ -774,7 +815,8 @@ export default function PropertiesPanel() {
                               const bounds = new Box3();
                               for (const part of targets) {
                                 part.geometry.computeBoundingBox();
-                                if (part.geometry.boundingBox) bounds.union(part.geometry.boundingBox);
+                                if (part.geometry.boundingBox)
+                                  bounds.union(part.geometry.boundingBox);
                               }
                               const center = bounds.getCenter(new Vector3());
                               const origin = { x: center.x, y: center.y };
@@ -786,7 +828,9 @@ export default function PropertiesPanel() {
                                 }),
                               );
                               if (!targets.length || !crosses) {
-                                toast.error("O plano não atravessa nenhuma peça do alvo selecionado.");
+                                toast.error(
+                                  "O plano não atravessa nenhuma peça do alvo selecionado.",
+                                );
                                 return;
                               }
                               const duplicate = params.manualCuts.some(
@@ -807,12 +851,13 @@ export default function PropertiesPanel() {
                                 connector: params.cutConnector,
                                 maleSide: "part-1" as const,
                                 connectorDepth: params.cutConnectorDepth,
-                                connectorWidth: resolveCutConnectorWidth(
-                                  style.id,
-                                  params.cutConnectorWidth,
-                                  params.wall,
-                                  params.recessLip,
-                                ),
+                                connectorWidth:
+                                  style.id === "fundo-acrilico-frente-acrilica"
+                                    ? Math.min(
+                                        100,
+                                        Math.max(10, (params.recessLip / params.wall) * 100),
+                                      )
+                                    : params.cutConnectorWidth,
                                 connectorThickness: params.cutConnectorThickness,
                                 connectorClearance: params.cutConnectorClearance,
                               };
@@ -827,9 +872,7 @@ export default function PropertiesPanel() {
                             type="button"
                             variant="outline"
                             disabled={!params.manualCuts.length}
-                            onClick={() =>
-                              setParam("manualCuts", params.manualCuts.slice(0, -1))
-                            }
+                            onClick={() => setParam("manualCuts", params.manualCuts.slice(0, -1))}
                             aria-label="Desfazer último corte"
                           >
                             <Undo2 className="h-4 w-4" />
@@ -967,4 +1010,3 @@ export default function PropertiesPanel() {
     </div>
   );
 }
-

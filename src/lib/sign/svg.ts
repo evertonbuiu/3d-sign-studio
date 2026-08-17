@@ -89,8 +89,10 @@ export function svgMillimetersPerUserUnit(svgText: string): number {
     ?.trim()
     .split(/[\s,]+/)
     .map(Number);
-  const viewWidth = viewBox?.length === 4 && Number.isFinite(viewBox[2]) ? Math.abs(viewBox[2]!) : 0;
-  const viewHeight = viewBox?.length === 4 && Number.isFinite(viewBox[3]) ? Math.abs(viewBox[3]!) : 0;
+  const viewWidth =
+    viewBox?.length === 4 && Number.isFinite(viewBox[2]) ? Math.abs(viewBox[2]!) : 0;
+  const viewHeight =
+    viewBox?.length === 4 && Number.isFinite(viewBox[3]) ? Math.abs(viewBox[3]!) : 0;
   const widthMm = lengthToMillimeters(attribute("width"));
   const heightMm = lengthToMillimeters(attribute("height"));
   if (widthMm && viewWidth) return widthMm / viewWidth;

@@ -1,10 +1,4 @@
-import {
-  BufferGeometry,
-  Float32BufferAttribute,
-  ShapeUtils,
-  Vector2,
-  Vector3,
-} from "three";
+import { BufferGeometry, Float32BufferAttribute, ShapeUtils, Vector2, Vector3 } from "three";
 import { mergeGeometries, mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
 
 export interface SplitPiece {
@@ -41,8 +35,8 @@ export interface SequentialSplitOptions extends ManualSplitOptions {
 
 /**
  * O rebaixo duplo acrílico já define a faixa estrutural disponível na parede.
- * O encaixe do corte reutiliza exatamente essa largura para não criar degraus
- * ou faces sobrepostas entre o rebaixo frontal e a lingueta.
+ * O encaixe do corte deve reutilizar exatamente essa largura, evitando degraus,
+ * faces sobrepostas e linhas abertas entre o rebaixo frontal e a lingueta.
  */
 export function resolveCutConnectorWidth(
   styleId: string,
@@ -86,7 +80,7 @@ export function geometryCrossesCutPlane(
   return Math.min(...distances) < -1e-5 && Math.max(...distances) > 1e-5;
 }
 
-/** Recorte visual robusto, sem CSG e sem tampas, usado somente na prÃ©via. */
+/** Recorte visual robusto, sem CSG e sem tampas, usado somente na prévia. */
 export function clipGeometryByPlaneForPreview(
   geometry: BufferGeometry,
   options: Pick<ManualSplitOptions, "angle" | "offset">,
@@ -185,8 +179,9 @@ function withoutDegenerateTriangles(geometry: BufferGeometry): BufferGeometry {
 
 function weldShellByPosition(geometry: BufferGeometry, tolerance = 1e-3): BufferGeometry {
   const shell = withoutDegenerateTriangles(geometry);
-  // A soldagem deve usar somente posição; normais diferentes nas quinas
-  // impedem que vértices coincidentes da parede e do encaixe sejam unidos.
+  // BufferGeometryUtils considera todos os atributos ao soldar. Normais de
+  // faces adjacentes são diferentes justamente nas quinas, portanto impediam
+  // a união de vértices coincidentes entre a parede e o encaixe.
   for (const attribute of Object.keys(shell.attributes)) {
     if (attribute !== "position") shell.deleteAttribute(attribute);
   }
@@ -200,8 +195,11 @@ function resolveTJunctions(geometry: BufferGeometry, tolerance = 1e-4): BufferGe
   const source = geometry.index ? geometry.toNonIndexed() : geometry;
   const position = source.getAttribute("position");
   const unique = new Map<string, Vector3>();
-  const keyFor = (point: Vector3) => point.toArray()
-    .map((value) => Math.round(value / tolerance)).join(",");
+  const keyFor = (point: Vector3) =>
+    point
+      .toArray()
+      .map((value) => Math.round(value / tolerance))
+      .join(",");
   for (let index = 0; index < position.count; index++) {
     const point = new Vector3(position.getX(index), position.getY(index), position.getZ(index));
     unique.set(keyFor(point), point);
@@ -213,15 +211,25 @@ function resolveTJunctions(geometry: BufferGeometry, tolerance = 1e-4): BufferGe
     const lengthSq = edge.lengthSq();
     return points
       .map((point) => ({ point, ratio: point.clone().sub(start).dot(edge) / lengthSq }))
-      .filter(({ point, ratio }) =>
-        ratio > tolerance && ratio < 1 - tolerance &&
-        start.clone().addScaledVector(edge, ratio).distanceToSquared(point) <= tolerance * tolerance)
+      .filter(
+        ({ point, ratio }) =>
+          ratio > tolerance &&
+          ratio < 1 - tolerance &&
+          start.clone().addScaledVector(edge, ratio).distanceToSquared(point) <=
+            tolerance * tolerance,
+      )
       .sort((left, right) => left.ratio - right.ratio)
       .map(({ point }) => point);
   };
   for (let index = 0; index + 2 < position.count; index += 3) {
-    const triangle = [0, 1, 2].map((offset) =>
-      new Vector3(position.getX(index + offset), position.getY(index + offset), position.getZ(index + offset)));
+    const triangle = [0, 1, 2].map(
+      (offset) =>
+        new Vector3(
+          position.getX(index + offset),
+          position.getY(index + offset),
+          position.getZ(index + offset),
+        ),
+    );
     const boundary: Vector3[] = [];
     let split = false;
     for (let edgeIndex = 0; edgeIndex < 3; edgeIndex++) {
@@ -235,7 +243,11 @@ function resolveTJunctions(geometry: BufferGeometry, tolerance = 1e-4): BufferGe
       output.push(...triangle.flatMap((point) => point.toArray()));
       continue;
     }
-    const center = triangle[0]!.clone().add(triangle[1]!).add(triangle[2]!).multiplyScalar(1 / 3);
+    const center = triangle[0]!
+      .clone()
+      .add(triangle[1]!)
+      .add(triangle[2]!)
+      .multiplyScalar(1 / 3);
     for (let boundaryIndex = 0; boundaryIndex < boundary.length; boundaryIndex++) {
       output.push(
         ...center.toArray(),
@@ -252,43 +264,78 @@ function resolveTJunctions(geometry: BufferGeometry, tolerance = 1e-4): BufferGe
 function closeBoundaryLoops(geometry: BufferGeometry, tolerance = 1e-4): BufferGeometry {
   const source = geometry.index ? geometry.toNonIndexed() : geometry;
   const position = source.getAttribute("position");
-  const keyFor = (point: Vector3) => point.toArray()
-    .map((value) => Math.round(value / tolerance)).join(",");
+  const keyFor = (point: Vector3) =>
+    point
+      .toArray()
+      .map((value) => Math.round(value / tolerance))
+      .join(",");
   const points = new Map<string, Vector3>();
   const edgeUses = new Map<string, Array<[string, string]>>();
   const vertices: number[] = [];
   for (let index = 0; index + 2 < position.count; index += 3) {
-    const triangle = [0, 1, 2].map((offset) =>
-      new Vector3(position.getX(index + offset), position.getY(index + offset), position.getZ(index + offset)));
+    const triangle = [0, 1, 2].map(
+      (offset) =>
+        new Vector3(
+          position.getX(index + offset),
+          position.getY(index + offset),
+          position.getZ(index + offset),
+        ),
+    );
     vertices.push(...triangle.flatMap((point) => point.toArray()));
     for (let edge = 0; edge < 3; edge++) {
-      const start = triangle[edge]!, end = triangle[(edge + 1) % 3]!;
-      const startKey = keyFor(start), endKey = keyFor(end);
-      points.set(startKey, start); points.set(endKey, end);
+      const start = triangle[edge]!,
+        end = triangle[(edge + 1) % 3]!;
+      const startKey = keyFor(start),
+        endKey = keyFor(end);
+      points.set(startKey, start);
+      points.set(endKey, end);
       const key = startKey < endKey ? `${startKey}|${endKey}` : `${endKey}|${startKey}`;
       edgeUses.set(key, [...(edgeUses.get(key) ?? []), [startKey, endKey]]);
     }
   }
-  const boundary = [...edgeUses.values()].filter((uses) => uses.length === 1).map((uses) => uses[0]!);
-  const outgoing = new Map<string, string[]>();
-  for (const [start, end] of boundary) outgoing.set(start, [...(outgoing.get(start) ?? []), end]);
-  const unused = new Set(boundary.map(([start, end]) => `${start}>${end}`));
+  const boundary = [...edgeUses.values()]
+    .filter((uses) => uses.length === 1)
+    .map((uses) => uses[0]!);
+  const adjacency = new Map<string, string[]>();
+  const edgeKey = (start: string, end: string) =>
+    start < end ? `${start}|${end}` : `${end}|${start}`;
+  for (const [start, end] of boundary) {
+    adjacency.set(start, [...(adjacency.get(start) ?? []), end]);
+    adjacency.set(end, [...(adjacency.get(end) ?? []), start]);
+  }
+  const unused = new Set(boundary.map(([start, end]) => edgeKey(start, end)));
   for (const [initialStart, initialEnd] of boundary) {
-    if (!unused.has(`${initialStart}>${initialEnd}`)) continue;
+    if (!unused.has(edgeKey(initialStart, initialEnd))) continue;
     const loop = [initialStart];
-    let start = initialStart, end = initialEnd;
-    while (unused.delete(`${start}>${end}`)) {
-      loop.push(end);
-      if (end === initialStart) break;
-      const next = (outgoing.get(end) ?? []).find((candidate) => unused.has(`${end}>${candidate}`));
+    let previous = initialStart,
+      current = initialEnd;
+    unused.delete(edgeKey(previous, current));
+    while (true) {
+      loop.push(current);
+      if (current === initialStart) break;
+      const next = (adjacency.get(current) ?? []).find(
+        (candidate) => candidate !== previous && unused.has(edgeKey(current, candidate)),
+      );
       if (!next) break;
-      start = end; end = next;
+      unused.delete(edgeKey(current, next));
+      previous = current;
+      current = next;
     }
-    if (loop.at(-1) !== initialStart || loop.length < 4) continue;
-    const ring = loop.slice(0, -1).map((key) => points.get(key)!);
-    const center = ring.reduce((sum, point) => sum.add(point), new Vector3()).multiplyScalar(1 / ring.length);
+    if (loop.length < 3) continue;
+    // Em regiões não-manifold o ciclo pode chegar como uma cadeia aberta.
+    // O segmento final ausente é justamente a fissura a recompor.
+    const ringKeys = loop.at(-1) === initialStart ? loop.slice(0, -1) : loop;
+    const ring = ringKeys.map((key) => points.get(key)!);
+    const center = ring
+      .reduce((sum, point) => sum.add(point), new Vector3())
+      .multiplyScalar(1 / ring.length);
     for (let index = 0; index < ring.length; index++) {
-      vertices.push(...ring[(index + 1) % ring.length]!.toArray(), ...ring[index]!.toArray(), ...center.toArray());
+      // Inverte a aresta de contorno existente para manter o winding da casca.
+      vertices.push(
+        ...ring[(index + 1) % ring.length]!.toArray(),
+        ...ring[index]!.toArray(),
+        ...center.toArray(),
+      );
     }
   }
   const closed = new BufferGeometry();
@@ -308,7 +355,10 @@ function pruneNonManifoldTriangles(geometry: BufferGeometry, tolerance = 1e-4): 
   const triangles: Array<{ points: [Vector3, Vector3, Vector3]; area: number }> = [];
   const edgeUses = new Map<string, number[]>();
   const keyFor = (point: Vector3) =>
-    point.toArray().map((value) => Math.round(value / tolerance)).join(",");
+    point
+      .toArray()
+      .map((value) => Math.round(value / tolerance))
+      .join(",");
   for (let index = 0; index + 2 < position.count; index += 3) {
     const points = [0, 1, 2].map(
       (offset) =>
@@ -452,7 +502,12 @@ function rebuildCutCap(
   }
 
   const loopInfo = loops
-    .map((points, index) => ({ points, index, area: Math.abs(ShapeUtils.area(points)), parent: -1 }))
+    .map((points, index) => ({
+      points,
+      index,
+      area: Math.abs(ShapeUtils.area(points)),
+      parent: -1,
+    }))
     .filter((loop) => loop.area > epsilon * epsilon);
   for (const loop of loopInfo) {
     let parentArea = Number.POSITIVE_INFINITY;
@@ -545,12 +600,18 @@ function clipGeometryHalf(
       const nextDistance = distance(next);
       if (currentDistance >= -1e-7) clipped.push(current.clone());
       if (currentDistance >= 0 !== nextDistance >= 0) {
-        clipped.push(current.clone().lerp(next, currentDistance / (currentDistance - nextDistance)));
+        clipped.push(
+          current.clone().lerp(next, currentDistance / (currentDistance - nextDistance)),
+        );
       }
     }
     polygon = clipped;
     for (let vertex = 1; vertex + 1 < polygon.length; vertex++) {
-      vertices.push(...polygon[0]!.toArray(), ...polygon[vertex]!.toArray(), ...polygon[vertex + 1]!.toArray());
+      vertices.push(
+        ...polygon[0]!.toArray(),
+        ...polygon[vertex]!.toArray(),
+        ...polygon[vertex + 1]!.toArray(),
+      );
     }
   }
   const clipped = new BufferGeometry();
@@ -576,8 +637,14 @@ function wallProfilesAtPlane(
   const position = source.getAttribute("position");
   const coordinates: number[] = [];
   for (let index = 0; index + 2 < position.count; index += 3) {
-    const triangle = [0, 1, 2].map((offset) =>
-      new Vector3(position.getX(index + offset), position.getY(index + offset), position.getZ(index + offset)));
+    const triangle = [0, 1, 2].map(
+      (offset) =>
+        new Vector3(
+          position.getX(index + offset),
+          position.getY(index + offset),
+          position.getZ(index + offset),
+        ),
+    );
     const zValues = triangle.map((point) => point.z);
     if (Math.max(...zValues) - Math.min(...zValues) <= epsilon) continue;
     for (let edge = 0; edge < 3; edge++) {
@@ -605,26 +672,25 @@ function wallProfilesAtPlane(
     .filter(([, count]) => count >= 2)
     .map(([coordinate]) => coordinate)
     .sort((a, b) => a - b);
-  const unique = confirmed.length >= 2
-    ? confirmed
-    : [...coordinateCounts.keys()].sort((a, b) => a - b);
+  const unique =
+    confirmed.length >= 2 ? confirmed : [...coordinateCounts.keys()].sort((a, b) => a - b);
   const profiles: WallProfile[] = [];
-  // A uniÃ£o da frente com as laterais pode conservar uma linha intermediÃ¡ria
-  // dentro da mesma parede. Por isso cada parede pode aparecer com duas ou trÃªs
-  // linhas. Particionamos a sequÃªncia procurando os grupos locais mais estreitos,
+  // A união da frente com as laterais pode conservar uma linha intermediária
+  // dentro da mesma parede. Por isso cada parede pode aparecer com duas ou três
+  // linhas. Particionamos a sequência procurando os grupos locais mais estreitos,
   // em vez de parear cegamente de dois em dois e atravessar o vazio seguinte.
   const costs = Array(unique.length + 1).fill(Number.POSITIVE_INFINITY);
   const groupSizes = Array<number>(unique.length + 1).fill(0);
   costs[unique.length] = 0;
   for (let index = unique.length - 1; index >= 0; index--) {
-    for (const groupSize of [2, 3]) {
+    for (const groupSize of [1, 2, 3]) {
       const next = index + groupSize;
       if (next > unique.length || !Number.isFinite(costs[next])) continue;
       const span = unique[next - 1]! - unique[index]!;
-      // Uma linha isolada pode ser uma tangÃªncia ou uma aresta residual da
-      // uniÃ£o. O custo equivale a uma parede de 5 mm: preferimos agrupamentos
+      // Uma linha isolada pode ser uma tangência ou uma aresta residual da
+      // união. O custo equivale a uma parede de 5 mm: preferimos agrupamentos
       // locais reais, mas descartamos a sobra antes de cruzar um vazio grande.
-      const cost = span * span + costs[next]!;
+      const cost = (groupSize === 1 ? 100 : span * span) + costs[next]!;
       if (cost < costs[index]!) {
         costs[index] = cost;
         groupSizes[index] = groupSize;
@@ -633,6 +699,10 @@ function wallProfilesAtPlane(
   }
   for (let index = 0; index < unique.length && groupSizes[index]! > 0;) {
     const groupSize = groupSizes[index]!;
+    if (groupSize === 1) {
+      index++;
+      continue;
+    }
     const minT = unique[index]!;
     const maxT = unique[index + groupSize - 1]!;
     profiles.push({ minT, maxT, centerT: (minT + maxT) / 2 });
@@ -654,8 +724,14 @@ function surfaceProfilesAtPlane(
   const position = source.getAttribute("position");
   const intervals: Array<[number, number]> = [];
   for (let index = 0; index + 2 < position.count; index += 3) {
-    const triangle = [0, 1, 2].map((offset) =>
-      new Vector3(position.getX(index + offset), position.getY(index + offset), position.getZ(index + offset)));
+    const triangle = [0, 1, 2].map(
+      (offset) =>
+        new Vector3(
+          position.getX(index + offset),
+          position.getY(index + offset),
+          position.getZ(index + offset),
+        ),
+    );
     if (!triangle.every((point) => Math.abs(point.z - z) <= epsilon)) continue;
     const intersections: number[] = [];
     for (let edge = 0; edge < 3; edge++) {
@@ -665,7 +741,9 @@ function surfaceProfilesAtPlane(
       const endDistance = normal.dot(end) - planeDistance;
       if (Math.abs(startDistance) <= epsilon) intersections.push(tangent.dot(start));
       if (startDistance * endDistance < -epsilon * epsilon) {
-        intersections.push(tangent.dot(start.clone().lerp(end, startDistance / (startDistance - endDistance))));
+        intersections.push(
+          tangent.dot(start.clone().lerp(end, startDistance / (startDistance - endDistance))),
+        );
       }
     }
     if (intersections.length >= 2) {
@@ -678,7 +756,8 @@ function surfaceProfilesAtPlane(
   const merged: Array<[number, number]> = [];
   for (const interval of intervals) {
     const previous = merged.at(-1);
-    if (previous && interval[0] <= previous[1] + epsilon) previous[1] = Math.max(previous[1], interval[1]);
+    if (previous && interval[0] <= previous[1] + epsilon)
+      previous[1] = Math.max(previous[1], interval[1]);
     else merged.push([...interval]);
   }
   return merged.map(([minT, maxT]) => ({ minT, maxT, centerT: (minT + maxT) / 2 }));
@@ -697,8 +776,10 @@ function capProfiles(
     tangent.clone().multiplyScalar(coordinate).addScaledVector(normal, planeDistance).setZ(z);
   const vertices: number[] = [];
   for (const profile of profiles) {
-    const a = at(profile.minT, minZ), b = at(profile.maxT, minZ);
-    const c = at(profile.maxT, maxZ), d = at(profile.minT, maxZ);
+    const a = at(profile.minT, minZ),
+      b = at(profile.maxT, minZ);
+    const c = at(profile.maxT, maxZ),
+      d = at(profile.minT, maxZ);
     vertices.push(
       ...a.toArray(),
       ...b.toArray(),
@@ -708,10 +789,9 @@ function capProfiles(
       ...d.toArray(),
     );
   }
-  const cap = new BufferGeometry();
-  cap.setAttribute("position", new Float32BufferAttribute(vertices, 3));
-  cap.computeVertexNormals();
-  return cap;
+  const result = new BufferGeometry();
+  result.setAttribute("position", new Float32BufferAttribute(vertices, 3));
+  return result;
 }
 
 function extrudeCutSection(
@@ -731,12 +811,50 @@ function extrudeCutSection(
   const epsilon = 1e-5;
   const planeDistance = normal.dot(planePoint);
   const tangent = new Vector3(-normal.y, normal.x, 0);
+  const source = geometry.index ? geometry.toNonIndexed() : geometry;
+  const position = source.getAttribute("position");
   const surfaceTriangles: Array<[Vector3, Vector3, Vector3]> = [];
 
-  // As intersecoes das faces verticais fornecem diretamente um intervalo
-  // independente para cada parede atravessada pelo plano.
+  const clipZ = (polygon: Vector3[], limit: number, keepAbove: boolean) => {
+    const clipped: Vector3[] = [];
+    for (let index = 0; index < polygon.length; index++) {
+      const current = polygon[index]!;
+      const next = polygon[(index + 1) % polygon.length]!;
+      const currentInside = keepAbove ? current.z >= limit - epsilon : current.z <= limit + epsilon;
+      const nextInside = keepAbove ? next.z >= limit - epsilon : next.z <= limit + epsilon;
+      if (currentInside) clipped.push(current.clone());
+      if (currentInside !== nextInside) {
+        const ratio = (limit - current.z) / (next.z - current.z);
+        clipped.push(current.clone().lerp(next, ratio));
+      }
+    }
+    return clipped;
+  };
+
+  for (let i = 0; i + 2 < position.count; i += 3) {
+    let polygon = [0, 1, 2].map(
+      (offset) =>
+        new Vector3(
+          position.getX(i + offset),
+          position.getY(i + offset),
+          position.getZ(i + offset),
+        ),
+    );
+    if (!polygon.every((point) => Math.abs(normal.dot(point) - planeDistance) <= epsilon)) continue;
+    polygon = clipZ(polygon, minZ, true);
+    polygon = clipZ(polygon, maxZ, false);
+    for (let vertex = 1; vertex + 1 < polygon.length; vertex++) {
+      surfaceTriangles.push([polygon[0]!, polygon[vertex]!, polygon[vertex + 1]!]);
+    }
+  }
+
+  // A tampa reconstruída pode ligar paredes distintas quando uma frente
+  // impressa fecha toda a letra. Usar seus triângulos como seção do encaixe
+  // cria lâminas diagonais atravessando os vãos. As interseções das faces
+  // verticais fornecem diretamente um intervalo independente para cada parede.
   const profileSections = wallProfilesAtPlane(followGeometry ?? geometry, planePoint, normal);
   if (!preserveSectionProfile && profileSections.length && maxZ > minZ + epsilon) {
+    surfaceTriangles.length = 0;
     const at = (coordinate: number, z: number) =>
       tangent.clone().multiplyScalar(coordinate).addScaledVector(normal, planeDistance).setZ(z);
     for (const profile of profileSections) {
@@ -748,7 +866,10 @@ function extrudeCutSection(
     }
   }
 
-  // Cada ilha da secao representa uma parede atravessada pelo plano.
+  // Cada ilha da secao representa uma parede atravessada pelo plano. As ilhas
+  // sao pareadas na ordem transversal e as metades ficam voltadas uma para a
+  // outra. Isso identifica o interior local de cada letra, sem usar o centro
+  // global da palavra (que invertia paredes em letras deslocadas).
   const parent = surfaceTriangles.map((_, index) => index);
   const find = (value: number): number => {
     while (parent[value] !== value) {
@@ -764,7 +885,10 @@ function extrudeCutSection(
   };
   const vertexOwners = new Map<string, number>();
   const vertexKey = (point: Vector3) =>
-    point.toArray().map((value) => Math.round(value * 1e5)).join(",");
+    point
+      .toArray()
+      .map((value) => Math.round(value * 1e5))
+      .join(",");
   surfaceTriangles.forEach((triangle, triangleIndex) => {
     for (const point of triangle) {
       const key = vertexKey(point);
@@ -827,9 +951,8 @@ function extrudeCutSection(
   });
   for (const [sectionIndex, section] of sections.entries()) {
     const { triangles, minT, maxT, centerT } = section;
-    const innerAbove = sections.length % 2 === 0
-      ? sectionIndex % 2 === 0
-      : centerT < tangent.dot(planePoint);
+    const innerAbove =
+      sections.length % 2 === 0 ? sectionIndex % 2 === 0 : centerT < tangent.dot(planePoint);
     const keepAbove = selectInner ? innerAbove : !innerAbove;
     const limit = keepAbove ? maxT - (maxT - minT) * fraction : minT + (maxT - minT) * fraction;
     for (const triangle of triangles) {
@@ -870,7 +993,12 @@ function extrudeCutSection(
   const addFace = (a: Vector3, b: Vector3, c: Vector3) => {
     const vertices = [...a.toArray(), ...b.toArray(), ...c.toArray()];
     const key = [a, b, c]
-      .map((point) => point.toArray().map((value) => Math.round(value * 1e5)).join(","))
+      .map((point) =>
+        point
+          .toArray()
+          .map((value) => Math.round(value * 1e5))
+          .join(","),
+      )
       .sort()
       .join("|");
     const existing = faces.get(key);
@@ -890,34 +1018,43 @@ function extrudeCutSection(
     const travel = (depth * step) / sweepSteps;
     const nearestSectionIndex = nearestSectionFor(point);
     const sourceSectionCenter = sections[nearestSectionIndex]!.centerT;
+    // Quando a quantidade de paredes permanece igual, a ordem transversal é
+    // a correspondência topológica correta. Escolher apenas pela proximidade
+    // podia ligar uma parede à vizinha em curvas apertadas e criar espigões.
     const profiles = sweptProfiles[step]!;
-    const targetProfile = profiles.length === sections.length
-      ? profiles[nearestSectionIndex]
-      : profiles.reduce<WallProfile | undefined>(
-          (best, candidate) =>
-            best === undefined ||
-            Math.abs(candidate.centerT - sourceSectionCenter) <
-              Math.abs(best.centerT - sourceSectionCenter)
-              ? candidate
-              : best,
-          undefined,
-        );
+    const targetProfile =
+      profiles.length === sections.length
+        ? profiles[nearestSectionIndex]
+        : profiles.reduce<WallProfile | undefined>(
+            (best, candidate) =>
+              best === undefined ||
+              Math.abs(candidate.centerT - sourceSectionCenter) <
+                Math.abs(best.centerT - sourceSectionCenter)
+                ? candidate
+                : best,
+            undefined,
+          );
     const result = point.clone().addScaledVector(direction, travel);
     if (!targetProfile) return result;
+    // No perfil escalonado, preserve cada largura local do rebaixo. Apenas
+    // desloque a secao pelo centro da parede encontrado na profundidade de
+    // destino; redimensionar todos os vertices pela largura total eliminava
+    // o degrau frontal e recriava uma lingueta retangular independente.
     if (preserveSectionProfile) {
       return result.addScaledVector(tangent, targetProfile.centerT - sourceSectionCenter);
     }
     const sourceWidth = sections[nearestSectionIndex]!.maxT - sections[nearestSectionIndex]!.minT;
-    const ratio = sourceWidth > epsilon
-      ? (tangent.dot(point) - sections[nearestSectionIndex]!.minT) / sourceWidth
-      : 0.5;
+    const ratio =
+      sourceWidth > epsilon
+        ? (tangent.dot(point) - sections[nearestSectionIndex]!.minT) / sourceWidth
+        : 0.5;
     const targetT = targetProfile.minT + ratio * (targetProfile.maxT - targetProfile.minT);
     return result.addScaledVector(tangent, targetT - tangent.dot(point));
   };
 
-  // A seção pode conter vários triângulos e junções em T. Extrudar cada
-  // triângulo como um prisma cria faces internas sobrepostas. Resolva as
-  // junções e gere paredes somente nas arestas externas da seção.
+  // A seção pode conter vários triângulos e junções em T. Extrudar
+  // cada triângulo como um prisma cria faces internas sobrepostas. Primeiro
+  // resolva essas junções e depois gere paredes somente nas arestas externas.
   const sectionGeometry = new BufferGeometry();
   sectionGeometry.setAttribute(
     "position",
@@ -928,12 +1065,12 @@ function extrudeCutSection(
   );
   const resolvedSection = resolveTJunctions(sectionGeometry);
   const sectionPosition = resolvedSection.getAttribute("position");
-  const boundaryEdges = new Map<
-    string,
-    { start: Vector3; end: Vector3; count: number }
-  >();
+  const boundaryEdges = new Map<string, { start: Vector3; end: Vector3; count: number }>();
   const boundaryKey = (point: Vector3) =>
-    point.toArray().map((value) => Math.round(value * 1e5)).join(",");
+    point
+      .toArray()
+      .map((value) => Math.round(value * 1e5))
+      .join(",");
 
   for (let index = 0; index + 2 < sectionPosition.count; index += 3) {
     const triangle = [0, 1, 2].map(
@@ -950,25 +1087,29 @@ function extrudeCutSection(
     const cc = projectAlongWall(c, sweepSteps);
     addFace(a, c, b);
     addFace(aa, bb, cc);
-    for (const [edgeStart, edgeEnd] of [[a, b], [b, c], [c, a]] as const) {
-      const startKey = boundaryKey(edgeStart);
-      const endKey = boundaryKey(edgeEnd);
+    for (const [start, end] of [
+      [a, b],
+      [b, c],
+      [c, a],
+    ] as const) {
+      const startKey = boundaryKey(start);
+      const endKey = boundaryKey(end);
       const key = startKey < endKey ? `${startKey}|${endKey}` : `${endKey}|${startKey}`;
       const current = boundaryEdges.get(key);
       boundaryEdges.set(key, {
-        start: current?.start ?? edgeStart,
-        end: current?.end ?? edgeEnd,
+        start: current?.start ?? start,
+        end: current?.end ?? end,
         count: (current?.count ?? 0) + 1,
       });
     }
   }
-  for (const { start: edgeStart, end: edgeEnd, count } of boundaryEdges.values()) {
+  for (const { start, end, count } of boundaryEdges.values()) {
     if (count !== 1) continue;
     for (let step = 0; step < sweepSteps; step++) {
-      const startBottom = projectAlongWall(edgeStart, step);
-      const endBottom = projectAlongWall(edgeEnd, step);
-      const startTop = projectAlongWall(edgeStart, step + 1);
-      const endTop = projectAlongWall(edgeEnd, step + 1);
+      const startBottom = projectAlongWall(start, step);
+      const endBottom = projectAlongWall(end, step);
+      const startTop = projectAlongWall(start, step + 1);
+      const endTop = projectAlongWall(end, step + 1);
       addFace(startBottom, endBottom, endTop);
       addFace(startBottom, endTop, startTop);
     }
@@ -1014,12 +1155,14 @@ function replaceExactPlanarCap(
   const position = source.getAttribute("position");
   const vertices: number[] = [];
   for (let index = 0; index + 2 < position.count; index += 3) {
-    const planar = [0, 1, 2].every((offset) =>
-      Math.abs(
-        normal.x * position.getX(index + offset) +
-          normal.y * position.getY(index + offset) -
-          planeDistance,
-      ) <= epsilon);
+    const planar = [0, 1, 2].every(
+      (offset) =>
+        Math.abs(
+          normal.x * position.getX(index + offset) +
+            normal.y * position.getY(index + offset) -
+            planeDistance,
+        ) <= epsilon,
+    );
     if (planar) continue;
     for (const offset of [0, 1, 2]) {
       vertices.push(
@@ -1072,13 +1215,23 @@ function extractExactPlanarCapRange(
     return clipped;
   };
   for (let index = 0; index + 2 < position.count; index += 3) {
-    let polygon = [0, 1, 2].map((offset) =>
-      new Vector3(position.getX(index + offset), position.getY(index + offset), position.getZ(index + offset)));
+    let polygon = [0, 1, 2].map(
+      (offset) =>
+        new Vector3(
+          position.getX(index + offset),
+          position.getY(index + offset),
+          position.getZ(index + offset),
+        ),
+    );
     if (!polygon.every((point) => Math.abs(normal.dot(point) - planeDistance) <= epsilon)) continue;
     polygon = clipZ(polygon, minZ, true);
     polygon = clipZ(polygon, maxZ, false);
     for (let vertex = 1; vertex + 1 < polygon.length; vertex++) {
-      vertices.push(...polygon[0]!.toArray(), ...polygon[vertex]!.toArray(), ...polygon[vertex + 1]!.toArray());
+      vertices.push(
+        ...polygon[0]!.toArray(),
+        ...polygon[vertex]!.toArray(),
+        ...polygon[vertex + 1]!.toArray(),
+      );
     }
   }
   const result = new BufferGeometry();
@@ -1128,17 +1281,17 @@ export function splitGeometryByPlane(
   const femaleIndex = maleIndex === 0 ? 1 : 0;
   const direction = normal.clone().multiplyScalar(maleIndex === 0 ? 1 : -1);
 
-  // O encaixe Ã© extraÃ­do da prÃ³pria seÃ§Ã£o das paredes junto ao plano de corte.
+  // O encaixe é extraído da própria seção das paredes junto ao plano de corte.
   // Assim, a metade macho prolonga o perfil real da parede em vez de receber
   // apenas um pino retangular isolado.
   // O macho usa a metade externa da espessura e percorre toda a parede,
-  // preservando uma pele fina no fundo e na frente para fechar as extremidades.
+  // alcançando os limites finais do fundo e da frente.
   // A extensão começa exatamente no plano para compartilhar a mesma borda da
   // parede. O antigo volume de sobreposição deixava a lingueta como um sólido
   // separado dentro da peça original.
-  // Uma sobreposição microscópica permite remover a face divisória no plano.
   const overlap = 0;
-  // Sem placa unificada, o encaixe alcança os limites do fundo e da frente.
+  // Os insets representam placas realmente unificadas à peça, não margens
+  // artificiais. Sem placa, o encaixe alcança exatamente os dois extremos.
   const closureSeam = 0.1;
   const backClosure = Math.max(options.connectorBackInset ?? 0, closureSeam);
   const frontClosure = Math.max(options.connectorFrontInset ?? 0, closureSeam);
@@ -1163,9 +1316,9 @@ export function splitGeometryByPlane(
   }
   maleConnector.translate(-direction.x * overlap, -direction.y * overlap, 0);
 
-  // Expande uma Ãºnica cÃ³pia do perfil nos eixos normal, tangente e Z. Uma
-  // Ãºnica subtraÃ§Ã£o Ã© mais estÃ¡vel em contornos complexos do que unir ou
-  // subtrair vÃ¡rias cÃ³pias quase coincidentes.
+  // A parte inferior usa a metade externa da parede; a superior recebe o
+  // rebaixo complementar. Gerar a fêmea a partir do perfil
+  // oposto evita prolongar a parede interna para baixo dentro da cavidade.
   // A fêmea é o negativo direto da extensão realmente criada na peça de
   // baixo. Isso mantém o mesmo perfil da parede/rebaixo e impede divergências
   // quando a inclinação reduz ou desloca a profundidade efetiva do macho.
@@ -1185,13 +1338,15 @@ export function splitGeometryByPlane(
       return value;
     };
     const union = (left: number, right: number) => {
-      const leftRoot = find(left), rightRoot = find(right);
+      const leftRoot = find(left),
+        rightRoot = find(right);
       if (leftRoot !== rightRoot) parent[leftRoot] = rightRoot;
     };
     const owners = new Map<string, number>();
     for (let i = 0; i < cavityPosition.count; i++) {
       const key = [cavityPosition.getX(i), cavityPosition.getY(i), cavityPosition.getZ(i)]
-        .map((value) => Math.round(value * 1e4)).join(",");
+        .map((value) => Math.round(value * 1e4))
+        .join(",");
       const owner = owners.get(key);
       if (owner === undefined) owners.set(key, i);
       else union(i, owner);
@@ -1216,7 +1371,8 @@ export function splitGeometryByPlane(
     const normalCenter = (minNormal + maxNormal) / 2;
     const normalExtent = Math.max(maxNormal - minNormal, 1e-6);
     const normalScale = (normalExtent + clearance * 2) / normalExtent;
-    // A folga lateral não deve ultrapassar a frente nem o fundo da parede.
+    // Como o encaixe agora termina nas duas extremidades abertas da parede,
+    // a folga em Z não é necessária e não deve ultrapassar frente/fundo.
     const zScale = 1;
     for (let i = 0; i < cavityPosition.count; i++) {
       const relative = new Vector3(
@@ -1225,38 +1381,39 @@ export function splitGeometryByPlane(
         cavityPosition.getZ(i) - cavityCenter.z,
       );
       const currentNormal = normal.x * cavityPosition.getX(i) + normal.y * cavityPosition.getY(i);
-      // Preserve a boca coincidente com a aresta da parede e aplique a
-      // folga progressivamente para dentro da cavidade.
+      // A boca deve continuar coincidente com a aresta removida da parede.
+      // Aplique a folga progressivamente para dentro da cavidade; expandir a
+      // boca inteira deixava duas bordas distintas e exigia faces de reparo.
       const mouthDistance = Math.abs(currentNormal - normal.dot(center));
       const clearanceWeight = Math.min(Math.max(mouthDistance / depth, 0), 1);
       const fullyExpandedNormal = normalCenter + (currentNormal - normalCenter) * normalScale;
-      const expandedNormal = currentNormal +
-        (fullyExpandedNormal - currentNormal) * clearanceWeight;
+      const expandedNormal =
+        currentNormal + (fullyExpandedNormal - currentNormal) * clearanceWeight;
       const component = componentT.get(find(i))!;
       const componentCenter = (component.min + component.max) / 2;
-      const tangentCoordinate = tangent.x * cavityPosition.getX(i) + tangent.y * cavityPosition.getY(i);
+      const tangentCoordinate =
+        tangent.x * cavityPosition.getX(i) + tangent.y * cavityPosition.getY(i);
       const tangentExtent = Math.max((component.max - component.min) / 2, 1e-6);
-      const fullyExpandedTangent = componentCenter +
+      const fullyExpandedTangent =
+        componentCenter +
         (tangentCoordinate - componentCenter) * ((tangentExtent + clearance) / tangentExtent);
-      const expandedTangent = tangentCoordinate +
-        (fullyExpandedTangent - tangentCoordinate) * clearanceWeight;
+      const expandedTangent =
+        tangentCoordinate + (fullyExpandedTangent - tangentCoordinate) * clearanceWeight;
       cavityPosition.setXYZ(
         i,
-        cavityPosition.getX(i) + normal.x * (expandedNormal - currentNormal) +
+        cavityPosition.getX(i) +
+          normal.x * (expandedNormal - currentNormal) +
           tangent.x * (expandedTangent - tangentCoordinate),
-        cavityPosition.getY(i) + normal.y * (expandedNormal - currentNormal) +
+        cavityPosition.getY(i) +
+          normal.y * (expandedNormal - currentNormal) +
           tangent.y * (expandedTangent - tangentCoordinate),
         cavityCenter.z + relative.z * zScale,
       );
     }
-
     cavityPosition.needsUpdate = true;
     femaleCavity.computeVertexNormals();
   }
 
-  // A lingueta jÃ¡ penetra a parede pelo `overlap`. Concatenar as duas cascas
-  // preserva esse volume sobreposto para o fatiador e evita a uniÃ£o CSG entre
-  // faces coplanares, que criava pontas/triÃ¢ngulos atravessando letras inteiras.
   const femaleSide: -1 | 1 = maleIndex === 0 ? 1 : -1;
   const outerCap = extrudeCutSection(
     maleBaseGeometry,
@@ -1288,20 +1445,11 @@ export function splitGeometryByPlane(
   const capParts = [outerCap, backCap, frontCap].filter(
     (cap) => (cap.getAttribute("position")?.count ?? 0) > 0,
   );
-  const replacementCap = capParts.length === 1
-    ? capParts[0]
-    : mergeGeometries(capParts, false);
-  // Abre a metade externa da parede original e remove a tampa traseira do
-  // prolongamento. As duas cascas compartilham a mesma borda no plano de corte.
-  // A união booleana elimina as tampas na área de contato e cria um único sólido.
-  // Como no rebaixo frontal, remove as tampas de contato e costura as faixas
-  // pela mesma borda. Não existe uma face intermediária entre parede e lingueta.
-  const openedMale = replaceExactPlanarCap(
-    maleBaseGeometry,
-    outerCap,
-    center,
-    normal,
-  );
+  const replacementCap = capParts.length === 1 ? capParts[0] : mergeGeometries(capParts, false);
+  // Repete a lógica do rebaixo frontal: remove as duas tampas na área de
+  // contato e costura as faixas pela mesma borda, sem operação CSG e sem criar
+  // uma face intermediária entre a parede e a lingueta.
+  const openedMale = replaceExactPlanarCap(maleBaseGeometry, outerCap, center, normal);
   const openMaleConnector = replaceExactPlanarCap(
     maleConnector,
     new BufferGeometry(),
@@ -1316,26 +1464,26 @@ export function splitGeometryByPlane(
     center,
     normal,
   );
-  // Recorta primeiro no semiespaÃ§o feminino. A face traseira do sÃ³lido macho
-  // fica do outro lado do plano e nÃ£o pode mais fechar a boca do encaixe.
+  // Recorta primeiro no semiespaço feminino. A face traseira do sólido macho
+  // fica do outro lado do plano e não pode mais fechar a boca do encaixe.
   let cavityShell = reverseTriangleWinding(
     clipGeometryHalf(femaleCavity, center, normal, femaleSide),
   );
-  // A face inicial do sÃ³lido macho fica exatamente na boca da cavidade. Ela Ã©
-  // necessÃ¡ria para fechar o macho, mas deve ser removida da cÃ³pia invertida
-  // usada como fÃªmea; caso contrÃ¡rio, vira uma tampa sobre o encaixe.
+  // A face inicial do sólido macho fica exatamente na boca da cavidade. Ela é
+  // necessária para fechar o macho, mas deve ser removida da cópia invertida
+  // usada como fêmea; caso contrário, vira uma tampa sobre o encaixe.
   cavityShell = replaceExactPlanarCap(cavityShell, new BufferGeometry(), center, normal);
   const joinedFemale = mergeGeometries(
     [withoutDegenerateTriangles(openedFemale), withoutDegenerateTriangles(cavityShell)],
     false,
   );
-  if (!joinedFemale) throw new Error("Falha ao montar a cavidade fÃªmea aberta");
+  if (!joinedFemale) throw new Error("Falha ao montar a cavidade fêmea aberta");
   const femaleGeometry = repairShell(joinedFemale);
   pieces[femaleIndex] = { ...pieces[femaleIndex]!, geometry: femaleGeometry };
   return pieces.map((piece) => ({ ...piece, total: pieces.length }));
 }
 
-/** Aplica vÃ¡rios planos sobre as peÃ§as resultantes, preservando a origem do modelo. */
+/** Aplica vários planos sobre as peças resultantes, preservando a origem do modelo. */
 export function splitGeometryByPlanes(
   geometry: BufferGeometry,
   cuts: SequentialSplitOptions[],
@@ -1368,7 +1516,7 @@ export function splitGeometryByPlanes(
   }));
 }
 
-/** Divide uma malha em blocos fechados que cabem na Ã¡rea Ãºtil XY da impressora. */
+/** Divide uma malha em blocos fechados que cabem na área útil XY da impressora. */
 export function splitGeometryForBuildPlate(
   geometry: BufferGeometry,
   options: BuildPlateSplitOptions,
@@ -1377,7 +1525,7 @@ export function splitGeometryForBuildPlate(
   const usableWidth = options.width - margin * 2;
   const usableDepth = options.depth - margin * 2;
   if (usableWidth <= 0 || usableDepth <= 0) {
-    throw new Error("A margem de corte Ã© maior que a mesa de impressÃ£o.");
+    throw new Error("A margem de corte é maior que a mesa de impressão.");
   }
   geometry.computeBoundingBox();
   const bounds = geometry.boundingBox?.clone();
@@ -1403,17 +1551,24 @@ export function splitGeometryForBuildPlate(
     cuts.push({ angle: 90, offset: boundary - origin.y, connector: "none" });
   }
   const split = splitGeometryByPlanes(geometry, cuts, { x: origin.x, y: origin.y });
-  const pieces = split.map((piece) => {
-    piece.geometry.computeBoundingBox();
-    const center = piece.geometry.boundingBox!.getCenter(new Vector3());
-    const column = Math.min(columns, Math.max(1, Math.floor((center.x - bounds.min.x) / usableWidth) + 1));
-    const row = Math.min(rows, Math.max(1, Math.floor((center.y - bounds.min.y) / usableDepth) + 1));
-    return { ...piece, column, row };
-  }).sort((left, right) => left.row - right.row || left.column - right.column);
+  const pieces = split
+    .map((piece) => {
+      piece.geometry.computeBoundingBox();
+      const center = piece.geometry.boundingBox!.getCenter(new Vector3());
+      const column = Math.min(
+        columns,
+        Math.max(1, Math.floor((center.x - bounds.min.x) / usableWidth) + 1),
+      );
+      const row = Math.min(
+        rows,
+        Math.max(1, Math.floor((center.y - bounds.min.y) / usableDepth) + 1),
+      );
+      return { ...piece, column, row };
+    })
+    .sort((left, right) => left.row - right.row || left.column - right.column);
   return pieces.map((piece, index) => ({
     ...piece,
     index: index + 1,
     total: pieces.length,
   }));
 }
-
