@@ -602,6 +602,30 @@ test("fundo impresso com frente impressa recebe encaixe somente nas paredes da f
   );
 });
 
+test("encaixe impresso reproduz as arestas manifold do modelo c.skp", () => {
+  const style = getStyle("fundo-impresso-frente-impressa-aba");
+  const params = { ...DEFAULT_PARAMS, ...style.preset, text: "C", mountHoles: false };
+  const build = buildSign(glyphShapes(archivo, params.text, params.letterHeight), params, style);
+  const walls = build.parts.find((part) => part.id === "frente-laterais");
+  assert.ok(walls);
+  const pieces = splitGeometryByPlane(walls.geometry, {
+    angle: 90,
+    connector: "male-female",
+    connectorDepth: 4,
+    connectorWidth: 60,
+    connectorClearance: 0.2,
+    connectorFrontInset: params.faceThickness,
+  });
+  assert.equal(pieces.length, 2);
+  for (const piece of pieces) {
+    assert.deepEqual(topology(piece.geometry), {
+      boundary: 0,
+      nonManifold: 0,
+      components: 1,
+    });
+  }
+});
+
 test("encaixe da frente impressa nao fecha o canal entre paredes", () => {
   const style = getStyle("fundo-impresso-frente-impressa-aba");
   const params = { ...DEFAULT_PARAMS, ...style.preset, text: "LUMINA", mountHoles: false };
