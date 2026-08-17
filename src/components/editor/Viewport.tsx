@@ -21,6 +21,7 @@ import type { SignOutline, SignPart } from "@/lib/sign/build";
 import {
   clipGeometryByPlaneForPreview,
   partSupportsCutConnector,
+  resolveCutConnectorWidth,
   splitGeometryByPlane,
   splitGeometryByPlanes,
   type SequentialSplitOptions,
@@ -613,7 +614,7 @@ function Model({
   onPick: (edge: PickedEdge, additive: boolean) => void;
   onCutPlaneDragging: (dragging: boolean) => void;
 }) {
-  const { build, explode, hidden, wireframe, showOutlines, params, setParam } = useEditor();
+  const { build, explode, hidden, wireframe, showOutlines, params, setParam, style } = useEditor();
   const groupRef = useRef<Group>(null);
 
   const placement = useMemo(
@@ -697,7 +698,12 @@ function Model({
                     connector: params.cutConnector,
                     maleSide: "part-1",
                     connectorDepth: params.cutConnectorDepth,
-                    connectorWidth: params.cutConnectorWidth,
+                    connectorWidth: resolveCutConnectorWidth(
+                      style.id,
+                      params.cutConnectorWidth,
+                      params.wall,
+                      params.recessLip,
+                    ),
                     connectorThickness: params.cutConnectorThickness,
                     connectorClearance: params.cutConnectorClearance,
                     connectorBackInset:
@@ -713,7 +719,12 @@ function Model({
                         connector: cut.connector,
                         maleSide: "part-1",
                         connectorDepth: cut.connectorDepth,
-                        connectorWidth: cut.connectorWidth,
+                        connectorWidth: resolveCutConnectorWidth(
+                          style.id,
+                          cut.connectorWidth,
+                          params.wall,
+                          params.recessLip,
+                        ),
                         connectorThickness: cut.connectorThickness,
                         connectorClearance: cut.connectorClearance,
                         connectorBackInset:
