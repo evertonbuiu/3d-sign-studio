@@ -230,6 +230,53 @@ function resolveTJunctions(geometry: BufferGeometry, tolerance = 1e-4): BufferGe
   return repaired;
 }
 
+function closeBoundaryLoops(geometry: BufferGeometry, tolerance = 1e-4): BufferGeometry {
+  const source = geometry.index ? geometry.toNonIndexed() : geometry;
+  const position = source.getAttribute("position");
+  const keyFor = (point: Vector3) => point.toArray()
+    .map((value) => Math.round(value / tolerance)).join(",");
+  const points = new Map<string, Vector3>();
+  const edgeUses = new Map<string, Array<[string, string]>>();
+  const vertices: number[] = [];
+  for (let index = 0; index + 2 < position.count; index += 3) {
+    const triangle = [0, 1, 2].map((offset) =>
+      new Vector3(position.getX(index + offset), position.getY(index + offset), position.getZ(index + offset)));
+    vertices.push(...triangle.flatMap((point) => point.toArray()));
+    for (let edge = 0; edge < 3; edge++) {
+      const start = triangle[edge]!, end = triangle[(edge + 1) % 3]!;
+      const startKey = keyFor(start), endKey = keyFor(end);
+      points.set(startKey, start); points.set(endKey, end);
+      const key = startKey < endKey ? `${startKey}|${endKey}` : `${endKey}|${startKey}`;
+      edgeUses.set(key, [...(edgeUses.get(key) ?? []), [startKey, endKey]]);
+    }
+  }
+  const boundary = [...edgeUses.values()].filter((uses) => uses.length === 1).map((uses) => uses[0]!);
+  const outgoing = new Map<string, string[]>();
+  for (const [start, end] of boundary) outgoing.set(start, [...(outgoing.get(start) ?? []), end]);
+  const unused = new Set(boundary.map(([start, end]) => `${start}>${end}`));
+  for (const [initialStart, initialEnd] of boundary) {
+    if (!unused.has(`${initialStart}>${initialEnd}`)) continue;
+    const loop = [initialStart];
+    let start = initialStart, end = initialEnd;
+    while (unused.delete(`${start}>${end}`)) {
+      loop.push(end);
+      if (end === initialStart) break;
+      const next = (outgoing.get(end) ?? []).find((candidate) => unused.has(`${end}>${candidate}`));
+      if (!next) break;
+      start = end; end = next;
+    }
+    if (loop.at(-1) !== initialStart || loop.length < 4) continue;
+    const ring = loop.slice(0, -1).map((key) => points.get(key)!);
+    const center = ring.reduce((sum, point) => sum.add(point), new Vector3()).multiplyScalar(1 / ring.length);
+    for (let index = 0; index < ring.length; index++) {
+      vertices.push(...ring[(index + 1) % ring.length]!.toArray(), ...ring[index]!.toArray(), ...center.toArray());
+    }
+  }
+  const closed = new BufferGeometry();
+  closed.setAttribute("position", new Float32BufferAttribute(vertices, 3));
+  return closed;
+}
+
 function unionClosedSolids(left: BufferGeometry, right: BufferGeometry): BufferGeometry {
   const leftBrush = new Brush(left);
   const rightBrush = new Brush(right);
@@ -238,7 +285,7 @@ function unionClosedSolids(left: BufferGeometry, right: BufferGeometry): BufferG
   const evaluator = new Evaluator();
   evaluator.attributes = ["position", "normal"];
   const result = evaluator.evaluate(leftBrush, rightBrush, ADDITION).geometry;
-  return weldShellByPosition(resolveTJunctions(result));
+  return weldShellByPosition(closeBoundaryLoops(resolveTJunctions(result)));
 }
 
 function pointInPolygon(point: Vector2, polygon: Vector2[]): boolean {
