@@ -626,6 +626,13 @@ test("encaixe impresso reproduz as arestas manifold do modelo c.skp", () => {
   }
 });
 
+test("encaixe impresso continua as duas faces da parede sem criar outra peca", () => {
+  assert.equal(
+    resolveCutConnectorWidth("fundo-impresso-frente-impressa-aba", 35, 2.4, 1.2),
+    100,
+  );
+});
+
 test("encaixe da frente impressa nao fecha o canal entre paredes", () => {
   const style = getStyle("fundo-impresso-frente-impressa-aba");
   const params = { ...DEFAULT_PARAMS, ...style.preset, text: "LUMINA", mountHoles: false };
