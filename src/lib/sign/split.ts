@@ -812,13 +812,16 @@ function extrudeCutSection(
       return { triangles, minT, maxT, centerT: (minT + maxT) / 2 };
     })
     .sort((a, b) => a.centerT - b.centerT);
-  const targetProfiles = followGeometry
-    ? wallProfilesAtPlane(
-        followGeometry,
-        planePoint.clone().add(direction.clone().multiplyScalar(depth)),
-        normal,
-      )
-    : [];
+  const sweepSteps = followGeometry ? Math.max(1, Math.ceil(depth / 0.75)) : 1;
+  const sweptProfiles = Array.from({ length: sweepSteps + 1 }, (_, step) => {
+    if (!followGeometry || step === 0) return [];
+    const travel = (depth * step) / sweepSteps;
+    return wallProfilesAtPlane(
+      followGeometry,
+      planePoint.clone().add(direction.clone().multiplyScalar(travel)),
+      normal,
+    );
+  });
   for (const [sectionIndex, section] of sections.entries()) {
     const { triangles, minT, maxT, centerT } = section;
     const innerAbove = sections.length % 2 === 0
@@ -879,12 +882,15 @@ function extrudeCutSection(
           : best,
       0,
     );
-  const projectToTarget = (point: Vector3) => {
+  const projectAlongWall = (point: Vector3, step: number) => {
+    if (step === 0) return point.clone();
+    const travel = (depth * step) / sweepSteps;
     const nearestSectionIndex = nearestSectionFor(point);
     const sourceSectionCenter = sections[nearestSectionIndex]!.centerT;
-    const targetProfile = targetProfiles.length === sections.length
-      ? targetProfiles[nearestSectionIndex]
-      : targetProfiles.reduce<WallProfile | undefined>(
+    const profiles = sweptProfiles[step]!;
+    const targetProfile = profiles.length === sections.length
+      ? profiles[nearestSectionIndex]
+      : profiles.reduce<WallProfile | undefined>(
           (best, candidate) =>
             best === undefined ||
             Math.abs(candidate.centerT - sourceSectionCenter) <
@@ -893,7 +899,7 @@ function extrudeCutSection(
               : best,
           undefined,
         );
-    const result = point.clone().addScaledVector(direction, depth);
+    const result = point.clone().addScaledVector(direction, travel);
     if (!targetProfile) return result;
     if (preserveSectionProfile) {
       return result.addScaledVector(tangent, targetProfile.centerT - sourceSectionCenter);
@@ -936,9 +942,9 @@ function extrudeCutSection(
         ),
     );
     const [a, b, c] = triangle as [Vector3, Vector3, Vector3];
-    const aa = projectToTarget(a);
-    const bb = projectToTarget(b);
-    const cc = projectToTarget(c);
+    const aa = projectAlongWall(a, sweepSteps);
+    const bb = projectAlongWall(b, sweepSteps);
+    const cc = projectAlongWall(c, sweepSteps);
     addFace(a, c, b);
     addFace(aa, bb, cc);
     for (const [edgeStart, edgeEnd] of [[a, b], [b, c], [c, a]] as const) {
@@ -955,10 +961,14 @@ function extrudeCutSection(
   }
   for (const { start: edgeStart, end: edgeEnd, count } of boundaryEdges.values()) {
     if (count !== 1) continue;
-    const startTop = projectToTarget(edgeStart);
-    const endTop = projectToTarget(edgeEnd);
-    addFace(edgeStart, edgeEnd, endTop);
-    addFace(edgeStart, endTop, startTop);
+    for (let step = 0; step < sweepSteps; step++) {
+      const startBottom = projectAlongWall(edgeStart, step);
+      const endBottom = projectAlongWall(edgeEnd, step);
+      const startTop = projectAlongWall(edgeStart, step + 1);
+      const endTop = projectAlongWall(edgeEnd, step + 1);
+      addFace(startBottom, endBottom, endTop);
+      addFace(startBottom, endTop, startTop);
+    }
   }
   const vertices = [...faces.values()]
     .filter((face) => face.count === 1)
