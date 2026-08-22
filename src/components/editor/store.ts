@@ -144,7 +144,7 @@ export function useEditorState(): EditorState {
         : (customFont ?? font)
           ? textToShapes(
               (customFont ?? font)!,
-              deferredParams.text.toUpperCase(),
+              deferredParams.text,
               deferredParams.letterHeight,
               deferredParams.tracking,
             )

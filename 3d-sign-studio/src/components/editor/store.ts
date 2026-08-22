@@ -109,7 +109,7 @@ export function useEditorState(): EditorState {
         : font
           ? textToShapes(
               font,
-              deferredParams.text.toUpperCase(),
+              deferredParams.text,
               deferredParams.letterHeight,
               deferredParams.tracking,
             )
