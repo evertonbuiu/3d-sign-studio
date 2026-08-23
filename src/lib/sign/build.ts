@@ -730,7 +730,11 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
     for (const shape of shapes) {
       if (neonFlexOpenCup) {
         const contourWidth = params.neonFlexThickness + params.wall * 2;
-        for (const footprint of ringShape(shape, contourWidth)) {
+        const footprints =
+          params.neonPath === "centro"
+            ? centerlineFootprints(shape, params.neonCenterInset, contourWidth / 2)
+            : ringShape(shape, contourWidth);
+        for (const footprint of footprints) {
           const channel = openContourCupGeometry(
             footprint,
             params.wall,
