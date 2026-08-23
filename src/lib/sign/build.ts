@@ -11,6 +11,7 @@ import {
   Vector3,
 } from "three";
 import {
+  centerlineBand,
   cloneShape,
   insetShape,
   insetWithRing,
