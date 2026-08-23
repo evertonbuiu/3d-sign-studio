@@ -168,6 +168,51 @@ export function insetWithRing(shape: Shape, inset: number): { ring: Shape[]; inn
   return { ring: pathsToShapes(ringPaths), inner: pathsToShapes(innerPaths) };
 }
 
+function unionPaths(paths: CPath[]): CPath[] {
+  if (!paths.length) return [];
+  const clipper = new ClipperLib.Clipper();
+  clipper.AddPaths(paths, ClipperLib.PolyType.ptSubject, true);
+  const solution: CPath[] = [];
+  clipper.Execute(
+    ClipperLib.ClipType.ctUnion,
+    solution,
+    ClipperLib.PolyFillType.pftNonZero,
+    ClipperLib.PolyFillType.pftNonZero,
+  );
+  return ClipperLib.Clipper.CleanPolygons(solution, SCALE * 0.005) as CPath[];
+}
+
+/**
+ * Aproxima o eixo medial (linha central) do traço da forma e devolve uma faixa
+ * de largura `2 * halfWidth` centrada nesse eixo.
+ */
+export function centerlineBand(shape: Shape, halfWidth: number, step = 0.4): Shape[] {
+  const base = normalize(shapeToCPaths(shape));
+  if (!base.length) return [];
+  const delta = Math.max(step, 0.15);
+  let prev = base;
+  let t = delta;
+  const ridges: CPath[] = [];
+  for (let i = 0; i < 400; i++) {
+    const cur = offsetPaths(base, -t);
+    const grown = cur.length ? offsetPaths(cur, delta) : [];
+    const ridge = differencePaths(prev, grown);
+    if (ridge.length) ridges.push(...ridge);
+    if (!cur.length) break;
+    prev = cur;
+    t += delta;
+  }
+  if (!ridges.length) return [];
+  const skeleton = unionPaths(ridges);
+  if (!skeleton.length) return [];
+  // "amassa" o esqueleto para uma linha fina antes de aplicar a largura do neon
+  const thin = offsetPaths(skeleton, -delta * 0.45);
+  const seed = thin.length ? thin : skeleton;
+  return pathsToShapes(offsetPaths(seed, halfWidth));
+}
+
+
+
 /** Cópia exata de um Shape (mesmos pontos do contorno e dos furos). */
 export function cloneShape(shape: Shape): Shape {
   const copy = new Shape(shapePoints(shape).map((p) => p.clone()));
