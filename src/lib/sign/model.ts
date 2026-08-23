@@ -42,6 +42,8 @@ export interface SignParams {
   backFlangeWidth: number; // avanço da aba traseira para dentro (mm)
   backFlangeThickness: number; // espessura da aba traseira no eixo Z (mm)
   neonFlexThickness: number; // largura livre do canal de contorno para o Neon Flex (mm)
+  neonPath: "contorno" | "centro"; // trajeto do neon: contorno da letra ou linha central
+  neonCenterInset: number; // recuo usado para encontrar a linha central do traço (mm)
   /** iluminação */
   led: boolean;
   ledChannelWidth: number;
@@ -117,6 +119,8 @@ export const DEFAULT_PARAMS: SignParams = {
   backFlangeWidth: 4,
   backFlangeThickness: 2.4,
   neonFlexThickness: 8,
+  neonPath: "contorno",
+  neonCenterInset: 8,
   led: true,
   ledChannelWidth: 12,
   ledChannelHeight: 6,
@@ -277,6 +281,7 @@ export const STYLES: SignStyle[] = [
       wall: 1.6,
       backThickness: 3,
       neonFlexThickness: 8,
+      neonPath: "contorno",
       faceRecess: false,
       led: false,
       mountHoles: false,
