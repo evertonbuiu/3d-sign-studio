@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { BoxGeometry, BufferGeometry, Float32BufferAttribute, Vector3 } from "three";
+import {\n  Box2,\n  BoxGeometry,\n  BufferGeometry,\n  Float32BufferAttribute,\n  Path,\n  Shape,\n  Vector2,\n  Vector3,\n} from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 import { computeCost } from "../src/lib/sign/cost.ts";
@@ -12,7 +12,7 @@ import {
   paramsForPrinter,
   PRINTER_PROFILES,
 } from "../src/lib/sign/printers.ts";
-import { geometriesToStl, slugify } from "../src/lib/sign/stl.ts";
+import { geometriesToStl, slugify } from "../src/lib/sign/stl.ts";\nimport { centerlineBand } from "../src/lib/sign/offset.ts";
 import {
   clipGeometryByPlaneForPreview,
   geometryCrossesCutPlane,
@@ -30,6 +30,35 @@ test("encaixe estrutural atende estilos com e sem paredes", () => {
   assert.equal(partSupportsCutConnector("camada-2", false), true);
   assert.equal(partSupportsCutConnector("canal-led", false), false);
   assert.equal(partSupportsCutConnector("furos", false), false);
+});
+
+test("linha central do Neon segue o eixo do traço em vez de preencher a letra", () => {
+  const stroke = new Shape([
+    new Vector2(0, 0),
+    new Vector2(100, 0),
+    new Vector2(100, 20),
+    new Vector2(0, 20),
+  ]);
+  const band = centerlineBand(stroke, 3, 1);
+  assert.equal(band.length, 1);
+  const bounds = new Box2().setFromPoints(band[0].getPoints(24));
+  assert.ok(bounds.min.y > 6 && bounds.max.y < 14, "o canal deve ficar no centro do traço");
+  assert.ok((bounds.max.x - bounds.min.x) * (bounds.max.y - bounds.min.y) < 800);
+});
+
+test("linha central do Neon preserva voltas e vazados", () => {
+  const ring = new Shape([
+    new Vector2(0, 0),
+    new Vector2(100, 0),
+    new Vector2(100, 100),
+    new Vector2(0, 100),
+  ]);
+  ring.holes.push(
+    new Path([new Vector2(20, 20), new Vector2(20, 80), new Vector2(80, 80), new Vector2(80, 20)]),
+  );
+  const band = centerlineBand(ring, 3, 1);
+  assert.equal(band.length, 1);
+  assert.equal(band[0].holes.length, 1);
 });
 
 const build = {
