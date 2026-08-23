@@ -335,6 +335,29 @@ export default function PropertiesPanel() {
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Encaixe do Neon Flex
                   </p>
+                  <Field label="Trajeto do neon">
+                    <div className="grid grid-cols-2 gap-2">
+                      {(
+                        [
+                          { id: "contorno", label: "Contorno" },
+                          { id: "centro", label: "Linha central" },
+                        ] as const
+                      ).map((opt) => (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setParam("neonPath", opt.id)}
+                          className={`rounded-md border px-3 py-2 text-sm transition-colors ${
+                            params.neonPath === opt.id
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border bg-background text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </Field>
                   <NumberSlider
                     label="Espessura do Neon Flex"
                     keyName="neonFlexThickness"
@@ -342,9 +365,19 @@ export default function PropertiesPanel() {
                     max={30}
                     step={0.5}
                   />
+                  {params.neonPath === "centro" ? (
+                    <NumberSlider
+                      label="Recuo do eixo central"
+                      keyName="neonCenterInset"
+                      min={0.5}
+                      max={60}
+                      step={0.5}
+                    />
+                  ) : null}
                   <p className="text-xs text-muted-foreground">
-                    Define a largura livre do canal que acompanha somente o contorno da letra. Este
-                    estilo não gera tampa.
+                    {params.neonPath === "centro"
+                      ? "Um único canal percorre o meio do traço, desenhando a letra com uma linha de neon. Ajuste o recuo até o eixo ficar centralizado."
+                      : "O canal acompanha somente o contorno da letra. Este estilo não gera tampa."}
                   </p>
                   <p className="text-xs font-medium text-muted-foreground">
                     Altura total impressa:{" "}
