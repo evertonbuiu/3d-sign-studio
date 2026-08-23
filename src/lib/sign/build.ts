@@ -581,23 +581,6 @@ function makePart(
   };
 }
 
-/**
- * Aproxima a linha central (eixo) do traço da letra e devolve a faixa do neon
- * centrada nesse eixo. O recuo é reduzido até a forma não desaparecer.
- */
-function centerlineFootprints(shape: Shape, inset: number, halfWidth: number): Shape[] {
-  let core: Shape[] = [];
-  for (let factor = 1; factor > 0.05; factor -= 0.08) {
-    const candidate = insetShape(shape, Math.max(inset * factor, 0.05));
-    if (candidate.length) {
-      core = candidate;
-      break;
-    }
-  }
-  if (!core.length) return [];
-  return core.flatMap((c) => offsetShape(c, halfWidth));
-}
-
 export function buildSign(letterShapes: Shape[], params: SignParams, style: SignStyle): SignBuild {
   const active = new Set<PartKind>(style.parts);
   const neonFlexOpenCup = style.id === "neon-flex-fundo-impresso";
@@ -749,7 +732,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
         const contourWidth = params.neonFlexThickness + params.wall * 2;
         const footprints =
           params.neonPath === "centro"
-            ? centerlineFootprints(shape, params.neonCenterInset, contourWidth / 2)
+            ? centerlineBand(shape, contourWidth / 2, Math.max(params.neonCenterInset, 0.2))
             : ringShape(shape, contourWidth);
         for (const footprint of footprints) {
           const channel = openContourCupGeometry(
