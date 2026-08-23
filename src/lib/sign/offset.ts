@@ -73,6 +73,15 @@ function offsetPaths(paths: CPath[], delta: number): CPath[] {
   return normalize(solution);
 }
 
+function offsetPathsRound(paths: CPath[], delta: number): CPath[] {
+  if (!paths.length) return [];
+  const co = new ClipperLib.ClipperOffset(MITER_LIMIT, ARC_TOLERANCE);
+  co.AddPaths(paths, ClipperLib.JoinType.jtRound, ClipperLib.EndType.etClosedPolygon);
+  const solution: CPath[] = [];
+  co.Execute(solution, delta * SCALE);
+  return normalize(solution);
+}
+
 function differencePaths(subject: CPath[], clip: CPath[]): CPath[] {
   if (!subject.length) return [];
   if (!clip.length) return subject;
@@ -270,6 +279,53 @@ export function centerlineBand(shape: Shape, halfWidth: number, step = 0.4): Sha
     if (!changedA && !changedB) break;
   }
 
+  // A medial axis naturally creates pequenos ramos apontando para quinas e
+  // serifas. Remove somente caminhos curtos que terminam em uma bifurcação;
+  // componentes e terminações reais das letras permanecem intactos.
+  const neighborsOf = (index: number) => {
+    const x = index % width;
+    const y = Math.floor(index / width);
+    const neighbors: number[] = [];
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if ((!dx && !dy) || !pixels[at(x + dx, y + dy)]) continue;
+        neighbors.push(at(x + dx, y + dy));
+      }
+    }
+    return neighbors;
+  };
+  const pruneCells = Math.max(4, Math.round((halfWidth * 2.5) / cell));
+  for (let pass = 0; pass < 8; pass++) {
+    const endpoints: number[] = [];
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const index = at(x, y);
+        if (pixels[index] && neighborsOf(index).length === 1) endpoints.push(index);
+      }
+    }
+    let pruned = false;
+    for (const endpoint of endpoints) {
+      if (!pixels[endpoint]) continue;
+      const branch = [endpoint];
+      let previous = -1;
+      let current = endpoint;
+      while (branch.length <= pruneCells) {
+        const next = neighborsOf(current).filter((index) => index !== previous);
+        if (next.length !== 1) {
+          if (next.length > 1) {
+            for (const index of branch) pixels[index] = 0;
+            pruned = true;
+          }
+          break;
+        }
+        previous = current;
+        current = next[0]!;
+        branch.push(current);
+      }
+    }
+    if (!pruned) break;
+  }
+
   const seeds: CPath[] = [];
   const halfCell = cell * 0.38;
   for (let y = 1; y < height - 1; y++) {
@@ -287,7 +343,7 @@ export function centerlineBand(shape: Shape, halfWidth: number, step = 0.4): Sha
   }
   const skeleton = unionPaths(seeds);
   if (!skeleton.length) return [];
-  const band = offsetPaths(skeleton, Math.max(0.05, halfWidth - halfCell));
+  const band = offsetPathsRound(skeleton, Math.max(0.05, halfWidth - halfCell));
   return pathsToShapes(intersectionPaths(band, base));
 }
 
