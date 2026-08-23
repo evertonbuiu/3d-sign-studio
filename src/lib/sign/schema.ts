@@ -22,7 +22,7 @@ export const signParamsSchema = z.object({
   backFlangeThickness: finite(0.6, 20),
   neonFlexThickness: finite(4, 30),
   neonPath: z.enum(["contorno", "centro"]),
-  neonCenterInset: finite(0.5, 60),
+  neonCenterInset: finite(0.15, 5),
   led: z.boolean(),
   ledChannelWidth: finite(3, 40),
   ledChannelHeight: finite(2, 30),

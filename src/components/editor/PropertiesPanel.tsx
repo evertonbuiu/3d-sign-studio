@@ -367,16 +367,16 @@ export default function PropertiesPanel() {
                   />
                   {params.neonPath === "centro" ? (
                     <NumberSlider
-                      label="Recuo do eixo central"
+                      label="Precisão do eixo"
                       keyName="neonCenterInset"
-                      min={0.5}
-                      max={60}
-                      step={0.5}
+                      min={0.2}
+                      max={3}
+                      step={0.1}
                     />
                   ) : null}
                   <p className="text-xs text-muted-foreground">
                     {params.neonPath === "centro"
-                      ? "Um único canal percorre o meio do traço, desenhando a letra com uma linha de neon. Ajuste o recuo até o eixo ficar centralizado."
+                      ? "Um único canal segue o eixo central do traço, desenhando a letra com uma linha de neon. Valores menores de precisão deixam o eixo mais fiel (e o cálculo mais lento)."
                       : "O canal acompanha somente o contorno da letra. Este estilo não gera tampa."}
                   </p>
                   <p className="text-xs font-medium text-muted-foreground">
