@@ -13,6 +13,7 @@ import {
   PRINTER_PROFILES,
 } from "../src/lib/sign/printers.ts";
 import { geometriesToStl, slugify } from "../src/lib/sign/stl.ts";\nimport { centerlineBand } from "../src/lib/sign/offset.ts";
+import { shapePathByContainment } from "../src/lib/sign/font-contours.ts";
 import {
   clipGeometryByPlaneForPreview,
   geometryCrossesCutPlane,
@@ -59,6 +60,37 @@ test("linha central do Neon preserva voltas e vazados", () => {
   const band = centerlineBand(ring, 3, 1);
   assert.equal(band.length, 1);
   assert.equal(band[0].holes.length, 1);
+});
+
+test("fontes com contornos na mesma orientação preservam os vazados", () => {
+  const path = new ShapePath();
+  for (const points of [
+    [
+      [0, 0],
+      [100, 0],
+      [100, 100],
+      [0, 100],
+    ],
+    [
+      [20, 20],
+      [45, 20],
+      [45, 45],
+      [20, 45],
+    ],
+    [
+      [55, 55],
+      [80, 55],
+      [80, 80],
+      [55, 80],
+    ],
+  ]) {
+    path.moveTo(...points[0]);
+    points.slice(1).forEach((point) => path.lineTo(...point));
+    path.currentPath?.closePath();
+  }
+  const shapes = shapePathByContainment(path);
+  assert.equal(shapes.length, 1);
+  assert.equal(shapes[0].holes.length, 2);
 });
 
 const build = {
