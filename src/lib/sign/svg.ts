@@ -1,6 +1,8 @@
 import { Path, Shape } from "three";
 import { SVGLoader } from "three/examples/jsm/loaders/SVGLoader.js";
 
+import { shapePathByContainment } from "./font-contours.ts";
+
 /**
  * Converte o conteúdo de um arquivo SVG em contornos (THREE.Shape) com o eixo Y
  * corrigido (SVG usa Y para baixo) e mantendo o tamanho físico original em mm.
@@ -11,7 +13,9 @@ export function svgToShapes(svgText: string): Shape[] {
 
   const raw: Shape[] = [];
   for (const path of data.paths) {
-    for (const shape of SVGLoader.createShapes(path)) raw.push(shape);
+    // Não dependa da orientação dos subcaminhos: alguns exportadores usam
+    // o mesmo sentido no contorno externo e nos vazados das letras.
+    for (const shape of shapePathByContainment(path)) raw.push(shape);
   }
   if (!raw.length) return [];
 
