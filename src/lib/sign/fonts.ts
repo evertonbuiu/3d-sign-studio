@@ -1,6 +1,8 @@
 import * as opentype from "opentype.js";
 import { Shape, ShapePath } from "three";
 
+import { shapePathByContainment } from "./font-contours.ts";
+
 import archivo from "@/assets/fonts/archivo-black.ttf?url";
 import bebas from "@/assets/fonts/bebas-neue.ttf?url";
 import montserrat from "@/assets/fonts/montserrat.ttf?url";
@@ -130,5 +132,5 @@ export function textToShapes(
     }
   });
 
-  return path.toShapes();
+  return shapePathByContainment(path);
 }
