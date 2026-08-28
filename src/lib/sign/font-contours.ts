@@ -27,7 +27,13 @@ function pointInPolygon(point: Vector2, polygon: Vector2[]): boolean {
 
 /** Classifica contornos por contenção, sem depender da orientação fornecida pela fonte. */
 export function shapePathByContainment(path: ShapePath): Shape[] {
-  const contours = path.subPaths
+  return shapePathsByContainment([path]);
+}
+
+/** Classifica em conjunto contornos vindos de vários caminhos SVG. */
+export function shapePathsByContainment(paths: ShapePath[]): Shape[] {
+  const contours = paths
+    .flatMap((path) => path.subPaths)
     .map((subPath) => ({ points: subPath.getPoints(48) }))
     .filter(({ points }) => points.length >= 3)
     .map((contour) => ({
