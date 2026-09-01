@@ -901,6 +901,49 @@ test("novo estilo usa fundo acrilico apoiado por aba interna", () => {
   assert.equal(front.geometry.boundingBox?.min.z, params.depth - params.faceThickness);
 });
 
+test("estilo acrilico com aba cria apoio traseiro também no miolo", () => {
+  const style = getStyle("fundo-acrilico-frente-acrilica-aba");
+  const params = {
+    ...DEFAULT_PARAMS,
+    ...style.preset,
+    text: "O",
+    mountHoles: false,
+    backFlangeWidth: 4,
+    backFlangeThickness: 2.4,
+  };
+  const build = buildSign(glyphShapes(archivo, "O", params.letterHeight), params, style);
+  const walls = build.parts.find((part) => part.kind === "laterais");
+  assert.ok(walls);
+  assert.deepEqual(topology(walls.geometry), {
+    boundary: 0,
+    nonManifold: 0,
+    components: 2,
+  });
+  walls.geometry.computeBoundingBox();
+  const bounds = walls.geometry.boundingBox;
+  const center = bounds.getCenter(new Vector3());
+  const innerRadius = Math.min(bounds.max.x - bounds.min.x, bounds.max.y - bounds.min.y) * 0.35;
+  const source = walls.geometry.index ? walls.geometry.toNonIndexed() : walls.geometry;
+  const position = source.getAttribute("position");
+  let innerShelf = false;
+  for (let index = 0; index + 2 < position.count; index += 3) {
+    if (
+      [0, 1, 2].some(
+        (offset) => Math.abs(position.getZ(index + offset) - params.backFlangeThickness) > 1e-5,
+      )
+    ) {
+      continue;
+    }
+    const x = (position.getX(index) + position.getX(index + 1) + position.getX(index + 2)) / 3;
+    const y = (position.getY(index) + position.getY(index + 1) + position.getY(index + 2)) / 3;
+    if (Math.hypot(x - center.x, y - center.y) < innerRadius) {
+      innerShelf = true;
+      break;
+    }
+  }
+  assert.equal(innerShelf, true, "faltou a aba traseira na parede do miolo");
+});
+
 test("estilo acrilico com aba tem preset completo e estilos removidos nao retornam", () => {
   const removed = new Set([
     "fundo-impresso-tampa-acrilica",
