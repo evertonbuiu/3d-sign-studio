@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
 import { geometriesToStl, downloadBlob, slugify } from "@/lib/sign/stl";
+import { geometriesSurfaceToDxf, type DxfSurface } from "@/lib/sign/dxf-export";
 import {
   splitGeometryByPlane,
   splitGeometryByPlanes,
@@ -239,6 +240,45 @@ export default function Toolbar() {
     });
   }
 
+
+  function exportDxf(surface: DxfSurface) {
+    const build = editor.build;
+    if (!build) return;
+    const id = surface === "front" ? "frente-laterais" : "fundo-laterais";
+    const kind = surface === "front" ? "frente" : "fundo";
+    const sourceParts = build.parts.filter(
+      (part) => !editor.hidden.has(part.id) && (part.kind === kind || part.id === id),
+    );
+    if (!sourceParts.length) {
+      toast.error(surface === "front" ? "Este estilo não possui frente" : "Este estilo não possui fundo");
+      return;
+    }
+    const sourceBounds = new Box3();
+    for (const part of build.parts) {
+      part.geometry.computeBoundingBox();
+      if (part.geometry.boundingBox) sourceBounds.union(part.geometry.boundingBox);
+    }
+    const sourceCenter = sourceBounds.getCenter(new Vector3());
+    const placement = {
+      rotation: editor.params.modelRotation,
+      mirrorX: editor.params.mirrorHorizontal,
+      mirrorY: editor.params.mirrorVertical,
+    };
+    try {
+      const geometries = sourceParts.map((part) =>
+        transformGeometryForPlacement(part.geometry, placement, sourceCenter),
+      );
+      const dxf = geometriesSurfaceToDxf(geometries, surface);
+      const base = slugify(editor.params.text || editor.projectName);
+      const label = surface === "front" ? "frente" : "fundo";
+      downloadBlob(dxf, `${base}-${label}.dxf`, "application/dxf");
+      toast.success(`DXF da ${label} exportado para corte`);
+    } catch (error) {
+      console.error("Falha ao exportar DXF", error);
+      toast.error(error instanceof Error ? error.message : "Não foi possível exportar o DXF");
+    }
+  }
+
   async function openProject(id: string) {
     const row = await load({ data: { id } });
     if (!row) return;
@@ -315,6 +355,23 @@ export default function Toolbar() {
             </DropdownMenuItem>
             <DropdownMenuItem className="text-xs" onSelect={() => exportStl("pecas")}>
               Peças separadas (.zip)
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs">
+              <Download className="h-3.5 w-3.5" /> Exportar DXF
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem className="text-xs" onSelect={() => exportDxf("front")}>
+              Frente para laser/router (.dxf)
+            </DropdownMenuItem>
+            <DropdownMenuItem className="text-xs" onSelect={() => exportDxf("back")}>
+              Fundo para laser/router (.dxf)
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
