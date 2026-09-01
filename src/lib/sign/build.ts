@@ -407,6 +407,7 @@ function backFlangeRingGeometry(
   backHeight: number,
   faceHeight: number,
   flangeThickness: number,
+  stepOuter = false,
 ): BufferGeometry | null {
   if (thick.holes.length !== frontLip.holes.length || thick.holes.length !== flange.holes.length) {
     return null;
@@ -452,6 +453,26 @@ function backFlangeRingGeometry(
   );
   const frontStart = backHeight + bodyHeight;
   const totalHeight = frontStart + faceHeight;
+  if (stepOuter) {
+    const frontOuter = cleanContour(frontLip.getPoints(24));
+    const flangeOuter = cleanContour(flange.getPoints(24));
+    if (frontOuter.length < 3 || flangeOuter.length < 3) return null;
+    // No miolo, a cavidade útil fica do lado externo deste anel. A aba
+    // traseira e o rebaixo frontal são, portanto, o espelho da construção do
+    // perímetro principal.
+    cap(flangeOuter, thickHoles, 0, true);
+    wallStrip(flangeOuter, flangeStart, flangeEnd);
+    cap(flangeOuter, [outer], flangeEnd, true);
+    wallStrip(outer, flangeEnd, frontStart);
+    cap(outer, [frontOuter], frontStart);
+    wallStrip(frontOuter, frontStart, totalHeight);
+    for (const hole of thickHoles) wallStrip(hole, 0, totalHeight, true);
+    cap(frontOuter, thickHoles, totalHeight);
+
+    const geometry = new BufferGeometry();
+    geometry.setAttribute("position", new Float32BufferAttribute(values, 3));
+    return geometry;
+  }
   // A tampa traseira acompanha o vazio menor criado pela aba. Assim parede e
   // aba compartilham uma única borda, sem faces coplanares sobrepostas.
   cap(outer, flangeHoles, 0, true);
@@ -866,6 +887,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
                   params.backThickness,
                   params.faceThickness,
                   params.backFlangeThickness,
+                  i !== outerRingIndex,
                 )
               : doubleAcrylicRecess
                 ? doubleRecessRingGeometry(
