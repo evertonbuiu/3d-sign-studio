@@ -295,6 +295,7 @@ function doubleRecessRingGeometry(
   bodyHeight: number,
   backHeight: number,
   faceHeight: number,
+  stepOuter = false,
 ): BufferGeometry | null {
   if (thick.holes.length !== lip.holes.length) return null;
   const outer = cleanContour(thick.getPoints(24));
@@ -331,6 +332,25 @@ function doubleRecessRingGeometry(
   const middleStart = backHeight;
   const middleEnd = backHeight + bodyHeight;
   const totalHeight = middleEnd + faceHeight;
+  if (stepOuter) {
+    const lipOuter = cleanContour(lip.getPoints(24));
+    if (lipOuter.length < 3) return null;
+    // Nos contornos dos vazados, o lado voltado para a cavidade da letra é o
+    // contorno externo do anel. Invertemos a mesma construção usada no
+    // perímetro da letra para criar os ombros do fundo e da frente nesse lado.
+    cap(lipOuter, thickHoles, 0, true);
+    wallStrip(lipOuter, 0, middleStart);
+    cap(outer, [lipOuter], middleStart);
+    wallStrip(outer, middleStart, middleEnd);
+    cap(outer, [lipOuter], middleEnd, true);
+    wallStrip(lipOuter, middleEnd, totalHeight);
+    for (const hole of thickHoles) wallStrip(hole, 0, totalHeight, true);
+    cap(lipOuter, thickHoles, totalHeight);
+
+    const geometry = new BufferGeometry();
+    geometry.setAttribute("position", new Float32BufferAttribute(values, 3));
+    return geometry;
+  }
   cap(outer, lipHoles, 0, true);
   wallStrip(outer, 0, totalHeight);
   for (let i = 0; i < thickHoles.length; i++) {
@@ -818,6 +838,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
                     bodyHeight,
                     params.backThickness,
                     params.faceThickness,
+                    i !== outerRingIndex,
                   )
                 : steppedRingGeometry(
                     lowerRings[i]!,
