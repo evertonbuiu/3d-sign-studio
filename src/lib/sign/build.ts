@@ -66,6 +66,36 @@ function cleanContour(points: Vector2[]): Vector2[] {
   return result;
 }
 
+/** Mantém o pareamento dos anéis mesmo quando o Clipper muda a ordem dos contornos. */
+function matchRings(reference: Shape[], candidates: Shape[]): Array<Shape | null> {
+  const available = new Set(candidates.map((_, index) => index));
+  const boundsOf = (shape: Shape) => new Box2().setFromPoints(cleanContour(shape.getPoints(24)));
+  const candidateBounds = candidates.map(boundsOf);
+  return reference.map((ring) => {
+    const bounds = boundsOf(ring);
+    const center = bounds.getCenter(new Vector2());
+    const size = bounds.getSize(new Vector2());
+    let bestIndex = -1;
+    let bestScore = Infinity;
+    for (const index of available) {
+      const other = candidateBounds[index]!;
+      const otherCenter = other.getCenter(new Vector2());
+      const otherSize = other.getSize(new Vector2());
+      const score =
+        center.distanceToSquared(otherCenter) * 4 +
+        size.distanceToSquared(otherSize) +
+        Math.abs(ring.holes.length - candidates[index]!.holes.length) * 1e9;
+      if (score < bestScore) {
+        bestScore = score;
+        bestIndex = index;
+      }
+    }
+    if (bestIndex < 0) return null;
+    available.delete(bestIndex);
+    return candidates[bestIndex]!;
+  });
+}
+
 function reverseTriangleWinding(geometry: BufferGeometry): void {
   const source = geometry.index ? geometry.toNonIndexed() : geometry;
   if (source !== geometry) geometry.copy(source);
@@ -799,9 +829,15 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
         const flangeRings = acrylicBackFlange
           ? ringShape(shape, params.wall + params.backFlangeWidth)
           : [];
+        const matchedUpperRings = matchRings(lowerRings, upperRings);
+        const matchedFlangeRings = acrylicBackFlange
+          ? matchRings(lowerRings, flangeRings)
+          : [];
         if (
-          lowerRings.length === upperRings.length &&
-          (!acrylicBackFlange || lowerRings.length === flangeRings.length)
+          matchedUpperRings.length === lowerRings.length &&
+          matchedUpperRings.every(Boolean) &&
+          (!acrylicBackFlange ||
+            (matchedFlangeRings.length === lowerRings.length && matchedFlangeRings.every(Boolean)))
         ) {
           const outerRingIndex = lowerRings.reduce((largest, ring, index) => {
             const area = Math.abs(ShapeUtils.area(cleanContour(ring.getPoints(24))));
@@ -824,8 +860,8 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
             const wall = acrylicBackFlange
               ? backFlangeRingGeometry(
                   lowerRings[i]!,
-                  upperRings[i]!,
-                  flangeRings[i]!,
+                  matchedUpperRings[i]!,
+                  matchedFlangeRings[i]!,
                   bodyHeight,
                   params.backThickness,
                   params.faceThickness,
@@ -834,7 +870,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
               : doubleAcrylicRecess
                 ? doubleRecessRingGeometry(
                     lowerRings[i]!,
-                    upperRings[i]!,
+                    matchedUpperRings[i]!,
                     bodyHeight,
                     params.backThickness,
                     params.faceThickness,
@@ -842,7 +878,7 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
                   )
                 : steppedRingGeometry(
                     lowerRings[i]!,
-                    upperRings[i]!,
+                    matchedUpperRings[i]!,
                     bodyHeight,
                     neonFlexOpenCup
                       ? 0

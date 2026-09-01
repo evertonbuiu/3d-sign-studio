@@ -783,6 +783,49 @@ test("rebaixo duplo também é criado nas paredes dos vazados internos", () => {
   );
 });
 
+test("rebaixo duplo mantém o miolo pareado com seu próprio contorno", () => {
+  const style = getStyle("fundo-acrilico-frente-acrilica");
+  const params = { ...DEFAULT_PARAMS, ...style.preset, text: "A", mountHoles: false };
+  const shapes = glyphShapes(archivo, "A", params.letterHeight);
+  const build = buildSign(shapes, params, style);
+  const walls = build.parts.find((part) => part.kind === "laterais");
+  assert.ok(walls);
+  walls.geometry.computeBoundingBox();
+  const wallBounds = walls.geometry.boundingBox;
+  const mesh = walls.geometry.index ? walls.geometry.toNonIndexed() : walls.geometry;
+  const position = mesh.getAttribute("position");
+  const parent = new Map();
+  const keyAt = (index) =>
+    `${Math.round(position.getX(index) * 1e4)},${Math.round(position.getY(index) * 1e4)},${Math.round(position.getZ(index) * 1e4)}`;
+  const find = (key) => {
+    if (!parent.has(key)) parent.set(key, key);
+    if (parent.get(key) !== key) parent.set(key, find(parent.get(key)));
+    return parent.get(key);
+  };
+  const union = (a, b) => parent.set(find(a), find(b));
+  for (let index = 0; index + 2 < position.count; index += 3) {
+    const keys = [keyAt(index), keyAt(index + 1), keyAt(index + 2)];
+    union(keys[0], keys[1]);
+    union(keys[1], keys[2]);
+  }
+  const componentBounds = new Map();
+  for (let index = 0; index < position.count; index++) {
+    const root = find(keyAt(index));
+    const bounds = componentBounds.get(root) ?? new Box2();
+    bounds.expandByPoint(new Vector2(position.getX(index), position.getY(index)));
+    componentBounds.set(root, bounds);
+  }
+  const totalWidth = wallBounds.max.x - wallBounds.min.x;
+  const totalHeight = wallBounds.max.y - wallBounds.min.y;
+  assert.ok(
+    [...componentBounds.values()].some((bounds) => {
+      const size = bounds.getSize(new Vector2());
+      return size.x < totalWidth * 0.6 && size.y < totalHeight * 0.6;
+    }),
+    "o rebaixo do miolo foi pareado com o perímetro externo",
+  );
+});
+
 test("encaixe do corte acrilico acompanha o rebaixo frontal em LUMINA", () => {
   const style = getStyle("fundo-acrilico-frente-acrilica");
   const params = {
