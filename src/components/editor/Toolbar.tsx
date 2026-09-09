@@ -41,6 +41,7 @@ import {
   splitGeometryByPlanes,
   splitGeometryForBuildPlate,
   partSupportsCutConnector,
+  resolveCutConnectorInsets,
   resolveCutConnectorWidth,
 } from "@/lib/sign/split";
 import { transformGeometryForPlacement } from "@/lib/sign/placement";
@@ -152,6 +153,13 @@ export default function Toolbar() {
       const connectorEnabled = partSupportsCutConnector(part.kind, styleHasWalls);
       let segments;
       try {
+        const connectorInsets = resolveCutConnectorInsets(
+          editor.style.id,
+          part.id,
+          editor.params.backThickness,
+          editor.params.faceThickness,
+          editor.params.backFlangeThickness,
+        );
         const connectorWidth = resolveCutConnectorWidth(
           editor.style.id,
           editor.params.cutConnectorWidth,
@@ -178,10 +186,8 @@ export default function Toolbar() {
                       ),
                       connectorThickness: cut.connectorThickness,
                       connectorClearance: cut.connectorClearance,
-                      connectorBackInset:
-                        part.id === "fundo-laterais" ? editor.params.backThickness : 0,
-                      connectorFrontInset:
-                        part.id === "frente-laterais" ? editor.params.faceThickness : 0,
+                      connectorBackInset: connectorInsets.back,
+                      connectorFrontInset: connectorInsets.front,
                     }));
                   return cuts.length
                     ? splitGeometryByPlanes(part.geometry, cuts, cutOrigin)
@@ -196,10 +202,8 @@ export default function Toolbar() {
                   connectorWidth,
                   connectorThickness: editor.params.cutConnectorThickness,
                   connectorClearance: editor.params.cutConnectorClearance,
-                  connectorBackInset:
-                    part.id === "fundo-laterais" ? editor.params.backThickness : 0,
-                  connectorFrontInset:
-                    part.id === "frente-laterais" ? editor.params.faceThickness : 0,
+                  connectorBackInset: connectorInsets.back,
+                  connectorFrontInset: connectorInsets.front,
                   origin: cutOrigin,
                 })
             : splitGeometryForBuildPlate(part.geometry, {
