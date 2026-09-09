@@ -32,6 +32,7 @@ import type { SignParams } from "@/lib/sign/model";
 import {
   clipGeometryByPlaneForPreview,
   partSupportsCutConnector,
+  resolveCutConnectorInsets,
   resolveCutConnectorWidth,
   splitGeometryByPlane,
   splitGeometryByPlanes,
@@ -782,7 +783,15 @@ function Model({
   return (
     <group ref={groupRef} scale={scale} rotation={[-0.05, 0, 0]}>
       <group position={[-center.x, -center.y, -center.z]}>
-        {visible.map((part) => (
+        {visible.map((part) => {
+          const connectorInsets = resolveCutConnectorInsets(
+            style.id,
+            part.id,
+            params.backThickness,
+            params.faceThickness,
+            params.backFlangeThickness,
+          );
+          return (
           <PartMesh
             key={part.id}
             part={part}
@@ -809,8 +818,8 @@ function Model({
                     ),
                     connectorThickness: params.cutConnectorThickness,
                     connectorClearance: params.cutConnectorClearance,
-                    connectorBackInset: part.id === "fundo-laterais" ? params.backThickness : 0,
-                    connectorFrontInset: part.id === "frente-laterais" ? params.faceThickness : 0,
+                    connectorBackInset: connectorInsets.back,
+                    connectorFrontInset: connectorInsets.front,
                     origin: { x: center.x, y: center.y },
                     cuts: params.manualCuts
                       .filter((cut) => cut.target === "all" || cut.target === part.kind)
@@ -828,16 +837,16 @@ function Model({
                         ),
                         connectorThickness: cut.connectorThickness,
                         connectorClearance: cut.connectorClearance,
-                        connectorBackInset: part.id === "fundo-laterais" ? params.backThickness : 0,
-                        connectorFrontInset:
-                          part.id === "frente-laterais" ? params.faceThickness : 0,
+                        connectorBackInset: connectorInsets.back,
+                        connectorFrontInset: connectorInsets.front,
                       })),
                     connectorEnabled: partSupportsCutConnector(part.kind, styleHasWalls),
                   }
                 : undefined
             }
           />
-        ))}
+          );
+        })}
         {params.splitForBuildPlate &&
           params.splitMode === "automatic" &&
           visible.map((part) => (
