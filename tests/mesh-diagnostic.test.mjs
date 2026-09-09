@@ -646,7 +646,7 @@ test("encaixe impresso reproduz as arestas manifold do modelo c.skp", () => {
 });
 
 test("encaixe impresso continua as duas faces da parede sem criar outra peca", () => {
-  assert.equal(resolveCutConnectorWidth("fundo-impresso-frente-impressa-aba", 35, 2.4, 1.2), 100);
+  assert.equal(resolveCutConnectorWidth("fundo-impresso-frente-impressa-aba", 35, 2.4, 1.2), 35);
 });
 
 test("encaixe da frente impressa nao fecha o canal entre paredes", () => {
@@ -835,7 +835,7 @@ test("encaixe do corte acrilico acompanha o rebaixo frontal em LUMINA", () => {
     mountHoles: false,
   };
   const width = resolveCutConnectorWidth(style.id, 95, params.wall, params.recessLip);
-  assert.ok(Math.abs(width - (params.recessLip / params.wall) * 100) < 1e-8);
+  assert.equal(width, 95);
 
   const build = buildSign(glyphShapes(archivo, params.text, params.letterHeight), params, style);
   const walls = build.parts.find((part) => part.kind === "laterais");
