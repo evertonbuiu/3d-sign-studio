@@ -39,21 +39,12 @@ export interface SequentialSplitOptions extends ManualSplitOptions {
  * faces sobrepostas e linhas abertas entre o rebaixo frontal e a lingueta.
  */
 export function resolveCutConnectorWidth(
-  styleId: string,
+  _styleId: string,
   requestedPercent: number,
-  wallWidth: number,
-  frontRecessWidth: number,
+  _wallWidth: number,
+  _frontRecessWidth: number,
 ): number {
-  if (styleId === "fundo-impresso-frente-impressa-aba") {
-    return 100;
-  }
-  if (
-    !["fundo-acrilico-frente-acrilica", "fundo-acrilico-frente-acrilica-aba"].includes(styleId) ||
-    wallWidth <= 0
-  ) {
-    return requestedPercent;
-  }
-  return Math.min(100, Math.max(10, (frontRecessWidth / wallWidth) * 100));
+  return Math.min(100, Math.max(10, requestedPercent));
 }
 
 /** Limita o encaixe ao corpo da parede, sem invadir frente, fundo ou aba. */
