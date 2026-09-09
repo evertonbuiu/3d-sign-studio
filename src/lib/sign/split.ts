@@ -47,10 +47,34 @@ export function resolveCutConnectorWidth(
   if (styleId === "fundo-impresso-frente-impressa-aba") {
     return 100;
   }
-  if (styleId !== "fundo-acrilico-frente-acrilica" || wallWidth <= 0) {
+  if (
+    !["fundo-acrilico-frente-acrilica", "fundo-acrilico-frente-acrilica-aba"].includes(styleId) ||
+    wallWidth <= 0
+  ) {
     return requestedPercent;
   }
   return Math.min(100, Math.max(10, (frontRecessWidth / wallWidth) * 100));
+}
+
+/** Limita o encaixe ao corpo da parede, sem invadir frente, fundo ou aba. */
+export function resolveCutConnectorInsets(
+  styleId: string,
+  partId: string,
+  backThickness: number,
+  faceThickness: number,
+  backFlangeThickness: number,
+): { back: number; front: number } {
+  if (partId === "fundo-laterais") return { back: backThickness, front: 0 };
+  if (partId === "frente-laterais") return { back: 0, front: faceThickness };
+  if (partId !== "laterais") return { back: 0, front: 0 };
+
+  if (styleId === "fundo-acrilico-frente-acrilica-aba") {
+    return { back: backFlangeThickness, front: faceThickness };
+  }
+  if (styleId === "fundo-acrilico-frente-acrilica") {
+    return { back: backThickness, front: faceThickness };
+  }
+  return { back: 0, front: 0 };
 }
 
 /** Seleciona onde o encaixe estrutural pode ser criado em cada estilo. */
