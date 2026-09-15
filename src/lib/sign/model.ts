@@ -289,6 +289,27 @@ export const STYLES: SignStyle[] = [
     thumb: { face: "#ff4fd8", body: "#252836", glow: "front", outline: true },
   },
   {
+    id: "neon-flex-frente-impressa",
+    name: "Neon Flex — Frente Impressa Curva",
+    group: "Neon Flex",
+    description:
+      "Corpo impresso com uma frente arredondada que reproduz o volume de uma mangueira de neon.",
+    parts: ["fundo", "laterais", "frente"],
+    preset: {
+      depth: 15,
+      wall: 1.6,
+      backThickness: 3,
+      faceThickness: 4,
+      neonFlexThickness: 8,
+      neonPath: "contorno",
+      faceRecess: false,
+      led: false,
+      mountHoles: false,
+      faceColor: "#ff4fd8",
+    },
+    thumb: { face: "#ff4fd8", body: "#252836", glow: "front", outline: true },
+  },
+  {
     id: "face-lit",
     name: "Face Lit",
     group: "Iluminação",
