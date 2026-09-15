@@ -142,6 +142,8 @@ export default function PropertiesPanel() {
     clearCustomFont,
     selectPrinter,
   } = useEditor();
+  const isNeonLetter =
+    style.id === "neon-flex-fundo-impresso" || style.id === "neon-flex-frente-impressa";
 
   return (
     <div className="flex h-full flex-col border-l border-border bg-panel">
@@ -316,13 +318,13 @@ export default function PropertiesPanel() {
           <AccordionItem value="construcao">
             <AccordionTrigger className="text-sm">Construção</AccordionTrigger>
             <AccordionContent className="space-y-3 pb-4">
-              {style.id !== "neon-flex-fundo-impresso" ? (
+              {!isNeonLetter ? (
                 <NumberSlider label="Profundidade" keyName="depth" min={5} max={200} step={1} />
               ) : null}
               <NumberSlider label="Parede" keyName="wall" min={0.8} max={12} step={0.1} />
-              {style.id !== "neon-flex-fundo-impresso" ? (
+              {!isNeonLetter || style.id === "neon-flex-frente-impressa" ? (
                 <NumberSlider
-                  label="Frente"
+                  label={style.id === "neon-flex-frente-impressa" ? "Altura da frente curva" : "Frente"}
                   keyName="faceThickness"
                   min={0.6}
                   max={60}
@@ -330,7 +332,7 @@ export default function PropertiesPanel() {
                 />
               ) : null}
               <NumberSlider label="Fundo" keyName="backThickness" min={0.6} max={20} step={0.2} />
-              {style.id === "neon-flex-fundo-impresso" ? (
+              {isNeonLetter ? (
                 <div className="space-y-3 rounded-md border border-border bg-background/40 p-3">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Encaixe do Neon Flex
@@ -377,15 +379,20 @@ export default function PropertiesPanel() {
                   <p className="text-xs text-muted-foreground">
                     {params.neonPath === "centro"
                       ? "Um único canal segue o eixo central do traço, desenhando a letra com uma linha de neon. Valores menores de precisão deixam o eixo mais fiel (e o cálculo mais lento)."
-                      : "O canal acompanha somente o contorno da letra. Este estilo não gera tampa."}
+                      : style.id === "neon-flex-frente-impressa"
+                        ? "A frente impressa acompanha o contorno e recebe um topo arredondado, semelhante a uma mangueira de neon."
+                        : "O canal acompanha somente o contorno da letra. Este estilo não gera tampa."}
                   </p>
                   <p className="text-xs font-medium text-muted-foreground">
                     Altura total impressa:{" "}
-                    {(params.backThickness + params.neonFlexThickness).toFixed(1)} mm
+                    {(params.backThickness +
+                      params.neonFlexThickness +
+                      (style.id === "neon-flex-frente-impressa" ? params.faceThickness - 0.2 : 0)
+                    ).toFixed(1)} mm
                   </p>
                 </div>
               ) : null}
-              {style.id !== "neon-flex-fundo-impresso" ? (
+              {!isNeonLetter ? (
                 <>
                   <NumberSlider
                     label="Folga de encaixe"

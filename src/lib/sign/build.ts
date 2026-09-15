@@ -58,6 +58,20 @@ function extrude(shape: Shape | Shape[], depth: number): ExtrudeGeometry {
   return new ExtrudeGeometry(shape, { ...EXTRUDE, depth: Math.max(depth, 0.2) });
 }
 
+/** Frente impressa com bordas e topo arredondados, semelhante a uma mangueira de neon. */
+function roundedNeonFace(shape: Shape, thickness: number, neonWidth: number): ExtrudeGeometry {
+  const radius = Math.max(0.2, Math.min(thickness * 0.48, neonWidth * 0.24));
+  return new ExtrudeGeometry(shape, {
+    ...EXTRUDE,
+    depth: Math.max(thickness - radius * 2, 0.2),
+    bevelEnabled: true,
+    bevelSegments: 6,
+    bevelSize: radius,
+    bevelThickness: radius,
+    curveSegments: 32,
+  });
+}
+
 function cleanContour(points: Vector2[]): Vector2[] {
   const result = points.map((point) => point.clone());
   const first = result[0];
@@ -655,7 +669,8 @@ function makePart(
 
 export function buildSign(letterShapes: Shape[], params: SignParams, style: SignStyle): SignBuild {
   const active = new Set<PartKind>(style.parts);
-  const neonFlexOpenCup = style.id === "neon-flex-fundo-impresso";
+  const neonFlexPrintedFace = style.id === "neon-flex-frente-impressa";
+  const neonFlexOpenCup = style.id === "neon-flex-fundo-impresso" || neonFlexPrintedFace;
   const unifiedPrintedCup = style.id === "fundo-impresso-frente-acrilica" || neonFlexOpenCup;
   const printedFrontRearInsert = style.id === "fundo-impresso-frente-impressa-aba";
   const unifiedPrintedFace =
@@ -997,6 +1012,21 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
   if (active.has("frente") && !unifiedPrintedFace) {
     const geos: BufferGeometry[] = [];
     for (const shape of shapes) {
+      if (neonFlexPrintedFace) {
+        const contourWidth = params.neonFlexThickness + params.wall * 2;
+        const footprints =
+          params.neonPath === "centro"
+            ? centerlineBand(shape, contourWidth / 2, Math.max(params.neonCenterInset, 0.2))
+            : ringShape(shape, contourWidth);
+        for (const footprint of footprints) {
+          for (const faceShape of insetShape(footprint, params.wall + params.clearance)) {
+            geos.push(
+              roundedNeonFace(faceShape, params.faceThickness, params.neonFlexThickness),
+            );
+          }
+        }
+        continue;
+      }
       const faceShape = cloneShape(shape);
       if (faceInset > 0) {
         for (const inner of insetShape(faceShape, faceInset)) {
@@ -1009,8 +1039,11 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
 
     const geo = combine(geos);
     if (geo) {
-      const z =
-        plateOn && !active.has("laterais") ? baseZ : baseZ + params.depth - params.faceThickness;
+      const z = neonFlexPrintedFace
+        ? baseZ + params.backThickness + params.neonFlexThickness - 0.2
+        : plateOn && !active.has("laterais")
+          ? baseZ
+          : baseZ + params.depth - params.faceThickness;
       geo.translate(0, 0, Math.max(z, baseZ));
       parts.push(
         makePart("frente", "frente", "Frente", params.faceColor, geo, {

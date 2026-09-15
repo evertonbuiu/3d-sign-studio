@@ -15,11 +15,14 @@ function Thumb({ style }: { style: (typeof STYLES)[number] }) {
   const hasPole = style.parts.includes("poste");
   const isNeon = style.id.includes("neon");
   const isOpenNeon = style.id === "neon-flex-fundo-impresso";
+  const isPrintedNeon = style.id === "neon-flex-frente-impressa";
   const hasFlange = style.id.includes("aba");
   const isAcrylic = style.id.includes("acrilico") || style.id.includes("petg");
   const isBackLight = thumb.glow === "back" || thumb.glow === "halo";
   const filterId = `glow-${style.id}`;
-  const badge = isOpenNeon
+  const badge = isPrintedNeon
+    ? "FRENTE CURVA"
+    : isOpenNeon
     ? "CONTORNO"
     : hasFlange
       ? "ENCAIXE"
