@@ -1029,7 +1029,12 @@ export function buildSign(letterShapes: Shape[], params: SignParams, style: Sign
         for (const footprint of footprints) {
           for (const faceShape of insetShape(footprint, params.wall + params.clearance)) {
             geos.push(
-              roundedNeonFace(faceShape, params.faceThickness, params.neonFlexThickness),
+              roundedNeonFace(
+                faceShape,
+                params.faceThickness,
+                params.neonFlexThickness,
+                params.faceCurveRadius,
+              ),
             );
           }
         }
