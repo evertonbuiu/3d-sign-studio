@@ -367,6 +367,15 @@ export default function PropertiesPanel() {
                     max={30}
                     step={0.5}
                   />
+                  {style.id === "neon-flex-frente-impressa" ? (
+                    <NumberSlider
+                      label="Curvatura da frente"
+                      keyName="faceCurveRadius"
+                      min={0.2}
+                      max={20}
+                      step={0.1}
+                    />
+                  ) : null}
                   {params.neonPath === "centro" ? (
                     <NumberSlider
                       label="Precisão do eixo"
