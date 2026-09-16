@@ -59,8 +59,16 @@ function extrude(shape: Shape | Shape[], depth: number): ExtrudeGeometry {
 }
 
 /** Frente impressa com bordas e topo arredondados, semelhante a uma mangueira de neon. */
-function roundedNeonFace(shape: Shape, thickness: number, neonWidth: number): ExtrudeGeometry {
-  const radius = Math.max(0.2, Math.min(thickness * 0.48, neonWidth * 0.24));
+function roundedNeonFace(
+  shape: Shape,
+  thickness: number,
+  neonWidth: number,
+  curveRadius = Infinity,
+): ExtrudeGeometry {
+  const radius = Math.max(
+    0.2,
+    Math.min(thickness * 0.48, neonWidth * 0.24, Math.max(curveRadius, 0.2)),
+  );
   return new ExtrudeGeometry(shape, {
     ...EXTRUDE,
     depth: Math.max(thickness - radius * 2, 0.2),
