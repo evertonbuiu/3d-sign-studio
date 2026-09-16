@@ -304,6 +304,7 @@ export const STYLES: SignStyle[] = [
       faceThickness: 4,
       neonFlexThickness: 8,
       neonPath: "contorno",
+      faceCurveRadius: 2,
       faceRecess: false,
       led: false,
       mountHoles: false,
