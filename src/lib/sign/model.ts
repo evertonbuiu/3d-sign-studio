@@ -44,6 +44,7 @@ export interface SignParams {
   neonFlexThickness: number; // largura livre do canal de contorno para o Neon Flex (mm)
   neonPath: "contorno" | "centro"; // trajeto do neon: contorno da letra ou linha central
   neonCenterInset: number; // passo de precisão do cálculo do eixo central (mm)
+  faceCurveRadius: number; // raio de curvatura da frente impressa curva (mm)
   /** iluminação */
   led: boolean;
   ledChannelWidth: number;
@@ -121,6 +122,7 @@ export const DEFAULT_PARAMS: SignParams = {
   neonFlexThickness: 8,
   neonPath: "contorno",
   neonCenterInset: 0.4,
+  faceCurveRadius: 2,
   led: true,
   ledChannelWidth: 12,
   ledChannelHeight: 6,
@@ -302,6 +304,7 @@ export const STYLES: SignStyle[] = [
       faceThickness: 4,
       neonFlexThickness: 8,
       neonPath: "contorno",
+      faceCurveRadius: 2,
       faceRecess: false,
       led: false,
       mountHoles: false,
