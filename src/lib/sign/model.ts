@@ -122,6 +122,7 @@ export const DEFAULT_PARAMS: SignParams = {
   neonFlexThickness: 8,
   neonPath: "contorno",
   neonCenterInset: 0.4,
+  faceCurveRadius: 2,
   led: true,
   ledChannelWidth: 12,
   ledChannelHeight: 6,
